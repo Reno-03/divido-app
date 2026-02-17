@@ -1,3 +1,4 @@
+import 'package:divido_app/home.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -152,6 +153,16 @@ class _MyHomePageState extends State<MyHomePage> {
                     final username = usernameController.text;
                     final password = passwordController.text;
                     print('Username: $username, Password: $password');
+
+                    // TODO: Replace with real login logic
+                    if (username.isNotEmpty && password.isNotEmpty) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HomePage(),
+                        ),
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
