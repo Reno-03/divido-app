@@ -6,7 +6,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load .env variables
-  await dotenv.load(fileName: ".env");
+  // await dotenv.load(fileName: ".env");
+  await dotenv.load(fileName: "assets/.env");
 
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
@@ -166,6 +167,8 @@ class _MyHomePageState extends State<MyHomePage> {
                   ),
                 ),
               ),
+
+              const SizedBox(height: 100),
             ],
           ),
         ),
