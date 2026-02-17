@@ -1,4 +1,5 @@
-import 'package:divido_app/home.dart';
+import 'package:divido_app/screens/home.dart';
+import 'package:divido_app/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -49,141 +50,12 @@ class MyApp extends StatelessWidget {
           brightness: Brightness.dark,
         ),
       ),
-      home: const MyHomePage(title: 'Divido'),
-    );
-  }
-}
-
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  final TextEditingController usernameController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
-  bool _isPasswordVisible = false;
-
-  @override
-  void dispose() {
-    usernameController.dispose();
-    passwordController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset(
-                'assets/divido_logo.png',
-                width: 140,
-                height: 140,
-              ),
-              
-              const Text(
-                'Welcome to Divido!',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Username TextField
-              TextField(
-                controller: usernameController,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Username',
-                  hintStyle: const TextStyle(color: Colors.white70),
-                  filled: true,
-                  fillColor: const Color(0xFF1F214F),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.0),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Password TextField
-              TextField(
-                controller: passwordController,
-                obscureText: !_isPasswordVisible,
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Password',
-                  hintStyle: const TextStyle(color: Colors.white70),
-                  filled: true,
-                  fillColor: const Color(0xFF1F214F),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12.0),
-                    borderSide: BorderSide.none,
-                  ),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
-                      color: Colors.white70,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isPasswordVisible = !_isPasswordVisible;
-                      });
-                    },
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Login Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    final username = usernameController.text;
-                    final password = passwordController.text;
-                    print('Username: $username, Password: $password');
-
-                    // TODO: Replace with real login logic
-                    if (username.isNotEmpty && password.isNotEmpty) {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const HomePage(),
-                        ),
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF171A3F),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Log In',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 100),
-            ],
-          ),
-        ),
-      ),
+      // home: const MyHomePage(title: 'Divido'),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const LoginPage(),
+        '/home': (context) => const HomePage(),
+      },
     );
   }
 }
