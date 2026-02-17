@@ -81,6 +81,12 @@ class _MyHomePageState extends State<MyHomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Image.asset(
+                'assets/divido_logo.png',
+                width: 140,
+                height: 140,
+              ),
+              
               const Text(
                 'Welcome to Divido!',
                 style: TextStyle(
