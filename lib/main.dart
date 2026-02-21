@@ -3,6 +3,8 @@ import 'package:divido_app/screens/login.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
+import 'providers/expense_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,38 +26,43 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Divido',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        // Dark background
-        scaffoldBackgroundColor: const Color(0xFF171A3F),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF171A3F),
-          foregroundColor: Colors.white, // title text color
-          elevation: 0,
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ExpenseProvider()),
+      ],
+      child: MaterialApp(
+        title: 'Divido',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          // Dark background
+          scaffoldBackgroundColor: const Color(0xFF171A3F),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xFF171A3F),
+            foregroundColor: Colors.white, // title text color
+            elevation: 0,
+          ),
+          floatingActionButtonTheme: const FloatingActionButtonThemeData(
+            backgroundColor: Colors.white, // button background
+            foregroundColor: Color(0xFF171A3F), // icon color
+          ),
+          textTheme: const TextTheme(
+            bodyMedium: TextStyle(color: Colors.white),
+            bodyLarge: TextStyle(color: Colors.white),
+            bodySmall: TextStyle(color: Colors.white),
+            headlineMedium: TextStyle(color: Colors.white),
+          ),
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: Colors.white,
+            brightness: Brightness.dark,
+          ),
         ),
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Colors.white, // button background
-          foregroundColor: Color(0xFF171A3F), // icon color
-        ),
-        textTheme: const TextTheme(
-          bodyMedium: TextStyle(color: Colors.white),
-          bodyLarge: TextStyle(color: Colors.white),
-          bodySmall: TextStyle(color: Colors.white),
-          headlineMedium: TextStyle(color: Colors.white),
-        ),
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.white,
-          brightness: Brightness.dark,
-        ),
+        // home: const MyHomePage(title: 'Divido'),
+        initialRoute: '/',
+        routes: {
+          '/': (context) => const LoginPage(),
+          '/home': (context) => const HomePage(),
+        },
       ),
-      // home: const MyHomePage(title: 'Divido'),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const LoginPage(),
-        '/home': (context) => const HomePage(),
-      },
     );
   }
 }

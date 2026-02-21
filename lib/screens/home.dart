@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:divido_app/services/current_user.dart';
+
+import '../providers/expense_provider.dart';
 import 'all_page.dart';
 import 'mine_page.dart';
 import 'balance_page.dart';
@@ -15,8 +18,26 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [AllPage(), MinePage(), BalancePage()];
+  final List<Widget> _pages = const [
+    AllPage(),
+    MinePage(),
+    BalancePage(),
+  ];
 
+  @override
+  void initState() {
+    super.initState();
+
+    // 🔥 Load expenses when app starts
+    Future.microtask(() {
+      Provider.of<ExpenseProvider>(context, listen: false)
+          .fetchExpenses();
+    });
+  }
+
+  // ==============================
+  // CREATE EXPENSE
+  // ==============================
   Future<void> _createExpense(
     String title,
     double total,
@@ -28,13 +49,17 @@ class _HomePageState extends State<HomePage> {
     // 1️⃣ Create expense
     final expenseResponse = await supabase
         .from('expenses')
-        .insert({'title': title, 'total': total, 'owner_id': currentUserId})
+        .insert({
+          'title': title,
+          'total': total,
+          'owner_id': currentUserId,
+        })
         .select()
         .single();
 
     final expenseId = expenseResponse['id'];
 
-    // 2️⃣ Calculate equal split
+    // 2️⃣ Split equally
     final splitAmount = total / payerIds.length;
 
     // 3️⃣ Insert breakdowns
@@ -45,13 +70,19 @@ class _HomePageState extends State<HomePage> {
         'amount': splitAmount,
       });
     }
+
+    // 🔥 Refresh Provider (this updates ALL pages automatically)
+    await Provider.of<ExpenseProvider>(context, listen: false)
+        .refresh();
   }
 
+  // ==============================
+  // CREATE MODAL
+  // ==============================
   void _showCreateExpenseModal() {
     final titleController = TextEditingController();
     final totalController = TextEditingController();
     final currentUserId = CurrentUser.instance.id;
-
     final supabase = Supabase.instance.client;
 
     showModalBottomSheet(
@@ -68,11 +99,10 @@ class _HomePageState extends State<HomePage> {
               );
             }
 
+            // Remove current user from checkboxes
             final users = List<Map<String, dynamic>>.from(
               snapshot.data as List,
-            )
-                .where((user) => user['id'] != currentUserId)
-                .toList();
+            ).where((user) => user['id'] != currentUserId).toList();
 
             final selectedUsers = <String>{};
 
@@ -91,16 +121,16 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         TextField(
                           controller: titleController,
-                          decoration: const InputDecoration(labelText: 'Title'),
+                          decoration:
+                              const InputDecoration(labelText: 'Title'),
                         ),
                         TextField(
                           controller: totalController,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Total'),
+                          decoration:
+                              const InputDecoration(labelText: 'Total'),
                         ),
-
                         const SizedBox(height: 16),
-
                         const Text(
                           'Select Payers:',
                           style: TextStyle(fontWeight: FontWeight.bold),
@@ -133,17 +163,18 @@ class _HomePageState extends State<HomePage> {
                             final total =
                                 double.tryParse(totalController.text) ?? 0;
 
-                            if (title.isEmpty || total <= 0) {
-                              return;
-                            }
-                            
+                            if (title.isEmpty || total <= 0) return;
+
                             // Automatically include current user
                             selectedUsers.add(currentUserId!);
 
-                            await _createExpense(title, total, selectedUsers);
+                            await _createExpense(
+                              title,
+                              total,
+                              selectedUsers,
+                            );
 
                             Navigator.pop(context);
-                            setState(() {});
                           },
                           child: const Text('Create'),
                         ),
@@ -161,12 +192,17 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ==============================
+  // BUILD
+  // ==============================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages,
+      ),
 
-      // ✅ Floating Action Button (only on Mine tab)
       floatingActionButton: _currentIndex == 1
           ? FloatingActionButton(
               onPressed: _showCreateExpenseModal,
@@ -182,8 +218,14 @@ class _HomePageState extends State<HomePage> {
           });
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.list), label: 'All'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Mine'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.list),
+            label: 'All',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Mine',
+          ),
           BottomNavigationBarItem(
             icon: Icon(Icons.account_balance_wallet),
             label: 'Balance',
