@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'providers/expense_provider.dart';
+import 'package:flutter/gestures.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +34,13 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Divido',
         debugShowCheckedModeBanner: false,
+        scrollBehavior: const MaterialScrollBehavior().copyWith(
+          dragDevices: {
+            PointerDeviceKind.touch,
+            PointerDeviceKind.mouse,
+            PointerDeviceKind.trackpad,
+          },
+        ),
         theme: ThemeData(
           // Dark background
           scaffoldBackgroundColor: const Color(0xFF171A3F),
