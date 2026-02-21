@@ -1,4 +1,6 @@
+import 'package:divido_app/providers/expense_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/current_user.dart';
 
@@ -19,6 +21,25 @@ class _BalancePageState extends State<BalancePage> {
   void initState() {
     super.initState();
     _balanceFuture = _fetchNetBalances();
+
+    // Re-fetch balances whenever expenses change
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ExpenseProvider>(context, listen: false)
+          .addListener(_onExpensesChanged);
+    });
+  }
+
+  void _onExpensesChanged() {
+    setState(() {
+      _balanceFuture = _fetchNetBalances();
+    });
+  }
+
+  @override
+  void dispose() {
+    Provider.of<ExpenseProvider>(context, listen: false)
+        .removeListener(_onExpensesChanged);
+    super.dispose();
   }
 
   Future<List<Map<String, dynamic>>> _fetchNetBalances() async {
