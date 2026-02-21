@@ -30,4 +30,17 @@ class ExpenseProvider extends ChangeNotifier {
   Future<void> refresh() async {
     await fetchExpenses();
   }
+
+  void toggleExpensePaidLocally(String expenseId, bool newValue) {
+    final idx = expenses.indexWhere((e) => e['id'] == expenseId);
+    if (idx == -1) return;
+
+    // expenses list items are maps from Supabase, make a mutable copy
+    final updated = Map<String, dynamic>.from(expenses[idx]);
+    updated['is_paid'] = newValue;
+    updated['paid_at'] = newValue ? DateTime.now().toIso8601String() : null;
+    expenses[idx] = updated;
+
+    notifyListeners();
+  }
 }
