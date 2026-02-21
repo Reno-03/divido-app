@@ -18,11 +18,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [
-    AllPage(),
-    MinePage(),
-    BalancePage(),
-  ];
+  final List<Widget> _pages = const [AllPage(), MinePage(), BalancePage()];
 
   @override
   void initState() {
@@ -30,8 +26,12 @@ class _HomePageState extends State<HomePage> {
 
     // 🔥 Load expenses when app starts
     Future.microtask(() {
-      Provider.of<ExpenseProvider>(context, listen: false)
-          .fetchExpenses();
+      if (CurrentUser.instance.id == null) {
+        Navigator.pushReplacementNamed(context, '/login');
+        return;
+      }
+
+      Provider.of<ExpenseProvider>(context, listen: false).fetchExpenses();
     });
   }
 
@@ -49,11 +49,7 @@ class _HomePageState extends State<HomePage> {
     // 1️⃣ Create expense
     final expenseResponse = await supabase
         .from('expenses')
-        .insert({
-          'title': title,
-          'total': total,
-          'owner_id': currentUserId,
-        })
+        .insert({'title': title, 'total': total, 'owner_id': currentUserId})
         .select()
         .single();
 
@@ -72,8 +68,7 @@ class _HomePageState extends State<HomePage> {
     }
 
     // 🔥 Refresh Provider (this updates ALL pages automatically)
-    await Provider.of<ExpenseProvider>(context, listen: false)
-        .refresh();
+    await Provider.of<ExpenseProvider>(context, listen: false).refresh();
   }
 
   // ==============================
@@ -121,14 +116,12 @@ class _HomePageState extends State<HomePage> {
                       children: [
                         TextField(
                           controller: titleController,
-                          decoration:
-                              const InputDecoration(labelText: 'Title'),
+                          decoration: const InputDecoration(labelText: 'Title'),
                         ),
                         TextField(
                           controller: totalController,
                           keyboardType: TextInputType.number,
-                          decoration:
-                              const InputDecoration(labelText: 'Total'),
+                          decoration: const InputDecoration(labelText: 'Total'),
                         ),
                         const SizedBox(height: 16),
                         const Text(
@@ -168,11 +161,7 @@ class _HomePageState extends State<HomePage> {
                             // Automatically include current user
                             selectedUsers.add(currentUserId!);
 
-                            await _createExpense(
-                              title,
-                              total,
-                              selectedUsers,
-                            );
+                            await _createExpense(title, total, selectedUsers);
 
                             Navigator.pop(context);
                           },
@@ -198,10 +187,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
+      body: IndexedStack(index: _currentIndex, children: _pages),
 
       floatingActionButton: _currentIndex == 1
           ? FloatingActionButton(
@@ -218,14 +204,8 @@ class _HomePageState extends State<HomePage> {
           });
         },
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list),
-            label: 'All',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Mine',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.list), label: 'All'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Mine'),
           BottomNavigationBarItem(
             icon: Icon(Icons.account_balance_wallet),
             label: 'Balance',
