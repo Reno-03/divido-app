@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -11,12 +12,60 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  final _supabase = Supabase.instance.client;
 
   @override
   void dispose() {
     usernameController.dispose();
     passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _login() async {
+    final username = usernameController.text.trim();
+    final password = passwordController.text.trim();
+
+    if (username.isEmpty || password.isEmpty) {
+      setState(() => _errorMessage = 'Please fill in all fields.');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      // Fetch user by username
+      final response = await _supabase
+          .from('users')
+          .select()
+          .eq('username', username)
+          .maybeSingle();
+
+      if (response == null) {
+        setState(() => _errorMessage = 'User not found.');
+        return;
+      }
+
+      // Simple plain comparison (replace with hashed check later)
+      if (response['password'] != password) {
+        setState(() => _errorMessage = 'Incorrect password.');
+        return;
+      }
+
+      // Success — navigate to home
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } catch (e) {
+      setState(() => _errorMessage = 'Something went wrong. Try again.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -28,12 +77,8 @@ class _LoginPageState extends State<LoginPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
-                'assets/divido_logo.png',
-                width: 140,
-                height: 140,
-              ),
-              
+              Image.asset('assets/divido_logo.png', width: 140, height: 140),
+
               const Text(
                 'Welcome to Divido!',
                 style: TextStyle(
@@ -44,7 +89,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 32),
 
-              // Username TextField
+              // Username
               TextField(
                 controller: usernameController,
                 style: const TextStyle(color: Colors.white),
@@ -61,7 +106,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
               const SizedBox(height: 16),
 
-              // Password TextField
+              // Password
               TextField(
                 controller: passwordController,
                 obscureText: !_isPasswordVisible,
@@ -80,30 +125,28 @@ class _LoginPageState extends State<LoginPage> {
                       _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
                       color: Colors.white70,
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _isPasswordVisible = !_isPasswordVisible;
-                      });
-                    },
+                    onPressed: () =>
+                        setState(() => _isPasswordVisible = !_isPasswordVisible),
                   ),
                 ),
               ),
+
+              // Error message
+              if (_errorMessage != null) ...[
+                const SizedBox(height: 12),
+                Text(
+                  _errorMessage!,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+                ),
+              ],
+
               const SizedBox(height: 24),
 
               // Login Button
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    final username = usernameController.text;
-                    final password = passwordController.text;
-                    print('Username: $username, Password: $password');
-
-                    // TODO: Replace with real login logic
-                    if (username.isNotEmpty && password.isNotEmpty) {
-                      Navigator.pushReplacementNamed(context, '/home');
-                    }
-                  },
+                  onPressed: _isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: const Color(0xFF171A3F),
@@ -112,10 +155,16 @@ class _LoginPageState extends State<LoginPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text(
-                    'Log In',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text(
+                          'Log In',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                 ),
               ),
 
