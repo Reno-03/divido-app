@@ -1,3 +1,4 @@
+import 'package:divido_app/services/current_user.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -56,6 +57,9 @@ class _LoginPageState extends State<LoginPage> {
         setState(() => _errorMessage = 'Incorrect password.');
         return;
       }
+
+      // Save the user
+      CurrentUser.instance.setFromMap(response);
 
       // Success — navigate to home
       if (mounted) {
