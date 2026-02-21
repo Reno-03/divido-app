@@ -150,7 +150,13 @@ class _AllPageState extends State<AllPage> {
                                             fontSize: 20,
                                           ),
                                         ),
-                                        Text(ownerName),
+                                        Text(
+                                          ownerName,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            color: Color.fromARGB(137, 255, 255, 255),
+                                          ),
+                                        )
                                       ],
                                     ),
                                   ),
@@ -171,13 +177,75 @@ class _AllPageState extends State<AllPage> {
                               const SizedBox(height: 4),
                               ...filteredBreakdowns.map((b) {
                                 final user = b['users'];
-                                final payerName = user != null
-                                    ? '${user['firstname']} ${user['lastname']}'
-                                    : 'Unknown';
-          
+                                final firstName = user?['firstname'] ?? '';
+                                final lastName = user?['lastname'] ?? '';
+                                final payerName = user != null ? '$firstName $lastName' : 'Unknown';
+
+                                // Generate initials
+                                final initials = [
+                                  firstName.isNotEmpty ? firstName[0] : '',
+                                  lastName.isNotEmpty ? lastName[0] : '',
+                                ].join().toUpperCase();
+
+                                // Generate a consistent color from the name
+                                final colors = [
+                                  [Color(0xFF6366F1), Color(0xFF8B5CF6)], // indigo-purple
+                                  [Color(0xFF0EA5E9), Color(0xFF06B6D4)], // sky-cyan
+                                  [Color(0xFF10B981), Color(0xFF059669)], // emerald
+                                  [Color(0xFFF59E0B), Color(0xFFEF4444)], // amber-red
+                                  [Color(0xFFEC4899), Color(0xFFA855F7)], // pink-purple
+                                ];
+                                final colorPair = colors[(firstName.codeUnitAt(0) + lastName.codeUnitAt(0)) % colors.length];
+
                                 return Padding(
-                                  padding: const EdgeInsets.only(left: 8, top: 4),
-                                  child: Text('• $payerName — ₱${b['amount']}'),
+                                  padding: const EdgeInsets.only(top: 6),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.04),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          width: 32,
+                                          height: 32,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: colorPair,
+                                            ),
+                                          ),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            initials,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            payerName,
+                                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                                          ),
+                                        ),
+                                        Text(
+                                          '₱${b['amount']}',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.white.withOpacity(0.65),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 );
                               }),
                             ],
