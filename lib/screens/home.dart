@@ -56,7 +56,7 @@ class _HomePageState extends State<HomePage> {
     final expenseId = expenseResponse['id'];
 
     // 2️⃣ Split equally
-    final splitAmount = total / payerIds.length;
+    final splitAmount = ((total / payerIds.length) * 100).round() / 100;
 
     // 3️⃣ Insert breakdowns
     for (final payerId in payerIds) {
