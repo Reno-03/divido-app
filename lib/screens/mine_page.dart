@@ -15,16 +15,23 @@ class MinePage extends StatefulWidget {
 class _MinePageState extends State<MinePage> {
   final supabase = Supabase.instance.client;
 
-  Future<void> _toggleExpensePaid(String expenseId, bool current, ExpenseProvider provider) async {
+  Future<void> _toggleExpensePaid(
+    String expenseId,
+    bool current,
+    ExpenseProvider provider,
+  ) async {
     // 1. Update UI instantly
     provider.toggleExpensePaidLocally(expenseId, !current);
 
     // 2. Sync to Supabase in background
     try {
-      await supabase.from('expenses').update({
-        'is_paid': !current,
-        'paid_at': !current ? DateTime.now().toIso8601String() : null,
-      }).eq('id', expenseId);
+      await supabase
+          .from('expenses')
+          .update({
+            'is_paid': !current,
+            'paid_at': !current ? DateTime.now().toIso8601String() : null,
+          })
+          .eq('id', expenseId);
     } catch (e) {
       // Revert on failure
       provider.toggleExpensePaidLocally(expenseId, current);
@@ -35,6 +42,7 @@ class _MinePageState extends State<MinePage> {
       }
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final expenseProvider = Provider.of<ExpenseProvider>(context);
@@ -114,7 +122,17 @@ class _MinePageState extends State<MinePage> {
                           .where((b) => b['payer_id'] != currentUserId)
                           .toList();
 
+                      final ownerRawColor =
+                          expense['users']?['color'] as String? ?? '#6366F1';
+                      final ownerColor = Color(
+                        int.parse(
+                          'FF${ownerRawColor.replaceAll('#', '')}',
+                          radix: 16,
+                        ),
+                      );
+
                       return Card(
+                        color: ownerColor.withValues(alpha: 0.1), // subtle tint
                         margin: const EdgeInsets.only(bottom: 12),
                         child: AnimatedOpacity(
                           opacity: isPaid ? 0.45 : 1.0,
@@ -129,8 +147,10 @@ class _MinePageState extends State<MinePage> {
                                   children: [
                                     // Title + Total
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
                                       children: [
                                         Expanded(
                                           child: Text(
@@ -150,7 +170,7 @@ class _MinePageState extends State<MinePage> {
                                           '₱ ${expense['total']}',
                                           style: const TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 35,
+                                            fontSize: 33,
                                           ),
                                         ),
                                       ],
@@ -183,36 +203,16 @@ class _MinePageState extends State<MinePage> {
                                         lastName.isNotEmpty ? lastName[0] : '',
                                       ].join().toUpperCase();
 
-                                      final colors = [
-                                        [
-                                          const Color(0xFF6366F1),
-                                          const Color(0xFF8B5CF6),
-                                        ],
-                                        [
-                                          const Color(0xFF0EA5E9),
-                                          const Color(0xFF06B6D4),
-                                        ],
-                                        [
-                                          const Color(0xFF10B981),
-                                          const Color(0xFF059669),
-                                        ],
-                                        [
-                                          const Color(0xFFF59E0B),
-                                          const Color(0xFFEF4444),
-                                        ],
-                                        [
-                                          const Color(0xFFEC4899),
-                                          const Color(0xFFA855F7),
-                                        ],
-                                      ];
-                                      final colorPair =
-                                          (firstName.isNotEmpty &&
-                                              lastName.isNotEmpty)
-                                          ? colors[(firstName.codeUnitAt(0) +
-                                                    lastName.codeUnitAt(0)) %
-                                                colors.length]
-                                          : colors[0];
-
+                                      // Get color from user data
+                                      final rawColor =
+                                          user?['color'] as String? ??
+                                          '#6366F1';
+                                      final userColor = Color(
+                                        int.parse(
+                                          'FF${rawColor.replaceAll('#', '')}',
+                                          radix: 16,
+                                        ),
+                                      );
                                       return Padding(
                                         padding: const EdgeInsets.only(top: 6),
                                         child: Container(
@@ -238,7 +238,12 @@ class _MinePageState extends State<MinePage> {
                                                   gradient: LinearGradient(
                                                     begin: Alignment.topLeft,
                                                     end: Alignment.bottomRight,
-                                                    colors: colorPair,
+                                                    colors: [
+                                                      userColor,
+                                                      userColor.withValues(
+                                                        alpha: 0.7,
+                                                      ),
+                                                    ],
                                                   ),
                                                 ),
                                                 alignment: Alignment.center,

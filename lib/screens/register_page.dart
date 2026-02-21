@@ -2,6 +2,20 @@ import 'package:divido_app/services/current_user.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// Add these color options at the top of the state
+const _colorOptions = [
+  Color(0xFF6366F1), // indigo
+  Color(0xFF0EA5E9), // sky
+  Color(0xFF10B981), // emerald
+  Color(0xFFF59E0B), // amber
+  Color(0xFFEC4899), // pink
+  Color(0xFFEF4444), // red
+  Color(0xFF8B5CF6), // violet
+  Color(0xFF06B6D4), // cyan
+];
+
+Color _selectedColor = const Color(0xFF6366F1);
+
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -40,7 +54,10 @@ class _RegisterPageState extends State<RegisterPage> {
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
-    if (firstName.isEmpty || lastName.isEmpty || username.isEmpty || password.isEmpty) {
+    if (firstName.isEmpty ||
+        lastName.isEmpty ||
+        username.isEmpty ||
+        password.isEmpty) {
       setState(() => _errorMessage = 'Please fill in all fields.');
       return;
     }
@@ -74,12 +91,17 @@ class _RegisterPageState extends State<RegisterPage> {
       }
 
       // Insert new user
-      final response = await _supabase.from('users').insert({
-        'firstname': firstName,
-        'lastname': lastName,
-        'username': username,
-        'password': password, // hash this later
-      }).select().single();
+      final response = await _supabase
+          .from('users')
+          .insert({
+            'firstname': firstName,
+            'lastname': lastName,
+            'username': username,
+            'password': password, // hash this later
+             'color': '#${_selectedColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}'
+          })
+          .select()
+          .single();
 
       // Auto-login after registration
       CurrentUser.instance.setFromMap(response);
@@ -103,7 +125,7 @@ class _RegisterPageState extends State<RegisterPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const SizedBox(height: 60),
+              const SizedBox(height: 30),
 
               Image.asset('assets/divido_logo.png', width: 100, height: 100),
 
@@ -153,7 +175,9 @@ class _RegisterPageState extends State<RegisterPage> {
                 obscure: !_isPasswordVisible,
                 suffix: IconButton(
                   icon: Icon(
-                    _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                    _isPasswordVisible
+                        ? Icons.visibility
+                        : Icons.visibility_off,
                     color: Colors.white70,
                   ),
                   onPressed: () =>
@@ -175,7 +199,8 @@ class _RegisterPageState extends State<RegisterPage> {
                     color: Colors.white70,
                   ),
                   onPressed: () => setState(
-                    () => _isConfirmPasswordVisible = !_isConfirmPasswordVisible,
+                    () =>
+                        _isConfirmPasswordVisible = !_isConfirmPasswordVisible,
                   ),
                 ),
               ),
@@ -189,6 +214,49 @@ class _RegisterPageState extends State<RegisterPage> {
                 ),
               ],
 
+              const SizedBox(height: 16),
+
+              const Text(
+                'Pick your color:',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                children: _colorOptions.map((color) {
+                  final isSelected = _selectedColor == color;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selectedColor = color),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: isSelected
+                            ? Border.all(color: Colors.white, width: 3)
+                            : null,
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: color.withValues(alpha: 0.6),
+                                  blurRadius: 8,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: isSelected
+                          ? const Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 18,
+                            )
+                          : null,
+                    ),
+                  );
+                }).toList(),
+              ),
               const SizedBox(height: 24),
 
               // Register button

@@ -13,11 +13,11 @@ class ExpenseProvider extends ChangeNotifier {
         .from('expenses')
         .select('''
           *,
-          users (id, firstname, lastname),
+          users (id, firstname, lastname, color),
           expense_breakdowns (
             payer_id,
             amount,
-            users (id, firstname, lastname)
+            users (id, firstname, lastname, color)
           )
         ''')
         .order('created_at', ascending: false);
