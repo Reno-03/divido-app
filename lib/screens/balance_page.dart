@@ -268,34 +268,33 @@ class _BalancePageState extends State<BalancePage> {
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
-                child: Padding(
-                  padding: const EdgeInsets.all(25),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(25),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            entry['name'] as String,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 20,
-                            ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                entry['name'] as String,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 20,
+                                ),
+                              ),
+                              Text(
+                                isZero
+                                    ? 'settled'
+                                    : isPositive
+                                        ? 'owes you'
+                                        : 'you owe',
+                                style: TextStyle(color: balanceColor),
+                              ),
+                            ],
                           ),
-                          Text(
-                            isZero
-                                ? 'settled'
-                                : isPositive
-                                    ? 'owes you'
-                                    : 'you owe',
-                            style: TextStyle(color: balanceColor),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
                           Text(
                             '₱${net.abs().toStringAsFixed(2)}',
                             style: TextStyle(
@@ -304,29 +303,66 @@ class _BalancePageState extends State<BalancePage> {
                               color: balanceColor,
                             ),
                           ),
-                          if (!isZero) ...[
-                            const SizedBox(height: 6),
-                            FilledButton(
-                              onPressed: () => _showPaymentDialog(
-                                targetUserId: entry['user_id'] as String,
-                                targetName: entry['name'] as String,
-                                isSettle: isPositive,
-                                suggestedAmount: net.abs(),
-                              ),
-                              style: FilledButton.styleFrom(
-                                backgroundColor: balanceColor,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: Text(isPositive ? 'Settle' : 'Pay'),
-                            ),
-                          ],
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+
+                    // Full-width CTA — same style as MinePage
+                    if (!isZero)
+                      GestureDetector(
+                        onTap: () => _showPaymentDialog(
+                          targetUserId: entry['user_id'] as String,
+                          targetName: entry['name'] as String,
+                          isSettle: isPositive,
+                          suggestedAmount: net.abs(),
+                        ),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isPositive
+                                ? Colors.green.withValues(alpha: 0.15)
+                                : Colors.red.withValues(alpha: 0.15),
+                            borderRadius: const BorderRadius.only(
+                              bottomLeft: Radius.circular(12),
+                              bottomRight: Radius.circular(12),
+                            ),
+                            border: Border(
+                              top: BorderSide(
+                                color: isPositive
+                                    ? Colors.green.withValues(alpha: 0.25)
+                                    : Colors.red.withValues(alpha: 0.25),
+                              ),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                isPositive
+                                    ? Icons.handshake_outlined
+                                    : Icons.payments_outlined,
+                                size: 22,
+                                color: isPositive
+                                    ? Colors.green.shade400
+                                    : Colors.red.shade400,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isPositive ? 'Settle' : 'Pay',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                  color: isPositive
+                                      ? Colors.green.shade400
+                                      : Colors.red.shade400,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               );
             },
