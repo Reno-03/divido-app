@@ -99,35 +99,77 @@ class _AllPageState extends State<AllPage> {
                       ? '${owner['firstname'] ?? ''} ${owner['lastname'] ?? ''}'
                       : 'Unknown';
 
-                  // Payers excluding owner
-                  final payerNames = breakdowns
-                      .where((b) => b['payer_id'] != ownerId)
-                      .map((b) {
-                        final user = b['users'];
-                        if (user != null) {
-                          return '${user['firstname'] ?? ''} ${user['lastname'] ?? ''}';
-                        }
-                        return 'Unknown';
-                      })
-                      .join(', ');
+                  final filteredBreakdowns = breakdowns
+                    .where((b) => b['payer_id'] != ownerId)
+                    .toList();
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
-                    child: ListTile(
-                      title: Text(
-                        expense['title'] ?? '',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
-                      ),
-                      subtitle: Text('Owner: $ownerName\nPayers: $payerNames'),
-                      trailing: Text(
-                        '₱ ${expense['total']}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 30,
-                        ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(25),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      expense['title'] ?? '',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20,
+                                      ),
+                                    ),
+                                    Text(ownerName)
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                '₱${expense['total']}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 33,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          const Text(
+                            'Payers:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          const SizedBox(height: 4),
+
+                          // Breakdown list
+                          ...filteredBreakdowns.map((b) {
+                            final user = b['users'];
+                            final payerName = user != null
+                                ? '${user['firstname'] ?? ''} ${user['lastname'] ?? ''}'
+                                : 'Unknown';
+
+                            final amount = b['amount'];
+
+                            return Padding(
+                              padding: const EdgeInsets.only(left: 8, top: 4),
+                              child: Text(
+                                '• $payerName — ₱$amount',
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            );
+                          }),
+
+                          const SizedBox(height: 8),
+                        ],
                       ),
                     ),
                   );

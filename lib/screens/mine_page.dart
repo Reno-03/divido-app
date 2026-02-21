@@ -24,6 +24,7 @@ class _MinePageState extends State<MinePage> {
           description,
           total,
           created_at,
+          owner_id,
           users (id, firstname, lastname),
           expense_breakdowns (
             payer_id,
@@ -61,9 +62,7 @@ class _MinePageState extends State<MinePage> {
           final createdAt = DateTime.parse(expense['created_at']);
           final dateKey = DateFormat('yyyy-MM-dd').format(createdAt);
 
-          if (!grouped.containsKey(dateKey)) {
-            grouped[dateKey] = [];
-          }
+          grouped.putIfAbsent(dateKey, () => []);
           grouped[dateKey]!.add(expense);
         }
 
@@ -76,58 +75,97 @@ class _MinePageState extends State<MinePage> {
           itemBuilder: (context, index) {
             final dateKey = sortedDates[index];
             final expensesForDate = grouped[dateKey]!;
-            final formattedDate =
-                DateFormat('MMMM d, yyyy').format(DateTime.parse(dateKey));
+
+            final formattedDate = DateFormat('MMMM d, yyyy')
+                .format(DateTime.parse(dateKey));
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Date Header
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   child: Text(
                     formattedDate,
                     style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
+
+                // Expenses for that date
                 ...expensesForDate.map((expense) {
-                  final owner = expense['users'];
-                  final ownerId = owner?['id'];
                   final breakdowns =
                       expense['expense_breakdowns'] as List<dynamic>? ?? [];
 
-                  // final ownerName = owner != null
-                  //     ? '${owner['firstname'] ?? ''} ${owner['lastname'] ?? ''}'
-                  //     : 'Unknown';
-
-                  final payerNames = breakdowns
-                      .where((b) => b['payer_id'] != ownerId)
-                      .map((b) {
-                        final user = b['users'];
-                        if (user != null) {
-                          return '${user['firstname'] ?? ''} ${user['lastname'] ?? ''}';
-                        }
-                        return 'Unknown';
-                      })
-                      .join(', ');
+                  final filteredBreakdowns = breakdowns
+                      .where((b) => b['payer_id'] != expense['owner_id'])
+                      .toList();
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
-                    child: ListTile(
-                      title: Text(
-                        expense['title'] ?? '',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
-                      ),
-                      subtitle: Text('Payers: $payerNames'),
-                      trailing: Text(
-                        '₱ ${expense['total']}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 30,
-                        ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(25),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Title + Total
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  expense['title'] ?? '',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '₱${expense['total']}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 33,
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          const Text(
+                            'Payers:',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+
+                          const SizedBox(height: 4),
+
+                          // Breakdown list
+                          ...filteredBreakdowns.map((b) {
+                            final user = b['users'];
+                            final payerName = user != null
+                                ? '${user['firstname'] ?? ''} ${user['lastname'] ?? ''}'
+                                : 'Unknown';
+
+                            final amount = b['amount'];
+
+                            return Padding(
+                              padding:
+                                  const EdgeInsets.only(left: 8, top: 4),
+                              child: Text(
+                                '• $payerName — ₱$amount',
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                            );
+                          }),
+
+                          const SizedBox(height: 8),
+                        ],
                       ),
                     ),
                   );
