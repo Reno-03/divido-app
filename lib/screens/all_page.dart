@@ -48,7 +48,8 @@ class _AllPageState extends State<AllPage> {
     final Map<String, List<Map<String, dynamic>>> grouped = {};
 
     for (var expense in expenses) {
-      final createdAt = DateTime.parse(expense['created_at']);
+      // NOTE: use created_at with 'Z' suffix to ensure it's parsed as UTC, then convert to local time
+      final createdAt = DateTime.parse(expense['created_at'] + 'Z').toLocal();
       final dateKey = DateFormat('yyyy-MM-dd').format(createdAt);
 
       grouped.putIfAbsent(dateKey, () => []);
@@ -210,31 +211,6 @@ class _AllPageState extends State<AllPage> {
                                     lastName.isNotEmpty ? lastName[0] : '',
                                   ].join().toUpperCase();
 
-                                  // Generate a consistent color from the name
-                                  final colors = [
-                                    [
-                                      Color(0xFF6366F1),
-                                      Color(0xFF8B5CF6),
-                                    ], // indigo-purple
-                                    [
-                                      Color(0xFF0EA5E9),
-                                      Color(0xFF06B6D4),
-                                    ], // sky-cyan
-                                    [
-                                      Color(0xFF10B981),
-                                      Color(0xFF059669),
-                                    ], // emerald
-                                    [
-                                      Color(0xFFF59E0B),
-                                      Color(0xFFEF4444),
-                                    ], // amber-red
-                                    [
-                                      Color(0xFFEC4899),
-                                      Color(0xFFA855F7),
-                                    ], // pink-purple
-                                  ];
-                                  // final colorPair = colors[(firstName.codeUnitAt(0) + lastName.codeUnitAt(0)) % colors.length];
-                                  // Get color from user data
                                   final rawColor =
                                       user?['color'] as String? ?? '#6366F1';
                                   final userColor = Color(
@@ -243,17 +219,6 @@ class _AllPageState extends State<AllPage> {
                                       radix: 16,
                                     ),
                                   );
-
-                                  // // Get owner color
-                                  // final ownerRawColor =
-                                  //     expense['users']?['color'] as String? ??
-                                  //     '#6366F1';
-                                  // final ownerColor = Color(
-                                  //   int.parse(
-                                  //     'FF${ownerRawColor.replaceAll('#', '')}',
-                                  //     radix: 16,
-                                  //   ),
-                                  // );
 
                                   return Padding(
                                     padding: const EdgeInsets.only(top: 6),

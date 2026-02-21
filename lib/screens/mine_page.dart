@@ -58,7 +58,8 @@ class _MinePageState extends State<MinePage> {
 
     final Map<String, List<Map<String, dynamic>>> grouped = {};
     for (var expense in myExpenses) {
-      final createdAt = DateTime.parse(expense['created_at']);
+      final createdAt = DateTime.parse(expense['created_at'] + 'Z').toLocal();
+      print('Expense createdAt (local): $createdAt');
       final dateKey = DateFormat('yyyy-MM-dd').format(createdAt);
       grouped.putIfAbsent(dateKey, () => []);
       grouped[dateKey]!.add(expense);
