@@ -1,3 +1,4 @@
+import 'package:divido_app/screens/create_expense_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -24,13 +25,11 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
 
-    // 🔥 Load expenses when app starts
     Future.microtask(() {
       if (CurrentUser.instance.id == null) {
         Navigator.pushReplacementNamed(context, '/login');
         return;
       }
-
       Provider.of<ExpenseProvider>(context, listen: false).fetchExpenses();
     });
   }
@@ -42,11 +41,12 @@ class _HomePageState extends State<HomePage> {
     String title,
     double total,
     Set<String> payerIds,
+    Map<String, double> customAmounts,
+    bool isEqualSplit,
   ) async {
     final supabase = Supabase.instance.client;
     final currentUserId = CurrentUser.instance.id;
 
-    // 1️⃣ Create expense
     final expenseResponse = await supabase
         .from('expenses')
         .insert({'title': title, 'total': total, 'owner_id': currentUserId})
@@ -55,19 +55,18 @@ class _HomePageState extends State<HomePage> {
 
     final expenseId = expenseResponse['id'];
 
-    // 2️⃣ Split equally
-    final splitAmount = ((total / payerIds.length) * 100).round() / 100;
-
-    // 3️⃣ Insert breakdowns
     for (final payerId in payerIds) {
+      final amount = isEqualSplit
+          ? ((total / payerIds.length) * 100).round() / 100
+          : customAmounts[payerId] ?? 0;
+
       await supabase.from('expense_breakdowns').insert({
         'expense_id': expenseId,
         'payer_id': payerId,
-        'amount': splitAmount,
+        'amount': amount,
       });
     }
 
-    // 🔥 Refresh Provider (this updates ALL pages automatically)
     await Provider.of<ExpenseProvider>(context, listen: false).refresh();
   }
 
@@ -75,109 +74,10 @@ class _HomePageState extends State<HomePage> {
   // CREATE MODAL
   // ==============================
   void _showCreateExpenseModal() {
-    final titleController = TextEditingController();
-    final totalController = TextEditingController();
-    final currentUserId = CurrentUser.instance.id;
-    final supabase = Supabase.instance.client;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (context) {
-        return FutureBuilder(
-          future: supabase.from('users').select('id, firstname, lastname'),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Padding(
-                padding: EdgeInsets.all(20),
-                child: CircularProgressIndicator(),
-              );
-            }
-
-            // Remove current user from checkboxes
-            final users = List<Map<String, dynamic>>.from(
-              snapshot.data as List,
-            ).where((user) => user['id'] != currentUserId).toList();
-
-            final selectedUsers = <String>{};
-
-            return StatefulBuilder(
-              builder: (context, setModalState) {
-                return Padding(
-                  padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom,
-                    left: 16,
-                    right: 16,
-                    top: 16,
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextField(
-                          controller: titleController,
-                          decoration: const InputDecoration(labelText: 'Title'),
-                        ),
-                        TextField(
-                          controller: totalController,
-                          keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(labelText: 'Total'),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Select Payers:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-
-                        ...users.map((user) {
-                          final name =
-                              '${user['firstname']} ${user['lastname']}';
-
-                          return CheckboxListTile(
-                            title: Text(name),
-                            value: selectedUsers.contains(user['id']),
-                            onChanged: (value) {
-                              setModalState(() {
-                                if (value == true) {
-                                  selectedUsers.add(user['id']);
-                                } else {
-                                  selectedUsers.remove(user['id']);
-                                }
-                              });
-                            },
-                          );
-                        }),
-
-                        const SizedBox(height: 16),
-
-                        ElevatedButton(
-                          onPressed: () async {
-                            final title = titleController.text;
-                            final total =
-                                double.tryParse(totalController.text) ?? 0;
-
-                            if (title.isEmpty || total <= 0) return;
-
-                            // Automatically include current user
-                            selectedUsers.add(currentUserId!);
-
-                            await _createExpense(title, total, selectedUsers);
-
-                            Navigator.pop(context);
-                          },
-                          child: const Text('Create'),
-                        ),
-
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-        );
-      },
+      builder: (context) => CreateExpenseModal(onSubmit: _createExpense),
     );
   }
 
