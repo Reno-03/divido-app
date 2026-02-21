@@ -57,118 +57,141 @@ class _AllPageState extends State<AllPage> {
 
     final sortedDates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
 
-    return RefreshIndicator(
-      onRefresh: () async {
-        await expenseProvider.refresh();
-      },
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        itemCount: sortedDates.length,
-        itemBuilder: (context, index) {
-          final dateKey = sortedDates[index];
-          final expensesForDate = grouped[dateKey]!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        
+        SizedBox(height: 16),
 
-          final formattedDate = DateFormat(
-            'MMMM d, yyyy',
-          ).format(DateTime.parse(dateKey));
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: Text(
+            'All Expenses',
+            style: TextStyle(
+              fontSize: 35,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Row(
+        SizedBox(height: 16),
+
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await expenseProvider.refresh();
+            },
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              itemCount: sortedDates.length,
+              itemBuilder: (context, index) {
+                final dateKey = sortedDates[index];
+                final expensesForDate = grouped[dateKey]!;
+          
+                final formattedDate = DateFormat(
+                  'MMMM d, yyyy',
+                ).format(DateTime.parse(dateKey));
+          
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Expanded(child: Divider()),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Text(
-                        formattedDate,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Row(
+                        children: [
+                          const Expanded(child: Divider()),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text(
+                              formattedDate,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const Expanded(child: Divider()),
+                        ],
                       ),
                     ),
-                    const Expanded(child: Divider()),
-                  ],
-                ),
-              ),
-              ...expensesForDate.map((expense) {
-                final owner = expense['users'];
-                final ownerId = owner?['id'];
-                final breakdowns =
-                    expense['expense_breakdowns'] as List<dynamic>? ?? [];
-
-                final ownerName = owner != null
-                    ? '${owner['firstname']} ${owner['lastname']}'
-                    : 'Unknown';
-
-                final filteredBreakdowns = breakdowns
-                    .where((b) => b['payer_id'] != ownerId)
-                    .toList();
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(25),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                    ...expensesForDate.map((expense) {
+                      final owner = expense['users'];
+                      final ownerId = owner?['id'];
+                      final breakdowns =
+                          expense['expense_breakdowns'] as List<dynamic>? ?? [];
+          
+                      final ownerName = owner != null
+                          ? '${owner['firstname']} ${owner['lastname']}'
+                          : 'Unknown';
+          
+                      final filteredBreakdowns = breakdowns
+                          .where((b) => b['payer_id'] != ownerId)
+                          .toList();
+          
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(25),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    expense['title'] ?? '',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 20,
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          expense['title'] ?? '',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 20,
+                                          ),
+                                        ),
+                                        Text(ownerName),
+                                      ],
                                     ),
                                   ),
-                                  Text(ownerName),
+                                  Text(
+                                    '₱${expense['total']}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 33,
+                                    ),
+                                  ),
                                 ],
                               ),
-                            ),
-                            Text(
-                              '₱${expense['total']}',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 33,
+                              const SizedBox(height: 8),
+                              const Text(
+                                'Payers:',
+                                style: TextStyle(fontWeight: FontWeight.bold),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 4),
+                              ...filteredBreakdowns.map((b) {
+                                final user = b['users'];
+                                final payerName = user != null
+                                    ? '${user['firstname']} ${user['lastname']}'
+                                    : 'Unknown';
+          
+                                return Padding(
+                                  padding: const EdgeInsets.only(left: 8, top: 4),
+                                  child: Text('• $payerName — ₱${b['amount']}'),
+                                );
+                              }),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Payers:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 4),
-                        ...filteredBreakdowns.map((b) {
-                          final user = b['users'];
-                          final payerName = user != null
-                              ? '${user['firstname']} ${user['lastname']}'
-                              : 'Unknown';
-
-                          return Padding(
-                            padding: const EdgeInsets.only(left: 8, top: 4),
-                            child: Text('• $payerName — ₱${b['amount']}'),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
+                      );
+                    }),
+                  ],
                 );
-              }),
-            ],
-          );
-        },
-      ),
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
