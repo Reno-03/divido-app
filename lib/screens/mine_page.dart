@@ -59,12 +59,21 @@ class _MinePageState extends State<MinePage> {
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  formattedDate,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                child: Row(
+                  children: [
+                    const Expanded(child: Divider()),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text(
+                        formattedDate,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const Expanded(child: Divider()),
+                  ],
                 ),
               ),
       
@@ -100,7 +109,7 @@ class _MinePageState extends State<MinePage> {
                               '₱${expense['total']}',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 22,
+                                fontSize: 33,
                               ),
                             ),
                           ],
