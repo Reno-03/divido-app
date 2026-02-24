@@ -1,6 +1,7 @@
 import 'package:divido_app/screens/home.dart';
 import 'package:divido_app/screens/login.dart';
 import 'package:divido_app/screens/register_page.dart';
+import 'package:divido_app/services/current_user.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -10,15 +11,23 @@ import 'package:flutter/gestures.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Load .env variables
-  // await dotenv.load(fileName: ".env");
   await dotenv.load(fileName: "assets/.env");
 
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
+
+  // Restore session if user was previously logged in
+  final session = Supabase.instance.client.auth.currentSession;
+  if (session != null) {
+    final profile = await Supabase.instance.client
+        .from('profiles')
+        .select()
+        .eq('id', session.user.id)
+        .single();
+    CurrentUser.instance.setFromMap(profile);
+  }
 
   runApp(const MyApp());
 }
@@ -66,7 +75,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
         // home: const MyHomePage(title: 'Divido'),
-        initialRoute: '/',
+        initialRoute: Supabase.instance.client.auth.currentSession != null ? '/home' : '/',
         routes: {
           '/': (context) => const LoginPage(),
           '/home': (context) => const HomePage(),
