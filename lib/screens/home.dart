@@ -25,11 +25,15 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
 
-    Future.microtask(() {
-      if (CurrentUser.instance.id == null) {
+    Future.microtask(() async {
+      // Check actual Supabase session, not just in-memory
+      final session = Supabase.instance.client.auth.currentSession;
+
+      if (session == null || CurrentUser.instance.id == null) {
         Navigator.pushReplacementNamed(context, '/login');
         return;
       }
+
       Provider.of<ExpenseProvider>(context, listen: false).fetchExpenses();
     });
   }

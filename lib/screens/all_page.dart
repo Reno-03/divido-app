@@ -14,26 +14,26 @@ class AllPage extends StatefulWidget {
 class _AllPageState extends State<AllPage> {
   final supabase = Supabase.instance.client;
 
-  Future<List<Map<String, dynamic>>> fetchExpenses() async {
-    final response = await supabase
-        .from('expenses')
-        .select('''
-          id,
-          title,
-          description,
-          total,
-          created_at,
-          users (id, firstname, lastname),
-          expense_breakdowns (
-            payer_id,
-            amount,
-            users (id, firstname, lastname)
-          )
-        ''')
-        .order('created_at', ascending: false);
+  // Future<List<Map<String, dynamic>>> fetchExpenses() async {
+  //   final response = await supabase
+  //       .from('expenses')
+  //       .select('''
+  //         id,
+  //         title,
+  //         description,
+  //         total,
+  //         created_at,
+  //         users (id, firstname, lastname),
+  //         expense_breakdowns (
+  //           payer_id,
+  //           amount,
+  //           users (id, firstname, lastname)
+  //         )
+  //       ''')
+  //       .order('created_at', ascending: false);
 
-    return List<Map<String, dynamic>>.from(response);
-  }
+  //   return List<Map<String, dynamic>>.from(response);
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +113,7 @@ class _AllPageState extends State<AllPage> {
                       ),
                     ),
                     ...expensesForDate.map((expense) {
-                      final owner = expense['users'];
+                      final owner = expense['profiles'];
                       final ownerId = owner?['id'];
                       final breakdowns =
                           expense['expense_breakdowns'] as List<dynamic>? ?? [];
@@ -127,8 +127,7 @@ class _AllPageState extends State<AllPage> {
                           .toList();
 
                       // Get owner color
-                      final ownerRawColor =
-                          expense['users']?['color'] as String? ?? '#6366F1';
+                      final ownerRawColor = expense['profiles']?['color'] as String? ?? '#6366F1';
                       final ownerColor = Color(
                         int.parse(
                           'FF${ownerRawColor.replaceAll('#', '')}',
@@ -198,7 +197,7 @@ class _AllPageState extends State<AllPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 ...filteredBreakdowns.map((b) {
-                                  final user = b['users'];
+                                  final user = b['profiles'];
                                   final firstName = user?['firstname'] ?? '';
                                   final lastName = user?['lastname'] ?? '';
                                   final payerName = user != null

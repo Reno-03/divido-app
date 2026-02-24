@@ -25,52 +25,67 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  // change login to use username instead of email
+  // lookup email by username, then sign in with email + password
   Future<void> _login() async {
-    final username = usernameController.text.trim();
-    final password = passwordController.text.trim();
+  final username = usernameController.text.trim();
+  final password = passwordController.text.trim();
 
-    if (username.isEmpty || password.isEmpty) {
-      setState(() => _errorMessage = 'Please fill in all fields.');
+  if (username.isEmpty || password.isEmpty) {
+    setState(() => _errorMessage = 'Please fill in all fields.');
+    return;
+  }
+
+  setState(() {
+    _isLoading = true;
+    _errorMessage = null;
+  });
+
+  try {
+    // 1. Look up email by username
+    final profile = await _supabase
+        .from('profiles')
+        .select('email')
+        .eq('username', username)
+        .maybeSingle();
+
+    if (profile == null) {
+      setState(() => _errorMessage = 'User not found.');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    // 2. Sign in with their actual email
+    final authResponse = await _supabase.auth.signInWithPassword(
+      email: profile['email'],
+      password: password,
+    );
 
-    try {
-      // Fetch user by username
-      final response = await _supabase
-          .from('users')
-          .select()
-          .eq('username', username)
-          .maybeSingle();
-
-      if (response == null) {
-        setState(() => _errorMessage = 'User not found.');
-        return;
-      }
-
-      // Simple plain comparison (replace with hashed check later)
-      if (response['password'] != password) {
-        setState(() => _errorMessage = 'Incorrect password.');
-        return;
-      }
-
-      // Save the user
-      CurrentUser.instance.setFromMap(response);
-
-      // Success — navigate to home
-      if (mounted) {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
-    } catch (e) {
-      setState(() => _errorMessage = 'Something went wrong. Try again.');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    if (authResponse.user == null) {
+      setState(() => _errorMessage = 'Invalid username or password.');
+      return;
     }
+
+    // 3. Fetch full profile
+    final fullProfile = await _supabase
+        .from('profiles')
+        .select()
+        .eq('id', authResponse.user!.id)
+        .single();
+
+    // 4. Save current user
+    CurrentUser.instance.setFromMap(fullProfile);
+
+    if (mounted) {
+      Navigator.pushReplacementNamed(context, '/home');
+    }
+  } on AuthException catch (e) {
+    setState(() => _errorMessage = e.message);
+  } catch (e) {
+    setState(() => _errorMessage = 'Something went wrong. Try again.');
+  } finally {
+    if (mounted) setState(() => _isLoading = false);
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -126,11 +141,14 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   suffixIcon: IconButton(
                     icon: Icon(
-                      _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                      _isPasswordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
                       color: Colors.white70,
                     ),
-                    onPressed: () =>
-                        setState(() => _isPasswordVisible = !_isPasswordVisible),
+                    onPressed: () => setState(
+                      () => _isPasswordVisible = !_isPasswordVisible,
+                    ),
                   ),
                 ),
               ),
@@ -167,7 +185,10 @@ class _LoginPageState extends State<LoginPage> {
                         )
                       : const Text(
                           'Log In',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                 ),
               ),
@@ -177,18 +198,24 @@ class _LoginPageState extends State<LoginPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Don't have an account? ", style: TextStyle(color: Colors.white54)),
+                  const Text(
+                    "Don't have an account? ",
+                    style: TextStyle(color: Colors.white54),
+                  ),
                   GestureDetector(
                     onTap: () => Navigator.pushNamed(context, '/register'),
                     child: const Text(
                       'Sign Up',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 100),  
+              const SizedBox(height: 100),
             ],
           ),
         ),

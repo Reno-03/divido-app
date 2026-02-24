@@ -124,7 +124,7 @@ class _MinePageState extends State<MinePage> {
                           .toList();
 
                       final ownerRawColor =
-                          expense['users']?['color'] as String? ?? '#6366F1';
+                          expense['profiles']?['color'] as String? ?? '#6366F1';
                       final ownerColor = Color(
                         int.parse(
                           'FF${ownerRawColor.replaceAll('#', '')}',
@@ -189,7 +189,7 @@ class _MinePageState extends State<MinePage> {
                                     const SizedBox(height: 6),
 
                                     ...filteredBreakdowns.map((b) {
-                                      final user = b['users'];
+                                      final user = b['profiles'];
                                       final firstName =
                                           user?['firstname'] ?? '';
                                       final lastName = user?['lastname'] ?? '';

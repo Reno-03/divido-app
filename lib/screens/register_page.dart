@@ -78,9 +78,9 @@ class _RegisterPageState extends State<RegisterPage> {
     });
 
     try {
-      // Check if username already taken
+      // 1. Check if username already taken
       final existing = await _supabase
-          .from('users')
+          .from('profiles')
           .select('id')
           .eq('username', username)
           .maybeSingle();
@@ -90,21 +90,35 @@ class _RegisterPageState extends State<RegisterPage> {
         return;
       }
 
-      // Insert new user
-      final response = await _supabase
-          .from('users')
+      // 2. Create auth user (use username as placeholder email)
+      final authResponse = await _supabase.auth.signUp(
+        email: '$username@divido.local',
+        password: password,
+      );
+
+      if (authResponse.user == null) {
+        setState(() => _errorMessage = 'Registration failed. Try again.');
+        return;
+      }
+
+      final authId = authResponse.user!.id;
+
+      // 3. Insert into profiles
+      final profile = await _supabase
+          .from('profiles')
           .insert({
+            'id': authId,
+            'username': username,
             'firstname': firstName,
             'lastname': lastName,
-            'username': username,
-            'password': password, // hash this later
-             'color': '#${_selectedColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}'
+            'color':
+                '#${_selectedColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
           })
           .select()
           .single();
 
-      // Auto-login after registration
-      CurrentUser.instance.setFromMap(response);
+      // 4. Auto-login after registration
+      CurrentUser.instance.setFromMap(profile);
 
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/home');

@@ -12,19 +12,18 @@ class ExpenseProvider extends ChangeNotifier {
     final response = await supabase
         .from('expenses')
         .select('''
-          *,
-          users (id, firstname, lastname, color),
-          expense_breakdowns (
-            payer_id,
-            amount,
-            users (id, firstname, lastname, color)
-          )
-        ''')
+        *,
+        profiles (id, firstname, lastname, color),
+        expense_breakdowns (
+          payer_id,
+          amount,
+          profiles (id, firstname, lastname, color)
+        )
+      ''')
         .order('created_at', ascending: false);
 
     _expenses = List<Map<String, dynamic>>.from(response);
-
-    notifyListeners(); // 🔥 triggers UI rebuild
+    notifyListeners();
   }
 
   Future<void> refresh() async {

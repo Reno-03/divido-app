@@ -39,7 +39,7 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
 
   Future<void> _loadUsers() async {
     final response =
-        await _supabase.from('users').select('id, firstname, lastname');
+        await _supabase.from('profiles').select('id, firstname, lastname');
     final users = List<Map<String, dynamic>>.from(response)
         .where((u) => u['id'] != _currentUserId)
         .toList();

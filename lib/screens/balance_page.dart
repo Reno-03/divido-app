@@ -95,7 +95,7 @@ class _BalancePageState extends State<BalancePage> {
 
     final userIds = netByUser.keys.toList();
     final users = await supabase
-        .from('users')
+        .from('profiles')
         .select('id, firstname, lastname')
         .inFilter('id', userIds);
 
