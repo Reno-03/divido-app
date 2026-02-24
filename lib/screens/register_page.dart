@@ -29,6 +29,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _emailController = TextEditingController(); // 👈 add this
 
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
@@ -44,6 +45,7 @@ class _RegisterPageState extends State<RegisterPage> {
     _usernameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _emailController.dispose(); // 👈 add this
     super.dispose();
   }
 
@@ -54,10 +56,12 @@ class _RegisterPageState extends State<RegisterPage> {
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
+    // Validation
     if (firstName.isEmpty ||
         lastName.isEmpty ||
         username.isEmpty ||
-        password.isEmpty) {
+        password.isEmpty ||
+        _emailController.text.trim().isEmpty) {
       setState(() => _errorMessage = 'Please fill in all fields.');
       return;
     }
@@ -90,9 +94,10 @@ class _RegisterPageState extends State<RegisterPage> {
         return;
       }
 
-      // 2. Create auth user (use username as placeholder email)
+      // 2. Create auth user
+      // Sign up with real email
       final authResponse = await _supabase.auth.signUp(
-        email: '$username@divido.local',
+        email: _emailController.text.trim(),
         password: password,
       );
 
@@ -111,6 +116,7 @@ class _RegisterPageState extends State<RegisterPage> {
             'username': username,
             'firstname': firstName,
             'lastname': lastName,
+            'email': _emailController.text.trim(),
             'color':
                 '#${_selectedColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
           })
@@ -176,6 +182,10 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ],
               ),
+              const SizedBox(height: 16),
+
+              // Email
+              _field(controller: _emailController, hint: 'Email'),
               const SizedBox(height: 16),
 
               // Username
