@@ -24,8 +24,10 @@ class _BalancePageState extends State<BalancePage> {
 
     // Re-fetch balances whenever expenses change
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<ExpenseProvider>(context, listen: false)
-          .addListener(_onExpensesChanged);
+      Provider.of<ExpenseProvider>(
+        context,
+        listen: false,
+      ).addListener(_onExpensesChanged);
     });
   }
 
@@ -37,8 +39,10 @@ class _BalancePageState extends State<BalancePage> {
 
   @override
   void dispose() {
-    Provider.of<ExpenseProvider>(context, listen: false)
-        .removeListener(_onExpensesChanged);
+    Provider.of<ExpenseProvider>(
+      context,
+      listen: false,
+    ).removeListener(_onExpensesChanged);
     super.dispose();
   }
 
@@ -102,15 +106,15 @@ class _BalancePageState extends State<BalancePage> {
     final userMap = {for (var u in users) u['id'] as String: u};
 
     return netByUser.entries.map((e) {
-      final user = userMap[e.key];
-      return {
-        'user_id': e.key,
-        'name': user != null
-            ? '${user['firstname']} ${user['lastname']}'
-            : 'Unknown',
-        'net': e.value,
-      };
-    }).toList()
+        final user = userMap[e.key];
+        return {
+          'user_id': e.key,
+          'name': user != null
+              ? '${user['firstname']} ${user['lastname']}'
+              : 'Unknown',
+          'net': e.value,
+        };
+      }).toList()
       ..sort((a, b) => (b['net'] as double).compareTo(a['net'] as double));
   }
 
@@ -134,7 +138,9 @@ class _BalancePageState extends State<BalancePage> {
           children: [
             TextField(
               controller: amountController,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               decoration: const InputDecoration(
                 labelText: 'Amount (₱)',
                 border: OutlineInputBorder(),
@@ -168,7 +174,9 @@ class _BalancePageState extends State<BalancePage> {
                 'payer_id': payerId,
                 'payee_id': payeeId,
                 'amount': amount,
-                'note': noteController.text.isEmpty ? null : noteController.text,
+                'note': noteController.text.isEmpty
+                    ? null
+                    : noteController.text,
               });
 
               if (ctx.mounted) Navigator.pop(ctx);
@@ -224,17 +232,31 @@ class _BalancePageState extends State<BalancePage> {
                     width: double.infinity,
                     height: 48,
                     child: FilledButton.icon(
-                      onPressed: () {
+                      // Fixed — properly clears session
+                      onPressed: () async {
+                        await supabase.auth.signOut();
                         CurrentUser.instance.clear();
-                        Navigator.pushReplacementNamed(context, '/login');
+                        if (context.mounted) {
+                          Navigator.pushReplacementNamed(context, '/login');
+                        }
                       },
-                      icon: const Icon(Icons.logout, color: Colors.white, size: 20),
+                      icon: const Icon(
+                        Icons.logout,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                       label: const Text(
                         'Log out',
-                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       style: ButtonStyle(
-                        backgroundColor: WidgetStateProperty.resolveWith((states) {
+                        backgroundColor: WidgetStateProperty.resolveWith((
+                          states,
+                        ) {
                           if (states.contains(WidgetState.hovered)) {
                             return Colors.red[600];
                           }
@@ -244,10 +266,14 @@ class _BalancePageState extends State<BalancePage> {
                           const EdgeInsets.symmetric(vertical: 14),
                         ),
                         side: WidgetStateProperty.all(
-                          const BorderSide(color: Color.fromARGB(255, 246, 227, 226)),
+                          const BorderSide(
+                            color: Color.fromARGB(255, 246, 227, 226),
+                          ),
                         ),
                         shape: WidgetStateProperty.all(
-                          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                       ),
                     ),
@@ -264,8 +290,8 @@ class _BalancePageState extends State<BalancePage> {
               final Color balanceColor = isZero
                   ? Colors.grey
                   : isPositive
-                      ? Colors.green
-                      : Colors.red;
+                  ? Colors.green
+                  : Colors.red;
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -292,8 +318,8 @@ class _BalancePageState extends State<BalancePage> {
                                   isZero
                                       ? 'settled'
                                       : isPositive
-                                          ? 'owes you'
-                                          : 'you owe',
+                                      ? 'owes you'
+                                      : 'you owe',
                                   style: TextStyle(color: balanceColor),
                                 ),
                               ],
@@ -309,7 +335,7 @@ class _BalancePageState extends State<BalancePage> {
                           ],
                         ),
                       ),
-                  
+
                       // Full-width CTA — same style as MinePage
                       if (!isZero)
                         GestureDetector(
