@@ -59,7 +59,7 @@ class _MinePageState extends State<MinePage> {
     final Map<String, List<Map<String, dynamic>>> grouped = {};
     for (var expense in myExpenses) {
       final createdAt = DateTime.parse(expense['created_at'] + 'Z').toLocal();
-      print('Expense createdAt (local): $createdAt');
+      // print('Expense createdAt (local): $createdAt');
       final dateKey = DateFormat('yyyy-MM-dd').format(createdAt);
       grouped.putIfAbsent(dateKey, () => []);
       grouped[dateKey]!.add(expense);
@@ -169,9 +169,11 @@ class _MinePageState extends State<MinePage> {
                                         const SizedBox(width: 12),
                                         Text(
                                           '₱ ${expense['total']}',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 33,
+                                            decoration: isPaid ? TextDecoration.lineThrough : null,  // 👈
+                                            decorationColor: Colors.white54, 
                                           ),
                                         ),
                                       ],

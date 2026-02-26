@@ -113,6 +113,7 @@ class _AllPageState extends State<AllPage> {
                       ),
                     ),
                     ...expensesForDate.map((expense) {
+                      final isPaid = expense['is_paid'] == true; 
                       final owner = expense['profiles'];
                       final ownerId = owner?['id'];
                       final breakdowns =
@@ -135,157 +136,165 @@ class _AllPageState extends State<AllPage> {
                         ),
                       );
 
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        color: ownerColor.withValues(alpha: 0.1), // subtle tint
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border(
-                              left: BorderSide(color: ownerColor, width: 5),
+                      return AnimatedOpacity(
+                        duration: const Duration(milliseconds: 300),
+                        opacity: isPaid ? 0.45 : 1.0,
+                        child: Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          color: ownerColor.withValues(alpha: 0.1), // subtle tint
+                          child: Container(
+                            decoration: BoxDecoration(
+                              border: Border(
+                                left: BorderSide(color: ownerColor, width: 5),
+                              ),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(25),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            expense['title'] ?? '',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 20,
-                                            ),
-                                          ),
-                                          Text(
-                                            ownerName,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              color: Color.fromARGB(
-                                                137,
-                                                255,
-                                                255,
-                                                255,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Text(
-                                      '₱ ${expense['total']}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 33,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'Payers:',
-                                  style: TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                                const SizedBox(height: 4),
-                                ...filteredBreakdowns.map((b) {
-                                  final user = b['profiles'];
-                                  final firstName = user?['firstname'] ?? '';
-                                  final lastName = user?['lastname'] ?? '';
-                                  final payerName = user != null
-                                      ? '$firstName $lastName'
-                                      : 'Unknown';
-
-                                  // Generate initials
-                                  final initials = [
-                                    firstName.isNotEmpty ? firstName[0] : '',
-                                    lastName.isNotEmpty ? lastName[0] : '',
-                                  ].join().toUpperCase();
-
-                                  final rawColor =
-                                      user?['color'] as String? ?? '#6366F1';
-                                  final userColor = Color(
-                                    int.parse(
-                                      'FF${rawColor.replaceAll('#', '')}',
-                                      radix: 16,
-                                    ),
-                                  );
-
-                                  return Padding(
-                                    padding: const EdgeInsets.only(top: 6),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 8,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.04,
-                                        ),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 32,
-                                            height: 32,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              gradient: LinearGradient(
-                                                begin: Alignment.topLeft,
-                                                end: Alignment.bottomRight,
-                                                colors: [
-                                                  userColor,
-                                                  userColor.withValues(
-                                                    alpha: 0.7,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              initials,
-                                              style: const TextStyle(
-                                                fontSize: 12,
+                            child: Padding(
+                              padding: const EdgeInsets.all(25),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              expense['title'] ?? '',
+                                              style: TextStyle(
                                                 fontWeight: FontWeight.bold,
-                                                color: Colors.white,
+                                                fontSize: 20,
+                                                decoration: isPaid ? TextDecoration.lineThrough : null,  // 👈
+                                                decorationColor: Colors.white54, 
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              payerName,
+                                            Text(
+                                              ownerName,
                                               style: const TextStyle(
                                                 fontSize: 14,
-                                                fontWeight: FontWeight.w500,
+                                                color: Color.fromARGB(
+                                                  137,
+                                                  255,
+                                                  255,
+                                                  255,
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          Text(
-                                            '₱${b['amount']}',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white.withOpacity(
-                                                0.65,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                }),
-                              ],
+                                      Text(
+                                        '₱ ${expense['total']}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 33,
+                                          decoration: isPaid ? TextDecoration.lineThrough : null,  // 👈
+                                          decorationColor: Colors.white54, 
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'Payers:',
+                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  ...filteredBreakdowns.map((b) {
+                                    final user = b['profiles'];
+                                    final firstName = user?['firstname'] ?? '';
+                                    final lastName = user?['lastname'] ?? '';
+                                    final payerName = user != null
+                                        ? '$firstName $lastName'
+                                        : 'Unknown';
+                        
+                                    // Generate initials
+                                    final initials = [
+                                      firstName.isNotEmpty ? firstName[0] : '',
+                                      lastName.isNotEmpty ? lastName[0] : '',
+                                    ].join().toUpperCase();
+                        
+                                    final rawColor =
+                                        user?['color'] as String? ?? '#6366F1';
+                                    final userColor = Color(
+                                      int.parse(
+                                        'FF${rawColor.replaceAll('#', '')}',
+                                        radix: 16,
+                                      ),
+                                    );
+                        
+                                    return Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.04,
+                                          ),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 32,
+                                              height: 32,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                gradient: LinearGradient(
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                  colors: [
+                                                    userColor,
+                                                    userColor.withValues(
+                                                      alpha: 0.7,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                initials,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Expanded(
+                                              child: Text(
+                                                payerName,
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              '₱${b['amount']}',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white.withOpacity(
+                                                  0.65,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ],
+                              ),
                             ),
                           ),
                         ),
