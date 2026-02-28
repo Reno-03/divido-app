@@ -199,7 +199,7 @@ class _BalancePageState extends State<BalancePage> {
             style: FilledButton.styleFrom(
               backgroundColor: isSettle ? Colors.green : Colors.red,
             ),
-            child: Text(isSettle ? 'Settle' : 'Pay'),
+            child: Text(isSettle ? 'Settle' : 'Pay', style: TextStyle(color: Colors.white),),
           ),
         ],
       ),
