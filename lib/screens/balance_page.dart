@@ -195,6 +195,95 @@ class _BalancePageState extends State<BalancePage> {
     );
   }
 
+  void _showPaymentHistory({
+    required String targetUserId,
+    required String targetName,
+  }) async {
+    final myId = _currentUser.id!;
+
+    final payments = await supabase
+        .from('payments')
+        .select('amount, note, created_at, payer_id, payee_id')
+        .or(
+          'and(payer_id.eq.$myId,payee_id.eq.$targetUserId),and(payer_id.eq.$targetUserId,payee_id.eq.$myId)',
+        )
+        .order('created_at', ascending: false);
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      // add more dim to the background
+      barrierColor: Colors.black.withValues(alpha: 0.85), // 0.0 = transparent, 1.0 = full black
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row with title and X button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Activity with $targetName',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  icon: const Icon(Icons.close),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.grey.withValues(alpha: 0.15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            Expanded(
+              child: payments.isEmpty
+                  ? const Center(child: Text('No payments yet.'))
+                  : ListView.builder(
+                      itemCount: payments.length,
+                      itemBuilder: (ctx, i) {
+                        final p = payments[i];
+                        final isPayer = p['payer_id'] == myId;
+                        final amount = (p['amount'] as num).toDouble();
+                        final note = p['note'] as String?;
+                        final date = DateTime.parse(p['created_at']).toLocal();
+
+                        return ListTile(
+                          leading: Icon(
+                            isPayer ? Icons.arrow_upward : Icons.arrow_downward,
+                            color: isPayer ? Colors.red : Colors.green,
+                          ),
+                          title: Text(
+                            '${isPayer ? 'You paid' : '$targetName paid'}  ₱${amount.toStringAsFixed(2)}',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Text(
+                            note != null && note.isNotEmpty
+                                ? '$note • ${date.month}/${date.day}/${date.year}'
+                                : '${date.month}/${date.day}/${date.year}',
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Map<String, dynamic>>>(
@@ -338,58 +427,125 @@ class _BalancePageState extends State<BalancePage> {
 
                       // Full-width CTA — same style as MinePage
                       if (!isZero)
-                        GestureDetector(
-                          onTap: () => _showPaymentDialog(
-                            targetUserId: entry['user_id'] as String,
-                            targetName: entry['name'] as String,
-                            isSettle: isPositive,
-                            suggestedAmount: net.abs(),
-                          ),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            decoration: BoxDecoration(
-                              color: isPositive
-                                  ? Colors.green.withValues(alpha: 0.15)
-                                  : Colors.red.withValues(alpha: 0.15),
-                              borderRadius: const BorderRadius.only(
-                                bottomLeft: Radius.circular(12),
-                                bottomRight: Radius.circular(12),
-                              ),
-                              border: Border(
-                                top: BorderSide(
-                                  color: isPositive
-                                      ? Colors.green.withValues(alpha: 0.25)
-                                      : Colors.red.withValues(alpha: 0.25),
+                        Row(
+                          children: [
+                            // Pay/Settle Button
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => _showPaymentDialog(
+                                  targetUserId: entry['user_id'] as String,
+                                  targetName: entry['name'] as String,
+                                  isSettle: isPositive,
+                                  suggestedAmount: net.abs(),
                                 ),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  isPositive
-                                      ? Icons.handshake_outlined
-                                      : Icons.payments_outlined,
-                                  size: 22,
-                                  color: isPositive
-                                      ? Colors.green.shade400
-                                      : Colors.red.shade400,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  isPositive ? 'Settle' : 'Pay',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  decoration: BoxDecoration(
                                     color: isPositive
-                                        ? Colors.green.shade400
-                                        : Colors.red.shade400,
+                                        ? Colors.green.withValues(alpha: 0.15)
+                                        : Colors.red.withValues(alpha: 0.15),
+                                    borderRadius: const BorderRadius.only(
+                                      bottomLeft: Radius.circular(12),
+                                    ),
+                                    border: Border(
+                                      top: BorderSide(
+                                        color: isPositive
+                                            ? Colors.green.withValues(
+                                                alpha: 0.25,
+                                              )
+                                            : Colors.red.withValues(
+                                                alpha: 0.25,
+                                              ),
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        isPositive
+                                            ? Icons.handshake_outlined
+                                            : Icons.payments_outlined,
+                                        size: 22,
+                                        color: isPositive
+                                            ? Colors.green.shade400
+                                            : Colors.red.shade400,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        isPositive ? 'Settle' : 'Pay',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                          color: isPositive
+                                              ? Colors.green.shade400
+                                              : Colors.red.shade400,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
+
+                            // Divider between buttons
+                            Container(
+                              width: 1,
+                              height: 50,
+                              color: isPositive
+                                  ? Colors.green.withValues(alpha: 0.25)
+                                  : Colors.red.withValues(alpha: 0.25),
+                            ),
+
+                            // Payment History Button
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => _showPaymentHistory(
+                                  targetUserId: entry['user_id'] as String,
+                                  targetName: entry['name'] as String,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.withValues(alpha: 0.10),
+                                    borderRadius: const BorderRadius.only(
+                                      bottomRight: Radius.circular(12),
+                                    ),
+                                    border: Border(
+                                      top: BorderSide(
+                                        color: Colors.blue.withValues(
+                                          alpha: 0.25,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.history,
+                                        size: 22,
+                                        color: Colors.blue.shade400,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Activity',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.blue.shade400,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                     ],
                   ),
