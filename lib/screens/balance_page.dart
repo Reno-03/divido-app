@@ -1,5 +1,6 @@
 import 'package:divido_app/providers/expense_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/current_user.dart';
@@ -229,7 +230,7 @@ class _BalancePageState extends State<BalancePage> {
       barrierColor: Colors.black.withValues(
         alpha: 0.85,
       ), // 0.0 = transparent, 1.0 = full black
-      showDragHandle: true,  // adds a nice little handle at the top of the sheet 
+      showDragHandle: true, // adds a nice little handle at the top of the sheet
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -315,29 +316,116 @@ class _BalancePageState extends State<BalancePage> {
             Expanded(
               child: payments.isEmpty
                   ? const Center(child: Text('No payments yet.'))
-                  : ListView.builder(
-                      itemCount: payments.length,
-                      itemBuilder: (ctx, i) {
-                        final p = payments[i];
-                        final isPayer = p['payer_id'] == myId;
-                        final amount = (p['amount'] as num).toDouble();
-                        final note = p['note'] as String?;
-                        final date = DateTime.parse(p['created_at']).toLocal();
+                  : Builder(
+                      builder: (context) {
+                        // Group by date
+                        final Map<String, List<Map<String, dynamic>>> grouped =
+                            {};
+                        for (var p in payments) {
+                          final date = DateTime.parse(
+                            p['created_at'],
+                          ).toLocal();
+                          final dateKey = DateFormat('yyyy-MM-dd').format(date);
+                          grouped.putIfAbsent(dateKey, () => []);
+                          grouped[dateKey]!.add(p);
+                        }
 
-                        return ListTile(
-                          leading: Icon(
-                            isPayer ? Icons.arrow_upward : Icons.arrow_downward,
-                            color: isPayer ? Colors.red : Colors.green,
-                          ),
-                          title: Text(
-                            '${isPayer ? 'You paid' : '$targetName paid'}  ₱${amount.toStringAsFixed(2)}',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text(
-                            note != null && note.isNotEmpty
-                                ? '$note • ${date.month}/${date.day}/${date.year}'
-                                : '${date.month}/${date.day}/${date.year}',
-                          ),
+                        final sortedDates = grouped.keys.toList()
+                          ..sort((a, b) => b.compareTo(a));
+
+                        return ListView.builder(
+                          itemCount: sortedDates.length,
+                          itemBuilder: (ctx, i) {
+                            final dateKey = sortedDates[i];
+                            final entries = grouped[dateKey]!;
+                            final formattedDate = DateFormat(
+                              'MMMM d, yyyy',
+                            ).format(DateTime.parse(dateKey));
+
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Date divider
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Expanded(child: Divider()),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                        ),
+                                        child: Text(
+                                          formattedDate,
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ),
+                                      const Expanded(child: Divider()),
+                                    ],
+                                  ),
+                                ),
+
+                                // Payment entries for that date
+                                ...entries.map((p) {
+                                  final isPayer = p['payer_id'] == myId;
+                                  final amount = (p['amount'] as num)
+                                      .toDouble();
+                                  final note = p['note'] as String?;
+
+                                  return ListTile(
+                                    leading: Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: isPayer
+                                            ? Colors.red.withValues(alpha: 0.15)
+                                            : Colors.green.withValues(
+                                                alpha: 0.15,
+                                              ),
+                                      ),
+                                      child: Icon(
+                                        isPayer
+                                            ? Icons.arrow_upward
+                                            : Icons.arrow_downward,
+                                        size: 18,
+                                        color: isPayer
+                                            ? Colors.red.shade400
+                                            : Colors.green.shade400,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      isPayer
+                                          ? 'You paid $targetName'
+                                          : '$targetName paid you',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    subtitle: note != null && note.isNotEmpty
+                                        ? Text(note)
+                                        : null,
+                                    trailing: Text(
+                                      '₱${amount.toStringAsFixed(2)}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: isPayer
+                                            ? Colors.red.shade400
+                                            : Colors.green.shade400,
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ],
+                            );
+                          },
                         );
                       },
                     ),
@@ -605,7 +693,7 @@ class _BalancePageState extends State<BalancePage> {
                                 onTap: () => _showPaymentHistory(
                                   targetUserId: entry['user_id'] as String,
                                   targetName: entry['name'] as String,
-                                  net: net, 
+                                  net: net,
                                   targetColor: userColor,
                                 ),
                                 child: Container(
