@@ -139,69 +139,94 @@ class _BalancePageState extends State<BalancePage> {
       text: suggestedAmount.abs().toStringAsFixed(2),
     );
     final noteController = TextEditingController();
+    bool isSubmitting = false;  // local flag for pay button state
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(isSettle ? 'Settle with $targetName' : 'Pay $targetName'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: amountController,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
+      // why statefulbuilder? because we need to update the dialog's internal state (e.g. text to show loading)
+      // without building the entire BalancePage again
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+
+        return AlertDialog(
+          title: Text(isSettle ? 'Settle with $targetName' : 'Pay $targetName'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: amountController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Amount (₱)',
+                  border: OutlineInputBorder(),
+                ),
               ),
-              decoration: const InputDecoration(
-                labelText: 'Amount (₱)',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 12),
+              TextField(
+                controller: noteController,
+                decoration: const InputDecoration(
+                  labelText: 'Note (optional)',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: noteController,
-              decoration: const InputDecoration(
-                labelText: 'Note (optional)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            ],
           ),
-          FilledButton(
-            onPressed: () async {
-              final amount = double.tryParse(amountController.text);
-              if (amount == null || amount <= 0) return;
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
 
-              final myId = _currentUser.id!;
-              final payerId = isSettle ? targetUserId : myId;
-              final payeeId = isSettle ? myId : targetUserId;
+            // disable button while submitting
+            onPressed: isSubmitting ? null
+                : () async {
+                    final amount = double.tryParse(amountController.text);
+                    if (amount == null || amount <= 0) return;
 
-              await supabase.from('payments').insert({
-                'payer_id': payerId,
-                'payee_id': payeeId,
-                'amount': amount,
-                'note': noteController.text.isEmpty
-                    ? null
-                    : noteController.text,
-              });
+                    // 👇 set loading true
+                    setDialogState(() => isSubmitting = true);
 
-              if (ctx.mounted) Navigator.pop(ctx);
+                    final myId = _currentUser.id!;
+                    final payerId = isSettle ? targetUserId : myId;
+                    final payeeId = isSettle ? myId : targetUserId;
 
-              setState(() {
-                _balanceFuture = _fetchNetBalances();
-              });
-            },
+                    await supabase.from('payments').insert({
+                      'payer_id': payerId,
+                      'payee_id': payeeId,
+                      'amount': amount,
+                      'note': noteController.text.isEmpty
+                          ? null
+                          : noteController.text,
+                    });
+
+                    if (ctx.mounted) Navigator.pop(ctx);
+
+                    setState(() {
+                      _balanceFuture = _fetchNetBalances();
+                    });
+                  },
             style: FilledButton.styleFrom(
               backgroundColor: isSettle ? Colors.green : Colors.red,
             ),
-            child: Text(isSettle ? 'Settle' : 'Pay', style: TextStyle(color: Colors.white),),
+
+            // show loading indicator while submitting
+            child: isSubmitting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(isSettle ? 'Settle' : 'Pay', style: TextStyle(color: Colors.white),),
           ),
-        ],
+          ],
+        );
+        }
       ),
     );
   }
