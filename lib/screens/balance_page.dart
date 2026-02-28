@@ -238,10 +238,10 @@ class _BalancePageState extends State<BalancePage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => DraggableScrollableSheet(
-       initialChildSize: 0.65,   // start at half the screen height
-  minChildSize: 0.3,       // can be dragged down to 30% of the screen height
-  maxChildSize: 1.0,       // can be dragged up to full screen height
-  expand: false,
+        initialChildSize: 0.65, // start at half the screen height
+        minChildSize: 0.3, // can be dragged down to 30% of the screen height
+        maxChildSize: 1.0, // can be dragged up to full screen height
+        expand: false,
         builder: (context, scrollController) => Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -347,7 +347,8 @@ class _BalancePageState extends State<BalancePage> {
                             ..sort((a, b) => b.compareTo(a));
 
                           return ListView.builder(
-                            controller: scrollController, // attach the scroll controller to enable dragging
+                            controller:
+                                scrollController, // attach the scroll controller to enable dragging
                             itemCount: sortedDates.length,
                             itemBuilder: (ctx, i) {
                               final dateKey = sortedDates[i];
@@ -753,6 +754,52 @@ class _BalancePageState extends State<BalancePage> {
                               ),
                             ),
                           ],
+                        ),
+
+                      // if it is settled, only show the payment history button centered
+                      if (isZero)
+                        GestureDetector(
+                          onTap: () => _showPaymentHistory(
+                            targetUserId: entry['user_id'] as String,
+                            targetName: entry['name'] as String,
+                            net: net,
+                            targetColor: userColor,
+                          ),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.withValues(alpha: 0.10),
+                              borderRadius: const BorderRadius.only(
+                                bottomLeft: Radius.circular(12),
+                                bottomRight: Radius.circular(12),
+                              ),
+                              border: Border(
+                                top: BorderSide(
+                                  color: Colors.blue.withValues(alpha: 0.25),
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.history,
+                                  size: 22,
+                                  color: Colors.blue.shade400,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Activity',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.blue.shade400,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                     ],
                   ),
