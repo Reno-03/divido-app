@@ -24,7 +24,7 @@ class ProfilePage extends StatelessWidget {
               radius: 48,
               backgroundColor: userColor, // use the parsed user color
               child: Text(
-                user.firstname?[0].toUpperCase() ?? '?',
+                '${CurrentUser.instance.firstname?[0].toUpperCase()}${CurrentUser.instance.lastname?[0].toUpperCase() ?? ''}',
                 style: const TextStyle(fontSize: 36, color: Colors.white),
               ),
             ),
