@@ -9,6 +9,7 @@ class CurrentUser {
   String? firstname;
   String? lastname;
   String? color; // 👈 add this
+  String? email; 
 
   void setFromMap(Map<String, dynamic> data) {
     id = data['id'];
@@ -16,6 +17,7 @@ class CurrentUser {
     firstname = data['firstname'];
     lastname = data['lastname'];
     color = data['color']; // 👈 add this
+    email = data['email']; 
   }
 
   void clear() {
@@ -24,5 +26,6 @@ class CurrentUser {
     firstname = null;
     lastname = null;
     color = null; // 👈 add this
+    email = null;
   }
 }

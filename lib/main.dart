@@ -1,5 +1,6 @@
 import 'package:divido_app/screens/home.dart';
 import 'package:divido_app/screens/login.dart';
+import 'package:divido_app/screens/profile_page.dart';
 import 'package:divido_app/screens/register_page.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:flutter/material.dart';
@@ -80,7 +81,8 @@ class MyApp extends StatelessWidget {
           '/': (context) => const LoginPage(),
           '/home': (context) => const HomePage(),
           '/login': (context) => const LoginPage(),
-          '/register': (context) => const RegisterPage(), // Placeholder for now
+          '/register': (context) => const RegisterPage(),
+          '/profile': (context) => const ProfilePage(),
         },
       ),
     );
