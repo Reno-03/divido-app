@@ -517,70 +517,70 @@ class _BalancePageState extends State<BalancePage> {
                 child: ListView.builder(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
-                  itemCount: balances.length + 2, // +2 for divider and logout
+                  itemCount: balances.length, //+ 2, // +2 for divider and logout
                   itemBuilder: (context, index) {
-                    if (index == balances.length) {
-                      return const Divider(height: 32);
-                    }
+                    // if (index == balances.length) {
+                    //   return const Divider(height: 32);
+                    // }
 
-                    if (index == balances.length + 1) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: FilledButton.icon(
-                            // Fixed — properly clears session
-                            onPressed: () async {
-                              await supabase.auth.signOut();
-                              CurrentUser.instance.clear();
-                              if (context.mounted) {
-                                Navigator.pushReplacementNamed(
-                                  context,
-                                  '/login',
-                                );
-                              }
-                            },
-                            icon: const Icon(
-                              Icons.logout,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                            label: const Text(
-                              'Log out',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            style: ButtonStyle(
-                              backgroundColor: WidgetStateProperty.resolveWith((
-                                states,
-                              ) {
-                                if (states.contains(WidgetState.hovered)) {
-                                  return Colors.red[600];
-                                }
-                                return Colors.red[300];
-                              }),
-                              padding: WidgetStateProperty.all(
-                                const EdgeInsets.symmetric(vertical: 14),
-                              ),
-                              side: WidgetStateProperty.all(
-                                const BorderSide(
-                                  color: Color.fromARGB(255, 246, 227, 226),
-                                ),
-                              ),
-                              shape: WidgetStateProperty.all(
-                                RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }
+                    // if (index == balances.length + 1) {
+                    //   return Padding(
+                    //     padding: const EdgeInsets.symmetric(vertical: 8),
+                    //     child: SizedBox(
+                    //       width: double.infinity,
+                    //       height: 48,
+                    //       child: FilledButton.icon(
+                    //         // Fixed — properly clears session
+                    //         onPressed: () async {
+                    //           await supabase.auth.signOut();
+                    //           CurrentUser.instance.clear();
+                    //           if (context.mounted) {
+                    //             Navigator.pushReplacementNamed(
+                    //               context,
+                    //               '/login',
+                    //             );
+                    //           }
+                    //         },
+                    //         icon: const Icon(
+                    //           Icons.logout,
+                    //           color: Colors.white,
+                    //           size: 20,
+                    //         ),
+                    //         label: const Text(
+                    //           'Log out',
+                    //           style: TextStyle(
+                    //             color: Colors.white,
+                    //             fontSize: 16,
+                    //             fontWeight: FontWeight.bold,
+                    //           ),
+                    //         ),
+                    //         style: ButtonStyle(
+                    //           backgroundColor: WidgetStateProperty.resolveWith((
+                    //             states,
+                    //           ) {
+                    //             if (states.contains(WidgetState.hovered)) {
+                    //               return Colors.red[600];
+                    //             }
+                    //             return Colors.red[300];
+                    //           }),
+                    //           padding: WidgetStateProperty.all(
+                    //             const EdgeInsets.symmetric(vertical: 14),
+                    //           ),
+                    //           side: WidgetStateProperty.all(
+                    //             const BorderSide(
+                    //               color: Color.fromARGB(255, 246, 227, 226),
+                    //             ),
+                    //           ),
+                    //           shape: WidgetStateProperty.all(
+                    //             RoundedRectangleBorder(
+                    //               borderRadius: BorderRadius.circular(12),
+                    //             ),
+                    //           ),
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   );
+                    // }
 
                     final entry = balances[index];
                     final double net = entry['net'] as double;
