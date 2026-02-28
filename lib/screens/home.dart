@@ -91,73 +91,75 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     // Parse the user's color
-final rawColor = CurrentUser.instance.color ?? '#6366F1';
-final userColor = Color(
-  int.parse('FF${rawColor.replaceAll('#', '')}', radix: 16),
-);
+    final rawColor = CurrentUser.instance.color ?? '#6366F1';
+    final userColor = Color(
+      int.parse('FF${rawColor.replaceAll('#', '')}', radix: 16),
+    );
 
     return Scaffold(
       appBar: AppBar(
-  leading: Builder(
-    builder: (context) => IconButton(
-      icon: const Icon(Icons.menu),
-      onPressed: () => Scaffold.of(context).openDrawer(),
-    ),
-  ),
-),
-      drawer: Drawer(
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Profile Header
-            UserAccountsDrawerHeader(
-              decoration: const BoxDecoration(
-                color: Color(0xFF171A3F), // match app background
-              ),
-              accountName: Text(
-                '${CurrentUser.instance.firstname} ${CurrentUser.instance.lastname ?? ''}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              accountEmail: Text(CurrentUser.instance.email ?? ''),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: userColor, // use the parsed user color
-                child: Text(
-                  '${CurrentUser.instance.firstname?[0].toUpperCase()}${CurrentUser.instance.lastname?[0].toUpperCase() ?? ''}',
-                  style: const TextStyle(fontSize: 24, color: Colors.white),
-                ),
-              ),
-            ),
-
-            // Nav items
-            ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: const Text('Profile'),
-              onTap: () {
-                Navigator.pop(context); // close drawer
-                Navigator.pushNamed(context, '/profile');
-              },
-            ),
-
-            // const Spacer(),
-            // SizedBox(height: 50),
-
-            // Logout at bottom
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Log out', style: TextStyle(color: Colors.red)),
-              onTap: () async {
-                await Supabase.instance.client.auth.signOut();
-                CurrentUser.instance.clear();
-                if (context.mounted) {
-                  Navigator.pushReplacementNamed(context, '/login');
-                }
-              },
-            ),
-
-          ],
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+          ),
         ),
       ),
-    ),
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Profile Header
+              UserAccountsDrawerHeader(
+                decoration: const BoxDecoration(
+                  color: Color(0xFF171A3F), // match app background
+                ),
+                accountName: Text(
+                  '${CurrentUser.instance.firstname} ${CurrentUser.instance.lastname ?? ''}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                accountEmail: Text(CurrentUser.instance.email ?? ''),
+                currentAccountPicture: CircleAvatar(
+                  backgroundColor: userColor, // use the parsed user color
+                  child: Text(
+                    '${CurrentUser.instance.firstname?[0].toUpperCase()}${CurrentUser.instance.lastname?[0].toUpperCase() ?? ''}',
+                    style: const TextStyle(fontSize: 24, color: Colors.white),
+                  ),
+                ),
+              ),
+
+              // Nav items
+              ListTile(
+                leading: const Icon(Icons.person_outline),
+                title: const Text('Profile'),
+                onTap: () {
+                  Navigator.pop(context); // close drawer
+                  Navigator.pushNamed(context, '/profile');
+                },
+              ),
+
+              // const Spacer(),
+              // SizedBox(height: 50),
+
+              // Logout at bottom
+              ListTile(
+                leading: const Icon(Icons.logout, color: Colors.red),
+                title: const Text(
+                  'Log out',
+                  style: TextStyle(color: Colors.red),
+                ),
+                onTap: () async {
+                  await Supabase.instance.client.auth.signOut();
+                  CurrentUser.instance.clear();
+                  if (context.mounted) {
+                    Navigator.pushReplacementNamed(context, '/login');
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
       body: IndexedStack(index: _currentIndex, children: _pages),
 
       floatingActionButton: _currentIndex == 1

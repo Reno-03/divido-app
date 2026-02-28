@@ -8,6 +8,12 @@ class ProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = CurrentUser.instance;
 
+    // Parse the user's color
+    final rawColor = CurrentUser.instance.color ?? '#6366F1';
+    final userColor = Color(
+      int.parse('FF${rawColor.replaceAll('#', '')}', radix: 16),
+    );
+
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: Padding(
@@ -16,7 +22,7 @@ class ProfilePage extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 48,
-              backgroundColor: const Color(0xFF171A3F), // match app background
+              backgroundColor: userColor, // use the parsed user color
               child: Text(
                 user.firstname?[0].toUpperCase() ?? '?',
                 style: const TextStyle(fontSize: 36, color: Colors.white),
