@@ -229,6 +229,7 @@ class _BalancePageState extends State<BalancePage> {
       barrierColor: Colors.black.withValues(
         alpha: 0.85,
       ), // 0.0 = transparent, 1.0 = full black
+      showDragHandle: true,  // adds a nice little handle at the top of the sheet 
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
