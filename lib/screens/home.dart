@@ -137,25 +137,6 @@ class _HomePageState extends State<HomePage> {
                   Navigator.pushNamed(context, '/profile');
                 },
               ),
-
-              // const Spacer(),
-              // SizedBox(height: 50),
-
-              // Logout at bottom
-              ListTile(
-                leading: const Icon(Icons.logout, color: Colors.red),
-                title: const Text(
-                  'Log out',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onTap: () async {
-                  await Supabase.instance.client.auth.signOut();
-                  CurrentUser.instance.clear();
-                  if (context.mounted) {
-                    Navigator.pushReplacementNamed(context, '/login');
-                  }
-                },
-              ),
             ],
           ),
         ),
