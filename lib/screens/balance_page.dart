@@ -100,7 +100,7 @@ class _BalancePageState extends State<BalancePage> {
     final userIds = netByUser.keys.toList();
     final users = await supabase
         .from('profiles')
-        .select('id, firstname, lastname')
+        .select('id, firstname, lastname, color')
         .inFilter('id', userIds);
 
     final userMap = {for (var u in users) u['id'] as String: u};
@@ -110,12 +110,22 @@ class _BalancePageState extends State<BalancePage> {
         return {
           'user_id': e.key,
           'name': user != null
-              ? '${user['firstname']} ${user['lastname']}'
+              // ? '${user['firstname']} ${user['lastname']}'
+              ? '${user['firstname']}'
               : 'Unknown',
           'net': e.value,
+          'color': user?['color'] as String? ?? '#6366F1',
         };
       }).toList()
       ..sort((a, b) => (b['net'] as double).compareTo(a['net'] as double));
+  }
+
+  String _getInitials(String name) {
+    final parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return parts[0][0].toUpperCase();
   }
 
   void _showPaymentDialog({
@@ -198,6 +208,8 @@ class _BalancePageState extends State<BalancePage> {
   void _showPaymentHistory({
     required String targetUserId,
     required String targetName,
+    required double net,
+    required Color targetColor,
   }) async {
     final myId = _currentUser.id!;
 
@@ -214,7 +226,9 @@ class _BalancePageState extends State<BalancePage> {
     showModalBottomSheet(
       context: context,
       // add more dim to the background
-      barrierColor: Colors.black.withValues(alpha: 0.85), // 0.0 = transparent, 1.0 = full black
+      barrierColor: Colors.black.withValues(
+        alpha: 0.85,
+      ), // 0.0 = transparent, 1.0 = full black
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -225,23 +239,72 @@ class _BalancePageState extends State<BalancePage> {
           children: [
             // Header row with title and X button
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Text(
-                  'Activity with $targetName',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                // Avatar
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [targetColor, targetColor.withValues(alpha: 0.7)],
+                    ),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    _getInitials(targetName),
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
-                IconButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  icon: const Icon(Icons.close),
-                  style: IconButton.styleFrom(
-                    backgroundColor: Colors.grey.withValues(alpha: 0.15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                const SizedBox(width: 12),
+                // Title + subtitle
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        targetName,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        net > 0
+                            ? 'Owes you ₱${net.abs().toStringAsFixed(2)}'
+                            : net < 0
+                            ? 'You owe ₱${net.abs().toStringAsFixed(2)}'
+                            : 'All settled up',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: net > 0
+                              ? Colors.green.shade400
+                              : net < 0
+                              ? Colors.red.shade400
+                              : Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // X button
+                GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey.withValues(alpha: 0.2),
                     ),
+                    child: const Icon(Icons.close, size: 16),
                   ),
                 ),
               ],
@@ -372,6 +435,10 @@ class _BalancePageState extends State<BalancePage> {
 
               final entry = balances[index];
               final double net = entry['net'] as double;
+              final rawColor = entry['color'] as String? ?? '#6366F1';
+              final userColor = Color(
+                int.parse('FF${rawColor.replaceAll('#', '')}', radix: 16),
+              );
               // final bool isZero = net == 0;
               final bool isZero = net.abs() < 0.01;
               final bool isPositive = net > 0;
@@ -393,26 +460,58 @@ class _BalancePageState extends State<BalancePage> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            Row(
                               children: [
-                                Text(
-                                  entry['name'] as String,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 20,
+                                // Avatar badge
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        userColor,
+                                        userColor.withValues(alpha: 0.7),
+                                      ],
+                                    ),
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    _getInitials(entry['name'] as String),
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ),
-                                Text(
-                                  isZero
-                                      ? 'settled'
-                                      : isPositive
-                                      ? 'owes you'
-                                      : 'you owe',
-                                  style: TextStyle(color: balanceColor),
+                                const SizedBox(width: 12),
+                                // Name + label
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      entry['name'] as String,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 20,
+                                      ),
+                                    ),
+                                    Text(
+                                      isZero
+                                          ? 'settled'
+                                          : isPositive
+                                          ? 'owes you'
+                                          : 'you owe',
+                                      style: TextStyle(color: balanceColor),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
+                            // Amount
                             Text(
                               '₱${net.abs().toStringAsFixed(2)}',
                               style: TextStyle(
@@ -505,6 +604,8 @@ class _BalancePageState extends State<BalancePage> {
                                 onTap: () => _showPaymentHistory(
                                   targetUserId: entry['user_id'] as String,
                                   targetName: entry['name'] as String,
+                                  net: net, 
+                                  targetColor: userColor,
                                 ),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
