@@ -497,16 +497,6 @@ class _BalancePageState extends State<BalancePage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.center, 
           children: [
-            const SizedBox(height: 16),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Text(
-                textAlign: TextAlign.center,
-                'Balances',
-                style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 16),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {
@@ -519,69 +509,6 @@ class _BalancePageState extends State<BalancePage> {
                   padding: const EdgeInsets.all(16),
                   itemCount: balances.length, //+ 2, // +2 for divider and logout
                   itemBuilder: (context, index) {
-                    // if (index == balances.length) {
-                    //   return const Divider(height: 32);
-                    // }
-
-                    // if (index == balances.length + 1) {
-                    //   return Padding(
-                    //     padding: const EdgeInsets.symmetric(vertical: 8),
-                    //     child: SizedBox(
-                    //       width: double.infinity,
-                    //       height: 48,
-                    //       child: FilledButton.icon(
-                    //         // Fixed — properly clears session
-                    //         onPressed: () async {
-                    //           await supabase.auth.signOut();
-                    //           CurrentUser.instance.clear();
-                    //           if (context.mounted) {
-                    //             Navigator.pushReplacementNamed(
-                    //               context,
-                    //               '/login',
-                    //             );
-                    //           }
-                    //         },
-                    //         icon: const Icon(
-                    //           Icons.logout,
-                    //           color: Colors.white,
-                    //           size: 20,
-                    //         ),
-                    //         label: const Text(
-                    //           'Log out',
-                    //           style: TextStyle(
-                    //             color: Colors.white,
-                    //             fontSize: 16,
-                    //             fontWeight: FontWeight.bold,
-                    //           ),
-                    //         ),
-                    //         style: ButtonStyle(
-                    //           backgroundColor: WidgetStateProperty.resolveWith((
-                    //             states,
-                    //           ) {
-                    //             if (states.contains(WidgetState.hovered)) {
-                    //               return Colors.red[600];
-                    //             }
-                    //             return Colors.red[300];
-                    //           }),
-                    //           padding: WidgetStateProperty.all(
-                    //             const EdgeInsets.symmetric(vertical: 14),
-                    //           ),
-                    //           side: WidgetStateProperty.all(
-                    //             const BorderSide(
-                    //               color: Color.fromARGB(255, 246, 227, 226),
-                    //             ),
-                    //           ),
-                    //           shape: WidgetStateProperty.all(
-                    //             RoundedRectangleBorder(
-                    //               borderRadius: BorderRadius.circular(12),
-                    //             ),
-                    //           ),
-                    //         ),
-                    //       ),
-                    //     ),
-                    //   );
-                    // }
-
                     final entry = balances[index];
                     final double net = entry['net'] as double;
                     final rawColor = entry['color'] as String? ?? '#6366F1';

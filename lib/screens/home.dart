@@ -98,6 +98,15 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
+        // Dynamic title based on selected tab
+        title: Text(
+          _currentIndex == 0
+              ? 'All Expenses'
+              : _currentIndex == 1
+              ? 'My Expenses'
+              : 'Balances',
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
         leading: Builder(
           builder: (context) => IconButton(
             icon: const Icon(Icons.menu),

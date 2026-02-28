@@ -14,27 +14,6 @@ class AllPage extends StatefulWidget {
 class _AllPageState extends State<AllPage> {
   final supabase = Supabase.instance.client;
 
-  // Future<List<Map<String, dynamic>>> fetchExpenses() async {
-  //   final response = await supabase
-  //       .from('expenses')
-  //       .select('''
-  //         id,
-  //         title,
-  //         description,
-  //         total,
-  //         created_at,
-  //         users (id, firstname, lastname),
-  //         expense_breakdowns (
-  //           payer_id,
-  //           amount,
-  //           users (id, firstname, lastname)
-  //         )
-  //       ''')
-  //       .order('created_at', ascending: false);
-
-  //   return List<Map<String, dynamic>>.from(response);
-  // }
-
   @override
   Widget build(BuildContext context) {
     final expenseProvider = Provider.of<ExpenseProvider>(context);
@@ -61,18 +40,6 @@ class _AllPageState extends State<AllPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        SizedBox(height: 16),
-
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Text(
-            'All Expenses',
-            style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold),
-          ),
-        ),
-
-        SizedBox(height: 16),
-
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {

@@ -69,15 +69,6 @@ class _MinePageState extends State<MinePage> {
 
     return Column(
       children: [
-        const SizedBox(height: 16),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Text(
-            'My Expenses',
-            style: TextStyle(fontSize: 35, fontWeight: FontWeight.bold),
-          ),
-        ),
-        const SizedBox(height: 16),
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async => await expenseProvider.refresh(),
