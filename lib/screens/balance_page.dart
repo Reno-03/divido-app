@@ -231,206 +231,223 @@ class _BalancePageState extends State<BalancePage> {
         alpha: 0.85,
       ), // 0.0 = transparent, 1.0 = full black
       showDragHandle: true, // adds a nice little handle at the top of the sheet
+      isScrollControlled:
+          true, // allow the sheet to take up more vertical space when needed
+      useSafeArea: true, // avoid system UI overlaps
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header row with title and X button
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Avatar
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [targetColor, targetColor.withValues(alpha: 0.7)],
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    _getInitials(targetName),
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                // Title + subtitle
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        targetName,
-                        style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        net > 0
-                            ? 'Owes you ₱${net.abs().toStringAsFixed(2)}'
-                            : net < 0
-                            ? 'You owe ₱${net.abs().toStringAsFixed(2)}'
-                            : 'All settled up',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: net > 0
-                              ? Colors.green.shade400
-                              : net < 0
-                              ? Colors.red.shade400
-                              : Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // X button
-                GestureDetector(
-                  onTap: () => Navigator.pop(ctx),
-                  child: Container(
-                    width: 28,
-                    height: 28,
+      builder: (ctx) => DraggableScrollableSheet(
+       initialChildSize: 0.65,   // start at half the screen height
+  minChildSize: 0.3,       // can be dragged down to 30% of the screen height
+  maxChildSize: 1.0,       // can be dragged up to full screen height
+  expand: false,
+        builder: (context, scrollController) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header row with title and X button
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Avatar
+                  Container(
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.grey.withValues(alpha: 0.2),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          targetColor,
+                          targetColor.withValues(alpha: 0.7),
+                        ],
+                      ),
                     ),
-                    child: const Icon(Icons.close, size: 16),
+                    alignment: Alignment.center,
+                    child: Text(
+                      _getInitials(targetName),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
+                  const SizedBox(width: 12),
+                  // Title + subtitle
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          targetName,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          net > 0
+                              ? 'Owes you ₱${net.abs().toStringAsFixed(2)}'
+                              : net < 0
+                              ? 'You owe ₱${net.abs().toStringAsFixed(2)}'
+                              : 'All settled up',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: net > 0
+                                ? Colors.green.shade400
+                                : net < 0
+                                ? Colors.red.shade400
+                                : Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // X button
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey.withValues(alpha: 0.2),
+                      ),
+                      child: const Icon(Icons.close, size: 16),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
 
-            Expanded(
-              child: payments.isEmpty
-                  ? const Center(child: Text('No payments yet.'))
-                  : Builder(
-                      builder: (context) {
-                        // Group by date
-                        final Map<String, List<Map<String, dynamic>>> grouped =
-                            {};
-                        for (var p in payments) {
-                          final date = DateTime.parse(
-                            p['created_at'],
-                          ).toLocal();
-                          final dateKey = DateFormat('yyyy-MM-dd').format(date);
-                          grouped.putIfAbsent(dateKey, () => []);
-                          grouped[dateKey]!.add(p);
-                        }
+              Expanded(
+                child: payments.isEmpty
+                    ? const Center(child: Text('No payments yet.'))
+                    : Builder(
+                        builder: (context) {
+                          // Group by date
+                          final Map<String, List<Map<String, dynamic>>>
+                          grouped = {};
+                          for (var p in payments) {
+                            final date = DateTime.parse(
+                              p['created_at'],
+                            ).toLocal();
+                            final dateKey = DateFormat(
+                              'yyyy-MM-dd',
+                            ).format(date);
+                            grouped.putIfAbsent(dateKey, () => []);
+                            grouped[dateKey]!.add(p);
+                          }
 
-                        final sortedDates = grouped.keys.toList()
-                          ..sort((a, b) => b.compareTo(a));
+                          final sortedDates = grouped.keys.toList()
+                            ..sort((a, b) => b.compareTo(a));
 
-                        return ListView.builder(
-                          itemCount: sortedDates.length,
-                          itemBuilder: (ctx, i) {
-                            final dateKey = sortedDates[i];
-                            final entries = grouped[dateKey]!;
-                            final formattedDate = DateFormat(
-                              'MMMM d, yyyy',
-                            ).format(DateTime.parse(dateKey));
+                          return ListView.builder(
+                            controller: scrollController, // attach the scroll controller to enable dragging
+                            itemCount: sortedDates.length,
+                            itemBuilder: (ctx, i) {
+                              final dateKey = sortedDates[i];
+                              final entries = grouped[dateKey]!;
+                              final formattedDate = DateFormat(
+                                'MMMM d, yyyy',
+                              ).format(DateTime.parse(dateKey));
 
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Date divider
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Expanded(child: Divider()),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                        ),
-                                        child: Text(
-                                          formattedDate,
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.grey,
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Date divider
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Expanded(child: Divider()),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                          ),
+                                          child: Text(
+                                            formattedDate,
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.grey,
+                                            ),
                                           ),
                                         ),
-                                      ),
-                                      const Expanded(child: Divider()),
-                                    ],
+                                        const Expanded(child: Divider()),
+                                      ],
+                                    ),
                                   ),
-                                ),
 
-                                // Payment entries for that date
-                                ...entries.map((p) {
-                                  final isPayer = p['payer_id'] == myId;
-                                  final amount = (p['amount'] as num)
-                                      .toDouble();
-                                  final note = p['note'] as String?;
+                                  // Payment entries for that date
+                                  ...entries.map((p) {
+                                    final isPayer = p['payer_id'] == myId;
+                                    final amount = (p['amount'] as num)
+                                        .toDouble();
+                                    final note = p['note'] as String?;
 
-                                  return ListTile(
-                                    leading: Container(
-                                      width: 36,
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: isPayer
-                                            ? Colors.red.withValues(alpha: 0.15)
-                                            : Colors.green.withValues(
-                                                alpha: 0.15,
-                                              ),
+                                    return ListTile(
+                                      leading: Container(
+                                        width: 36,
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: isPayer
+                                              ? Colors.red.withValues(
+                                                  alpha: 0.15,
+                                                )
+                                              : Colors.green.withValues(
+                                                  alpha: 0.15,
+                                                ),
+                                        ),
+                                        child: Icon(
+                                          isPayer
+                                              ? Icons.arrow_upward
+                                              : Icons.arrow_downward,
+                                          size: 18,
+                                          color: isPayer
+                                              ? Colors.red.shade400
+                                              : Colors.green.shade400,
+                                        ),
                                       ),
-                                      child: Icon(
+                                      title: Text(
                                         isPayer
-                                            ? Icons.arrow_upward
-                                            : Icons.arrow_downward,
-                                        size: 18,
-                                        color: isPayer
-                                            ? Colors.red.shade400
-                                            : Colors.green.shade400,
+                                            ? 'You paid $targetName'
+                                            : '$targetName paid you',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                    ),
-                                    title: Text(
-                                      isPayer
-                                          ? 'You paid $targetName'
-                                          : '$targetName paid you',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
+                                      subtitle: note != null && note.isNotEmpty
+                                          ? Text(note)
+                                          : null,
+                                      trailing: Text(
+                                        '₱${amount.toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color: isPayer
+                                              ? Colors.red.shade400
+                                              : Colors.green.shade400,
+                                        ),
                                       ),
-                                    ),
-                                    subtitle: note != null && note.isNotEmpty
-                                        ? Text(note)
-                                        : null,
-                                    trailing: Text(
-                                      '₱${amount.toStringAsFixed(2)}',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                        color: isPayer
-                                            ? Colors.red.shade400
-                                            : Colors.green.shade400,
-                                      ),
-                                    ),
-                                  );
-                                }),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                    ),
-            ),
-          ],
+                                    );
+                                  }),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
     );
