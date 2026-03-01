@@ -54,11 +54,13 @@ class ProfilePage extends StatelessWidget {
             // Info cards
             _infoTile(Icons.person_outline, 'Username', user.username ?? '—'),
             const SizedBox(height: 12),
-            _infoTile(Icons.email_outlined, 'Email', user.email ?? '—'),
-            const SizedBox(height: 12),
             _infoTile(Icons.badge_outlined, 'First Name', user.firstname ?? '—'),
             const SizedBox(height: 12),
             _infoTile(Icons.badge_outlined, 'Last Name', user.lastname ?? '—'),
+            const SizedBox(height: 12),
+            _infoTile(Icons.email_outlined, 'Email', user.email ?? '—'),
+            const SizedBox(height: 12),
+            _infoTile(Icons.phone_outlined, 'Contact', user.contactNumber ?? '—'),
             const SizedBox(height: 12),
 
             // Color swatch

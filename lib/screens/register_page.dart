@@ -29,7 +29,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _emailController = TextEditingController(); // 👈 add this
+  final _emailController = TextEditingController();
+  final _contactNumberController = TextEditingController();
 
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
@@ -45,7 +46,8 @@ class _RegisterPageState extends State<RegisterPage> {
     _usernameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _emailController.dispose(); // 👈 add this
+    _emailController.dispose(); 
+    _contactNumberController.dispose();
     super.dispose();
   }
 
@@ -55,13 +57,15 @@ class _RegisterPageState extends State<RegisterPage> {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
+    
 
     // Validation
     if (firstName.isEmpty ||
         lastName.isEmpty ||
         username.isEmpty ||
         password.isEmpty ||
-        _emailController.text.trim().isEmpty) {
+        _emailController.text.trim().isEmpty ||
+        _contactNumberController.text.trim().isEmpty) {
       setState(() => _errorMessage = 'Please fill in all fields.');
       return;
     }
@@ -117,6 +121,7 @@ class _RegisterPageState extends State<RegisterPage> {
             'firstname': firstName,
             'lastname': lastName,
             'email': _emailController.text.trim(),
+            'contact_number': _contactNumberController.text.trim(),
             'color':
                 '#${_selectedColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
           })
@@ -186,6 +191,13 @@ class _RegisterPageState extends State<RegisterPage> {
 
               // Email
               _field(controller: _emailController, hint: 'Email'),
+              const SizedBox(height: 16),
+
+              _field(
+                controller: _contactNumberController,
+                hint: 'Contact Number',
+                keyboardType: TextInputType.phone,
+              ),
               const SizedBox(height: 16),
 
               // Username
@@ -348,8 +360,10 @@ class _RegisterPageState extends State<RegisterPage> {
     required String hint,
     bool obscure = false,
     Widget? suffix,
+    TextInputType? keyboardType,
   }) {
     return TextField(
+      keyboardType: keyboardType,
       controller: controller,
       obscureText: obscure,
       style: const TextStyle(color: Colors.white),
