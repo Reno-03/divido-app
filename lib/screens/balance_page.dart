@@ -139,7 +139,7 @@ class _BalancePageState extends State<BalancePage> {
       text: suggestedAmount.abs().toStringAsFixed(2),
     );
     final noteController = TextEditingController();
-    bool isSubmitting = false;  // local flag for pay button state
+    bool isSubmitting = false; // local flag for pay button state
 
     showDialog(
       context: context,
@@ -147,86 +147,90 @@ class _BalancePageState extends State<BalancePage> {
       // without building the entire BalancePage again
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
-
-        return AlertDialog(
-          title: Text(isSettle ? 'Settle with $targetName' : 'Pay $targetName'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: amountController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+          return AlertDialog(
+            title: Text(
+              isSettle ? 'Settle with $targetName' : 'Pay $targetName',
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: amountController,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Amount (₱)',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
-                decoration: const InputDecoration(
-                  labelText: 'Amount (₱)',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: noteController,
+                  decoration: const InputDecoration(
+                    labelText: 'Note (optional)',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: noteController,
-                decoration: const InputDecoration(
-                  labelText: 'Note (optional)',
-                  border: OutlineInputBorder(),
+              FilledButton(
+                // disable button while submitting
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        final amount = double.tryParse(amountController.text);
+                        if (amount == null || amount <= 0) return;
+
+                        // 👇 set loading true
+                        setDialogState(() => isSubmitting = true);
+
+                        final myId = _currentUser.id!;
+                        final payerId = isSettle ? targetUserId : myId;
+                        final payeeId = isSettle ? myId : targetUserId;
+
+                        await supabase.from('payments').insert({
+                          'payer_id': payerId,
+                          'payee_id': payeeId,
+                          'amount': amount,
+                          'note': noteController.text.isEmpty
+                              ? null
+                              : noteController.text,
+                        });
+
+                        if (ctx.mounted) Navigator.pop(ctx);
+
+                        setState(() {
+                          _balanceFuture = _fetchNetBalances();
+                        });
+                      },
+                style: FilledButton.styleFrom(
+                  backgroundColor: isSettle ? Colors.green : Colors.red,
                 ),
+
+                // show loading indicator while submitting
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        isSettle ? 'Settle' : 'Pay',
+                        style: TextStyle(color: Colors.white),
+                      ),
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-
-            // disable button while submitting
-            onPressed: isSubmitting ? null
-                : () async {
-                    final amount = double.tryParse(amountController.text);
-                    if (amount == null || amount <= 0) return;
-
-                    // 👇 set loading true
-                    setDialogState(() => isSubmitting = true);
-
-                    final myId = _currentUser.id!;
-                    final payerId = isSettle ? targetUserId : myId;
-                    final payeeId = isSettle ? myId : targetUserId;
-
-                    await supabase.from('payments').insert({
-                      'payer_id': payerId,
-                      'payee_id': payeeId,
-                      'amount': amount,
-                      'note': noteController.text.isEmpty
-                          ? null
-                          : noteController.text,
-                    });
-
-                    if (ctx.mounted) Navigator.pop(ctx);
-
-                    setState(() {
-                      _balanceFuture = _fetchNetBalances();
-                    });
-                  },
-            style: FilledButton.styleFrom(
-              backgroundColor: isSettle ? Colors.green : Colors.red,
-            ),
-
-            // show loading indicator while submitting
-            child: isSubmitting
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : Text(isSettle ? 'Settle' : 'Pay', style: TextStyle(color: Colors.white),),
-          ),
-          ],
-        );
-        }
+          );
+        },
       ),
     );
   }
@@ -315,18 +319,19 @@ class _BalancePageState extends State<BalancePage> {
                           ),
                         ),
                         Text(
-                          net > 0
+                          // fix: if net is very close to zero (e.g. 0.001 or -0.001), show "All settled up" instead of "Owes you ₱0.00" or "You owe ₱0.00"
+                          net.abs() < 0.01
+                              ? 'All settled up'
+                              : net > 0
                               ? 'Owes you ₱${net.abs().toStringAsFixed(2)}'
-                              : net < 0
-                              ? 'You owe ₱${net.abs().toStringAsFixed(2)}'
-                              : 'All settled up',
+                              : 'You owe ₱${net.abs().toStringAsFixed(2)}',
                           style: TextStyle(
                             fontSize: 13,
-                            color: net > 0
+                            color: net.abs() < 0.01
+                                ? Colors.grey
+                                : net > 0
                                 ? Colors.green.shade400
-                                : net < 0
-                                ? Colors.red.shade400
-                                : Colors.grey,
+                                : Colors.red.shade400,
                           ),
                         ),
                       ],
@@ -495,7 +500,7 @@ class _BalancePageState extends State<BalancePage> {
         final balances = snapshot.data ?? [];
 
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.center, 
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
               child: RefreshIndicator(
@@ -507,7 +512,8 @@ class _BalancePageState extends State<BalancePage> {
                 child: ListView.builder(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
-                  itemCount: balances.length, //+ 2, // +2 for divider and logout
+                  itemCount:
+                      balances.length, //+ 2, // +2 for divider and logout
                   itemBuilder: (context, index) {
                     final entry = balances[index];
                     final double net = entry['net'] as double;
@@ -532,7 +538,7 @@ class _BalancePageState extends State<BalancePage> {
                         child: Column(
                           children: [
                             Padding(
-                              padding: const EdgeInsets.all(25),
+                              padding: const EdgeInsets.all(20),
                               child: Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
