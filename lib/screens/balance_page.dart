@@ -111,9 +111,9 @@ class _BalancePageState extends State<BalancePage> {
         return {
           'user_id': e.key,
           'name': user != null
-              // ? '${user['firstname']} ${user['lastname']}'
               ? '${user['firstname']}'
               : 'Unknown',
+          'lastname': user?['lastname'] ?? '',  
           'net': e.value,
           'color': user?['color'] as String? ?? '#6366F1',
         };
@@ -121,12 +121,10 @@ class _BalancePageState extends State<BalancePage> {
       ..sort((a, b) => (b['net'] as double).compareTo(a['net'] as double));
   }
 
-  String _getInitials(String name) {
-    final parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    }
-    return parts[0][0].toUpperCase();
+  String _getInitials(String firstname, String lastname) {
+    final f = firstname.isNotEmpty ? firstname[0] : '';
+    final l = lastname.isNotEmpty ? lastname[0] : '';
+    return '$f$l'.toUpperCase();
   }
 
   void _showPaymentDialog({
@@ -238,6 +236,7 @@ class _BalancePageState extends State<BalancePage> {
   void _showPaymentHistory({
     required String targetUserId,
     required String targetName,
+    required String targetLastname,
     required double net,
     required Color targetColor,
   }) async {
@@ -297,7 +296,7 @@ class _BalancePageState extends State<BalancePage> {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      _getInitials(targetName),
+                      _getInitials(targetName, targetLastname),
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
@@ -562,7 +561,7 @@ class _BalancePageState extends State<BalancePage> {
                                         ),
                                         alignment: Alignment.center,
                                         child: Text(
-                                          _getInitials(entry['name'] as String),
+                                          _getInitials(entry['name'] as String, entry['lastname'] as String),
                                           style: const TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.bold,
@@ -697,6 +696,7 @@ class _BalancePageState extends State<BalancePage> {
                                         targetUserId:
                                             entry['user_id'] as String,
                                         targetName: entry['name'] as String,
+                                        targetLastname: entry['lastname'] as String,
                                         net: net,
                                         targetColor: userColor,
                                       ),
@@ -751,6 +751,7 @@ class _BalancePageState extends State<BalancePage> {
                                 onTap: () => _showPaymentHistory(
                                   targetUserId: entry['user_id'] as String,
                                   targetName: entry['name'] as String,
+                                  targetLastname: entry['lastname'] as String,
                                   net: net,
                                   targetColor: userColor,
                                 ),
