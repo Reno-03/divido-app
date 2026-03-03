@@ -43,6 +43,41 @@ class _MinePageState extends State<MinePage> {
     }
   }
 
+  void _confirmDelete(String expenseId, ExpenseProvider provider) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Expense'),
+        content: const Text(
+          'Are you sure you want to delete this expense? This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await supabase.from('expenses').delete().eq('id', expenseId);
+                await provider.refresh();
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Failed to delete expense.')),
+                  );
+                }
+              }
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final expenseProvider = Provider.of<ExpenseProvider>(context);
@@ -163,8 +198,10 @@ class _MinePageState extends State<MinePage> {
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 33,
-                                            decoration: isPaid ? TextDecoration.lineThrough : null,  // 👈
-                                            decorationColor: Colors.white54, 
+                                            decoration: isPaid
+                                                ? TextDecoration.lineThrough
+                                                : null, // 👈
+                                            decorationColor: Colors.white54,
                                           ),
                                         ),
                                       ],
@@ -279,69 +316,128 @@ class _MinePageState extends State<MinePage> {
                               ),
 
                               // Full-width CTA at the bottom
-                              GestureDetector(
-                                onTap: () => _toggleExpensePaid(
-                                  expenseId,
-                                  isPaid,
-                                  expenseProvider,
-                                ),
-                                child: AnimatedContainer(
-                                  duration: const Duration(milliseconds: 300),
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isPaid
-                                        ? Colors.white.withValues(alpha: 0.05)
-                                        : Colors.green.withValues(alpha: 0.15),
-                                    borderRadius: const BorderRadius.only(
-                                      bottomLeft: Radius.circular(12),
-                                      bottomRight: Radius.circular(12),
-                                    ),
-                                    border: Border(
-                                      top: BorderSide(
-                                        color: isPaid
-                                            ? Colors.white.withValues(
-                                                alpha: 0.06,
-                                              )
-                                            : Colors.green.withValues(
-                                                alpha: 0.25,
-                                              ),
+                              Row(
+                                children: [
+                                  // Mark as Paid / Undo button
+                                  Expanded(
+                                    flex:
+                                        3, // 👈 75% of width is occupied for mark as paid
+                                    child: GestureDetector(
+                                      onTap: () => _toggleExpensePaid(
+                                        expenseId,
+                                        isPaid,
+                                        expenseProvider,
                                       ),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        isPaid
-                                            ? Icons.undo_rounded
-                                            : Icons
-                                                  .check_circle_outline_rounded,
-                                        size: 22,
-                                        color: isPaid
-                                            ? Colors.white.withValues(
-                                                alpha: 0.3,
-                                              )
-                                            : Colors.green.shade400,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        isPaid ? 'Undo' : 'Mark as Paid',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w600,
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 300,
+                                        ),
+                                        width: double.infinity,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                        decoration: BoxDecoration(
                                           color: isPaid
                                               ? Colors.white.withValues(
-                                                  alpha: 0.3,
+                                                  alpha: 0.05,
                                                 )
-                                              : Colors.green.shade400,
+                                              : Colors.green.withValues(
+                                                  alpha: 0.15,
+                                                ),
+                                          borderRadius: const BorderRadius.only(
+                                            bottomLeft: Radius.circular(12),
+                                          ),
+                                          border: Border(
+                                            top: BorderSide(
+                                              color: isPaid
+                                                  ? Colors.white.withValues(
+                                                      alpha: 0.06,
+                                                    )
+                                                  : Colors.green.withValues(
+                                                      alpha: 0.25,
+                                                    ),
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              isPaid
+                                                  ? Icons.undo_rounded
+                                                  : Icons
+                                                        .check_circle_outline_rounded,
+                                              size: 22,
+                                              color: isPaid
+                                                  ? Colors.white.withValues(
+                                                      alpha: 0.3,
+                                                    )
+                                                  : Colors.green.shade400,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              isPaid ? 'Undo' : 'Mark as Paid',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w600,
+                                                color: isPaid
+                                                    ? Colors.white.withValues(
+                                                        alpha: 0.3,
+                                                      )
+                                                    : Colors.green.shade400,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                ),
+
+                                  // Divider
+                                  Container(
+                                    width: 1,
+                                    height: 50,
+                                    color: Colors.white.withValues(alpha: 0.08),
+                                  ),
+
+                                  // Delete button
+                                  Expanded(
+                                    flex:
+                                        1, // 👈 25% of width is occupied for delete button
+                                    child: GestureDetector(
+                                      onTap: () => _confirmDelete(
+                                        expenseId,
+                                        expenseProvider,
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 13,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withValues(
+                                            alpha: 0.10,
+                                          ),
+                                          borderRadius: const BorderRadius.only(
+                                            bottomRight: Radius.circular(12),
+                                          ),
+                                          border: Border(
+                                            top: BorderSide(
+                                              color: Colors.red.withValues(
+                                                alpha: 0.25,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          Icons.delete_outline,
+                                          size: 28,
+                                          color: Colors.red.shade400,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
