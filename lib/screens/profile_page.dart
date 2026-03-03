@@ -223,10 +223,13 @@ class _ProfilePageState extends State<ProfilePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text(
+          'Profile',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 8.0),
+            padding: const EdgeInsets.only(right: 12.0),
             child: IconButton(
               icon: const Icon(Icons.edit_outlined),
               onPressed: _showEditModal,
