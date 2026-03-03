@@ -143,7 +143,9 @@ class _HomePageState extends State<HomePage> {
                 title: const Text('Profile'),
                 onTap: () {
                   Navigator.pop(context); // close drawer
-                  Navigator.pushNamed(context, '/profile');
+                  Navigator.pushNamed(context, '/profile').then((_) {
+                    setState(() {}); // 👈 rebuilds HomePage (and drawer) after editing prfole
+                  });
                 },
               ),
             ],

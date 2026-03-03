@@ -1,6 +1,8 @@
 import 'package:divido_app/constants/color_options.dart';
+import 'package:divido_app/providers/expense_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:divido_app/services/current_user.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -168,6 +170,9 @@ class _ProfilePageState extends State<ProfilePage> {
                               '#${selectedColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
 
                           if (ctx.mounted) Navigator.pop(ctx);
+
+                          // refresh expenses so owner name updates in AllPage
+                          Provider.of<ExpenseProvider>(context, listen: false).refresh();
 
                           setState(() {}); // refresh ProfilePage
                         },
