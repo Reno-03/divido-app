@@ -2,8 +2,153 @@ import 'package:flutter/material.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  void _showEditModal() {
+    final user = CurrentUser.instance;
+    final firstNameController = TextEditingController(text: user.firstname);
+    final lastNameController = TextEditingController(text: user.lastname);
+    final usernameController = TextEditingController(text: user.username);
+    final contactController = TextEditingController(text: user.contactNumber);
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            0,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom +
+                20, // 👈 moves form above keyboard
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Edit Profile',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey.withValues(alpha: 0.2),
+                      ),
+                      child: const Icon(Icons.close, size: 16),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              _editField(
+                firstNameController,
+                'First Name',
+                Icons.badge_outlined,
+              ),
+              const SizedBox(height: 24),
+              _editField(lastNameController, 'Last Name', Icons.badge_outlined),
+              const SizedBox(height: 24),
+              _editField(usernameController, 'Username', Icons.person_outline),
+              const SizedBox(height: 24),
+              _editField(
+                contactController,
+                'Contact Number',
+                Icons.phone_outlined,
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: isSaving
+                      ? null
+                      : () async {
+                          setModalState(() => isSaving = true);
+
+                          await Supabase.instance.client
+                              .from('profiles')
+                              .update({
+                                'firstname': firstNameController.text.trim(),
+                                'lastname': lastNameController.text.trim(),
+                                'username': usernameController.text.trim(),
+                                'contact_number': contactController.text.trim(),
+                              })
+                              .eq('id', CurrentUser.instance.id!);
+
+                          // Update local user
+                          CurrentUser.instance.firstname = firstNameController
+                              .text
+                              .trim();
+                          CurrentUser.instance.lastname = lastNameController
+                              .text
+                              .trim();
+                          CurrentUser.instance.username = usernameController
+                              .text
+                              .trim();
+                          CurrentUser.instance.contactNumber = contactController
+                              .text
+                              .trim();
+
+                          if (ctx.mounted) Navigator.pop(ctx);
+
+                          setState(() {}); // refresh ProfilePage
+                        },
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text(
+                          'Save Changes',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ),
+
+              SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +163,19 @@ class ProfilePage extends StatelessWidget {
         '${user.firstname?[0].toUpperCase() ?? ''}${user.lastname?[0].toUpperCase() ?? ''}';
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Profile')),
+      appBar: AppBar(
+        title: const Text('Profile'),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: _showEditModal,
+            ),
+          ),
+        ],
+      ),
+
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -44,23 +201,28 @@ class ProfilePage extends StatelessWidget {
             // Full name
             Text(
               '${user.firstname ?? ''} ${user.lastname ?? ''}',
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 32),
 
             // Info cards
             _infoTile(Icons.person_outline, 'Username', user.username ?? '—'),
             const SizedBox(height: 12),
-            _infoTile(Icons.badge_outlined, 'First Name', user.firstname ?? '—'),
+            _infoTile(
+              Icons.badge_outlined,
+              'First Name',
+              user.firstname ?? '—',
+            ),
             const SizedBox(height: 12),
             _infoTile(Icons.badge_outlined, 'Last Name', user.lastname ?? '—'),
             const SizedBox(height: 12),
             _infoTile(Icons.email_outlined, 'Email', user.email ?? '—'),
             const SizedBox(height: 12),
-            _infoTile(Icons.phone_outlined, 'Contact', user.contactNumber ?? '—'),
+            _infoTile(
+              Icons.phone_outlined,
+              'Contact',
+              user.contactNumber ?? '—',
+            ),
             const SizedBox(height: 12),
 
             // Color swatch
@@ -72,7 +234,11 @@ class ProfilePage extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.palette_outlined, size: 20, color: Colors.white54),
+                  const Icon(
+                    Icons.palette_outlined,
+                    size: 20,
+                    color: Colors.white54,
+                  ),
                   const SizedBox(width: 12),
                   const Expanded(
                     child: Text(
@@ -150,6 +316,29 @@ class ProfilePage extends StatelessWidget {
             style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _editField(
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    TextInputType? keyboardType,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, size: 20),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(
+            color: Colors.white.withValues(alpha: 0.2), // 👈 change this
+          ),
+        ),
       ),
     );
   }
