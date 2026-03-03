@@ -1,3 +1,4 @@
+import 'package:divido_app/constants/color_options.dart';
 import 'package:flutter/material.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -17,6 +18,12 @@ class _ProfilePageState extends State<ProfilePage> {
     final usernameController = TextEditingController(text: user.username);
     final contactController = TextEditingController(text: user.contactNumber);
     bool isSaving = false;
+
+    // get current user color
+    final rawColor = user.color ?? '#6366F1';
+    Color selectedColor = Color(
+      int.parse('FF${rawColor.replaceAll('#', '')}', radix: 16),
+    );
 
     showModalBottomSheet(
       context: context,
@@ -81,6 +88,49 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const SizedBox(height: 24),
 
+              const Text(
+                'Pick your color:',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 10,
+                children: kColorOptions.map((color) {
+                  final isSelected = selectedColor == color;
+                  return GestureDetector(
+                    onTap: () => setModalState(() => selectedColor = color),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: isSelected
+                            ? Border.all(color: Colors.white, width: 3)
+                            : null,
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: color.withValues(alpha: 0.6),
+                                  blurRadius: 8,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: isSelected
+                          ? const Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 18,
+                            )
+                          : null,
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 24),
+
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -96,6 +146,8 @@ class _ProfilePageState extends State<ProfilePage> {
                                 'lastname': lastNameController.text.trim(),
                                 'username': usernameController.text.trim(),
                                 'contact_number': contactController.text.trim(),
+                                'color':
+                                    '#${selectedColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
                               })
                               .eq('id', CurrentUser.instance.id!);
 
@@ -112,6 +164,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           CurrentUser.instance.contactNumber = contactController
                               .text
                               .trim();
+                          CurrentUser.instance.color =
+                              '#${selectedColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
 
                           if (ctx.mounted) Navigator.pop(ctx);
 

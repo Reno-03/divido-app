@@ -1,18 +1,7 @@
+import 'package:divido_app/constants/color_options.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-// Add these color options at the top of the state
-const _colorOptions = [
-  Color(0xFF6366F1), // indigo
-  Color(0xFF0EA5E9), // sky
-  Color(0xFF10B981), // emerald
-  Color(0xFFF59E0B), // amber
-  Color(0xFFEC4899), // pink
-  Color(0xFFEF4444), // red
-  Color(0xFF8B5CF6), // violet
-  Color(0xFF06B6D4), // cyan
-];
 
 Color _selectedColor = const Color(0xFF6366F1);
 
@@ -259,7 +248,7 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 10),
               Wrap(
                 spacing: 10,
-                children: _colorOptions.map((color) {
+                children: kColorOptions.map((color) {
                   final isSelected = _selectedColor == color;
                   return GestureDetector(
                     onTap: () => setState(() => _selectedColor = color),
