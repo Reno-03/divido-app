@@ -1,4 +1,5 @@
 import 'package:divido_app/providers/expense_provider.dart';
+import 'package:divido_app/screens/edit_expense_modal.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -74,6 +75,32 @@ class _MinePageState extends State<MinePage> {
             child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showEditExpenseModal({
+    required String expenseId,
+    required String currentTitle,
+    required double currentTotal,
+    required List<Map<String, dynamic>> breakdowns,
+    required ExpenseProvider provider,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => EditExpenseModal(
+        expenseId: expenseId,
+        initialTitle: currentTitle,
+        initialTotal: currentTotal,
+        initialBreakdowns: breakdowns,
+        onSaved: provider.refresh,
       ),
     );
   }
@@ -179,18 +206,60 @@ class _MinePageState extends State<MinePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.center,
                                       children: [
-                                        Expanded(
-                                          child: Text(
-                                            expense['title'] ?? '',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 20,
-                                              decoration: isPaid
-                                                  ? TextDecoration.lineThrough
-                                                  : null,
-                                              decorationColor: Colors.white54,
+                                        Row(
+                                          children: [
+                                            Text(
+                                              expense['title'] ?? '',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 20,
+                                                decoration: isPaid
+                                                    ? TextDecoration.lineThrough
+                                                    : null,
+                                                decorationColor: Colors.white54,
+                                              ),
                                             ),
-                                          ),
+                                            const SizedBox(width: 12),
+                                            // 👈 icon right beside the title
+                                            GestureDetector(
+                                              onTap: () => _showEditExpenseModal(
+                                                expenseId: expenseId,
+                                                currentTitle:
+                                                    expense['title'] ?? '',
+                                                currentTotal:
+                                                    (expense['total'] as num)
+                                                        .toDouble(),
+                                                breakdowns:
+                                                    (expense['expense_breakdowns']
+                                                            as List<dynamic>)
+                                                        .map(
+                                                          (e) =>
+                                                              Map<
+                                                                String,
+                                                                dynamic
+                                                              >.from(e as Map),
+                                                        )
+                                                        .toList(), // 👈 cast each element
+                                                provider: expenseProvider,
+                                              ),
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  5,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.08),
+                                                ),
+                                                child: Icon(
+                                                  Icons.edit_outlined,
+                                                  size: 18,
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.8),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                         const SizedBox(width: 12),
                                         Text(
@@ -200,7 +269,7 @@ class _MinePageState extends State<MinePage> {
                                             fontSize: 33,
                                             decoration: isPaid
                                                 ? TextDecoration.lineThrough
-                                                : null, // 👈
+                                                : null,
                                             decorationColor: Colors.white54,
                                           ),
                                         ),
