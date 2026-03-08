@@ -64,6 +64,7 @@ flutter:
   assets:
     - assets/.env
     - assets/divido_logo.png
+    - assets/gcash_logo.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -11,6 +11,7 @@ class CurrentUser {
   String? color; 
   String? email; 
   String? contactNumber;
+  bool? isGcashReady;
 
   void setFromMap(Map<String, dynamic> data) {
     id = data['id'];
@@ -20,6 +21,7 @@ class CurrentUser {
     color = data['color'];
     email = data['email']; 
     contactNumber = data['contact_number'] as String?;
+    isGcashReady = data['is_gcash_ready'] as bool? ?? false;
   }
 
   void clear() {
@@ -30,5 +32,6 @@ class CurrentUser {
     color = null;
     email = null;
     contactNumber = null;
+    isGcashReady = null;
   }
 }

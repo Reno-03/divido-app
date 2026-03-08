@@ -172,7 +172,10 @@ class _ProfilePageState extends State<ProfilePage> {
                           if (ctx.mounted) Navigator.pop(ctx);
 
                           // refresh expenses so owner name updates in AllPage
-                          Provider.of<ExpenseProvider>(context, listen: false).refresh();
+                          Provider.of<ExpenseProvider>(
+                            context,
+                            listen: false,
+                          ).refresh();
 
                           setState(() {}); // refresh ProfilePage
                         },
@@ -209,6 +212,69 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  Widget _gcashPill(bool isReady) {
+  final color = isReady ? Colors.green : Colors.red;
+
+  return GestureDetector(
+    onTap: () async {
+      final newValue = !isReady;
+
+      // 1. Update UI instantly
+      CurrentUser.instance.isGcashReady = newValue;
+      setState(() {});
+
+      // 2. Sync to Supabase in background
+      try {
+        await Supabase.instance.client
+            .from('profiles')
+            .update({'is_gcash_ready': newValue})
+            .eq('id', CurrentUser.instance.id!);
+      } catch (e) {
+        // Revert on failure
+        CurrentUser.instance.isGcashReady = isReady;
+        setState(() {});
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to update GCash status.')),
+          );
+        }
+      }
+    },
+    child: AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: isReady
+            ? const Color(0xFFE8FFF3)
+            : const Color(0xFFFFECEC),
+        borderRadius: BorderRadius.circular(50),
+        border: Border.all(
+          color: isReady
+              ? Colors.green.withValues(alpha: 0.4)
+              : Colors.red.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Image.asset(
+            'assets/gcash_logo.png',
+            width: 20,
+            height: 20,
+            fit: BoxFit.cover,
+          ),
+          const SizedBox(width: 8),
+          Icon(
+            isReady ? Icons.check_circle : Icons.cancel,
+            size: 18,
+            color: color,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
   @override
   Widget build(BuildContext context) {
     final user = CurrentUser.instance;
@@ -225,7 +291,7 @@ class _ProfilePageState extends State<ProfilePage> {
       appBar: AppBar(
         title: const Text(
           'Profile',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         actions: [
           Padding(
@@ -243,8 +309,6 @@ class _ProfilePageState extends State<ProfilePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 16),
-
             // Avatar
             CircleAvatar(
               radius: 48,
@@ -280,11 +344,48 @@ class _ProfilePageState extends State<ProfilePage> {
             const SizedBox(height: 12),
             _infoTile(Icons.email_outlined, 'Email', user.email ?? '—'),
             const SizedBox(height: 12),
-            _infoTile(
-              Icons.phone_outlined,
-              'Contact',
-              user.contactNumber ?? '—',
+
+            // Contact row with GCash pill
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.phone_outlined,
+                    size: 20,
+                    color: Colors.white54,
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Contact',
+                    style: TextStyle(color: Colors.white54, fontSize: 13),
+                  ),
+                  const Spacer(),
+
+                  // GCash pill
+                  _gcashPill(user.isGcashReady ?? false),
+                  const SizedBox(width: 10),
+
+                  Text(
+                    user.contactNumber ?? '—',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 15,
+                    ),
+                  ),
+                ],
+              ),
             ),
+            // _infoTile(
+            //   Icons.phone_outlined,
+            //   'Contact',
+            //   user.contactNumber ?? '—',
+            // ),
+            // const SizedBox(height: 12),
             const SizedBox(height: 12),
 
             // Color swatch
