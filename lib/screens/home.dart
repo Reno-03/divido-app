@@ -1,4 +1,6 @@
 import 'package:divido_app/screens/create_expense_modal.dart';
+import 'package:divido_app/services/changelog_service.dart';
+import 'package:divido_app/widgets/changelog_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -35,6 +37,17 @@ class _HomePageState extends State<HomePage> {
       }
 
       Provider.of<ExpenseProvider>(context, listen: false).fetchExpenses();
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final shouldShow = await ChangelogService.shouldShow();
+      if (shouldShow && mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const ChangelogDialog(),
+        );
+      }
     });
   }
 
@@ -144,7 +157,9 @@ class _HomePageState extends State<HomePage> {
                 onTap: () {
                   Navigator.pop(context); // close drawer
                   Navigator.pushNamed(context, '/profile').then((_) {
-                    setState(() {}); // 👈 rebuilds HomePage (and drawer) after editing prfole
+                    setState(
+                      () {},
+                    ); // 👈 rebuilds HomePage (and drawer) after editing prfole
                   });
                 },
               ),
