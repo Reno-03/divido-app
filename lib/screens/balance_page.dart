@@ -695,38 +695,7 @@ class _BalancePageState extends State<BalancePage> {
                                                   ),
                                                 ),
                                                 const SizedBox(width: 4),
-                                                GestureDetector(
-                                                  onTap: () {
-                                                    Clipboard.setData(
-                                                      ClipboardData(
-                                                        text:
-                                                            entry['contact_number']
-                                                                as String,
-                                                      ),
-                                                    );
-                                                    ScaffoldMessenger.of(
-                                                      context,
-                                                    ).showSnackBar(
-                                                      const SnackBar(
-                                                        content: Text(
-                                                          'Contact number copied!',
-                                                        ),
-                                                        duration: Duration(
-                                                          seconds: 1,
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
-                                                  child: Padding(
-                                                    padding: const EdgeInsets.only(left: 4),
-                                                    child: Icon(
-                                                      Icons.copy,
-                                                      size: 16,
-                                                      color: Colors.white
-                                                          .withValues(alpha: 0.4),
-                                                    ),
-                                                  ),
-                                                ),
+                                                _CopyContactButton(contactNumber: entry['contact_number'] as String),
                                               ] else ...[
                                                 const SizedBox(width: 8),
                                                 Text(
@@ -974,6 +943,45 @@ class _BalancePageState extends State<BalancePage> {
           ],
         );
       },
+    );
+  }
+}
+
+class _CopyContactButton extends StatefulWidget {
+  final String contactNumber;
+  const _CopyContactButton({required this.contactNumber});
+
+  @override
+  State<_CopyContactButton> createState() => _CopyContactButtonState();
+}
+
+class _CopyContactButtonState extends State<_CopyContactButton> {
+  bool _copied = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () async {
+        if (_copied) return;
+        await Clipboard.setData(ClipboardData(text: widget.contactNumber));
+        setState(() => _copied = true);
+        await Future.delayed(const Duration(seconds: 1));
+        if (mounted) setState(() => _copied = false);
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(left: 4),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: Icon(
+            _copied ? Icons.check : Icons.copy,
+            key: ValueKey(_copied),
+            size: 16,
+            color: _copied
+                ? Colors.green.shade400
+                : Colors.white.withValues(alpha: 0.4),
+          ),
+        ),
+      ),
     );
   }
 }
