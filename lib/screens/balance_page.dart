@@ -501,9 +501,9 @@ class _BalancePageState extends State<BalancePage> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
+            color: Colors.white.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(50),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -619,54 +619,61 @@ class _BalancePageState extends State<BalancePage> {
                               child: Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
-                                    crossAxisAlignment: CrossAxisAlignment.center, 
+                                crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
                                     children: [
-                                      // Avatar badge
-                                      Container(
-                                        width: 44,
-                                        height: 44,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          gradient: LinearGradient(
-                                            begin: Alignment.topLeft,
-                                            end: Alignment.bottomRight,
-                                            colors: [
-                                              userColor,
-                                              userColor.withValues(alpha: 0.7),
-                                            ],
-                                          ),
-                                        ),
-                                        alignment: Alignment.center,
-                                        child: Text(
-                                          _getInitials(
-                                            entry['name'] as String,
-                                            entry['lastname'] as String,
-                                          ),
-                                          style: const TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
                                       // Name + label
                                       Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Text(
-                                            entry['name'] as String,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 20,
-                                            ),
+                                          Row(
+                                            children: [
+                                              // Avatar badge
+                                              Container(
+                                                width: 34,
+                                                height: 34,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                    colors: [
+                                                      userColor,
+                                                      userColor.withValues(
+                                                        alpha: 0.7,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                alignment: Alignment.center,
+                                                child: Text(
+                                                  _getInitials(
+                                                    entry['name'] as String,
+                                                    entry['lastname'] as String,
+                                                  ),
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Text(
+                                                entry['name'] as String,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 20,
+                                                ),
+                                              ),
+                                            ],
                                           ),
 
-                                          const SizedBox(height: 6),
+                                          const SizedBox(height: 12),
 
                                           // GCash pill + number + copy icon
                                           Row(
@@ -695,7 +702,11 @@ class _BalancePageState extends State<BalancePage> {
                                                   ),
                                                 ),
                                                 const SizedBox(width: 4),
-                                                _CopyContactButton(contactNumber: entry['contact_number'] as String),
+                                                _CopyContactButton(
+                                                  contactNumber:
+                                                      entry['contact_number']
+                                                          as String,
+                                                ),
                                               ] else ...[
                                                 const SizedBox(width: 8),
                                                 Text(
@@ -716,7 +727,7 @@ class _BalancePageState extends State<BalancePage> {
                                   ),
                                   // Amount
                                   Column(
-                                    mainAxisSize: MainAxisSize.min,  
+                                    mainAxisSize: MainAxisSize.min,
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Text(
@@ -735,7 +746,9 @@ class _BalancePageState extends State<BalancePage> {
                                             ? 'owes you'
                                             : 'you owe',
                                         style: TextStyle(
-                                          color: balanceColor.withValues(alpha: 0.75),
+                                          color: balanceColor.withValues(
+                                            alpha: 0.75,
+                                          ),
                                           fontSize: 13,
                                         ),
                                       ),
