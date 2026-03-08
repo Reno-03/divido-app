@@ -201,65 +201,69 @@ class _MinePageState extends State<MinePage> {
                                   children: [
                                     // Title + Total
                                     Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
                                       crossAxisAlignment:
                                           CrossAxisAlignment.center,
                                       children: [
-                                        Row(
-                                          children: [
-                                            Text(
-                                              expense['title'] ?? '',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 20,
-                                                decoration: isPaid
-                                                    ? TextDecoration.lineThrough
-                                                    : null,
-                                                decorationColor: Colors.white54,
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            // 👈 icon right beside the title
-                                            GestureDetector(
-                                              onTap: () => _showEditExpenseModal(
-                                                expenseId: expenseId,
-                                                currentTitle:
-                                                    expense['title'] ?? '',
-                                                currentTotal:
-                                                    (expense['total'] as num)
-                                                        .toDouble(),
-                                                breakdowns:
-                                                    (expense['expense_breakdowns']
-                                                            as List<dynamic>)
-                                                        .map(
-                                                          (e) =>
-                                                              Map<
-                                                                String,
-                                                                dynamic
-                                                              >.from(e as Map),
-                                                        )
-                                                        .toList(), // 👈 cast each element
-                                                provider: expenseProvider,
-                                              ),
-                                              child: Container(
-                                                padding: const EdgeInsets.all(
-                                                  5,
-                                                ),
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.08),
-                                                ),
-                                                child: Icon(
-                                                  Icons.edit_outlined,
-                                                  size: 18,
-                                                  color: Colors.white
-                                                      .withValues(alpha: 0.8),
+                                        Expanded(
+                                          child: Row(
+                                            children: [
+                                              // Using flexible will wrap the text if it is too long
+                                              // But the the price still has fixed size
+                                              Flexible(
+                                                child: Text(
+                                                  expense['title'] ?? '',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 20,
+                                                    decoration: isPaid
+                                                        ? TextDecoration.lineThrough
+                                                        : null,
+                                                    decorationColor: Colors.white54,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          ],
+                                              const SizedBox(width: 12),
+                                              // 👈 icon right beside the title
+                                              GestureDetector(
+                                                onTap: () => _showEditExpenseModal(
+                                                  expenseId: expenseId,
+                                                  currentTitle:
+                                                      expense['title'] ?? '',
+                                                  currentTotal:
+                                                      (expense['total'] as num)
+                                                          .toDouble(),
+                                                  breakdowns:
+                                                      (expense['expense_breakdowns']
+                                                              as List<dynamic>)
+                                                          .map(
+                                                            (e) =>
+                                                                Map<
+                                                                  String,
+                                                                  dynamic
+                                                                >.from(e as Map),
+                                                          )
+                                                          .toList(), // 👈 cast each element
+                                                  provider: expenseProvider,
+                                                ),
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(
+                                                    5,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Colors.white
+                                                        .withValues(alpha: 0.08),
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.edit_outlined,
+                                                    size: 18,
+                                                    color: Colors.white
+                                                        .withValues(alpha: 0.8),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                         const SizedBox(width: 12),
                                         Text(
