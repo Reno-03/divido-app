@@ -326,7 +326,7 @@ class _ProfilePageState extends State<ProfilePage> {
               TextField(
                 controller: controller,
                 autofocus: true,
-                maxLength: 80,
+                maxLength: 50,
                 decoration: InputDecoration(
                   hintText: 'e.g. Pay me via GCash 😄',
                   border: OutlineInputBorder(
@@ -720,18 +720,20 @@ class _ProfilePageState extends State<ProfilePage> {
               color: Colors.white.withValues(alpha: 0.4),
             ),
             const SizedBox(width: 6),
-            Text(
-              status != null && status.isNotEmpty
-                  ? status
-                  : 'Tap to set a status...',
-              style: TextStyle(
-                fontSize: 13,
-                color: status != null && status.isNotEmpty
-                    ? Colors.white.withValues(alpha: 0.85)
-                    : Colors.white.withValues(alpha: 0.35),
-                fontStyle: status == null || status.isEmpty
-                    ? FontStyle.italic
-                    : FontStyle.normal,
+            Flexible(
+              child: Text(
+                status != null && status.isNotEmpty
+                    ? status
+                    : 'Tap to set a status...',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: status != null && status.isNotEmpty
+                      ? Colors.white.withValues(alpha: 0.85)
+                      : Colors.white.withValues(alpha: 0.35),
+                  fontStyle: status == null || status.isEmpty
+                      ? FontStyle.italic
+                      : FontStyle.normal,
+                ),
               ),
             ),
           ],
