@@ -242,54 +242,53 @@ class _BalancePageState extends State<BalancePage> {
   }
 
   void _confirmDeletePayment({
-  required String paymentId,
-  required BuildContext ctx,
-  required String targetUserId,
-  required String targetName,
-  required String targetLastname,
-  required double net,
-  required Color targetColor,
-}) {
-  showDialog(
-    context: ctx,
-    builder: (dialogCtx) => AlertDialog(
-      title: const Text('Remove Payment'),
-      content: const Text('Are you sure you want to remove this payment? This cannot be undone.'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(dialogCtx),
-          child: const Text('Cancel'),
+    required String paymentId,
+    required BuildContext ctx,
+    required String targetUserId,
+    required String targetName,
+    required String targetLastname,
+    required double net,
+    required Color targetColor,
+  }) {
+    showDialog(
+      context: ctx,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('Remove Payment'),
+        content: const Text(
+          'Are you sure you want to remove this payment? This cannot be undone.',
         ),
-        FilledButton(
-          onPressed: () async {
-            Navigator.pop(dialogCtx); // close confirm dialog
-            Navigator.pop(ctx);       // close payment history sheet
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(dialogCtx); // close confirm dialog
+              Navigator.pop(ctx); // close payment history sheet
 
-            await supabase
-                .from('payments')
-                .delete()
-                .eq('id', paymentId);
+              await supabase.from('payments').delete().eq('id', paymentId);
 
-            setState(() {
-              _balanceFuture = _fetchNetBalances();
-            });
+              setState(() {
+                _balanceFuture = _fetchNetBalances();
+              });
 
-            // Reopen payment history with updated data
-            _showPaymentHistory(
-              targetUserId: targetUserId,
-              targetName: targetName,
-              targetLastname: targetLastname,
-              net: net,
-              targetColor: targetColor,
-            );
-          },
-          style: FilledButton.styleFrom(backgroundColor: Colors.red),
-          child: const Text('Remove', style: TextStyle(color: Colors.white)),
-        ),
-      ],
-    ),
-  );
-}
+              // Reopen payment history with updated data
+              _showPaymentHistory(
+                targetUserId: targetUserId,
+                targetName: targetName,
+                targetLastname: targetLastname,
+                net: net,
+                targetColor: targetColor,
+              );
+            },
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Remove', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showPaymentHistory({
     required String targetUserId,
@@ -1138,18 +1137,17 @@ class _BalancePageState extends State<BalancePage> {
                               ),
                             ),
 
-                            // Full-width CTA — same style as MinePage
-                            if (!isZero)
+                            if (!isZero && !isPositive)
                               Row(
                                 children: [
-                                  // Pay/Settle Button
+                                  // Pay Button
                                   Expanded(
                                     child: GestureDetector(
                                       onTap: () => _showPaymentDialog(
                                         targetUserId:
                                             entry['user_id'] as String,
                                         targetName: entry['name'] as String,
-                                        isSettle: isPositive,
+                                        isSettle: false,
                                         suggestedAmount: net.abs(),
                                       ),
                                       child: Container(
@@ -1157,25 +1155,17 @@ class _BalancePageState extends State<BalancePage> {
                                           vertical: 14,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: isPositive
-                                              ? Colors.green.withValues(
-                                                  alpha: 0.15,
-                                                )
-                                              : Colors.red.withValues(
-                                                  alpha: 0.15,
-                                                ),
+                                          color: Colors.red.withValues(
+                                            alpha: 0.15,
+                                          ),
                                           borderRadius: const BorderRadius.only(
                                             bottomLeft: Radius.circular(12),
                                           ),
                                           border: Border(
                                             top: BorderSide(
-                                              color: isPositive
-                                                  ? Colors.green.withValues(
-                                                      alpha: 0.25,
-                                                    )
-                                                  : Colors.red.withValues(
-                                                      alpha: 0.25,
-                                                    ),
+                                              color: Colors.red.withValues(
+                                                alpha: 0.25,
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -1184,23 +1174,17 @@ class _BalancePageState extends State<BalancePage> {
                                               MainAxisAlignment.center,
                                           children: [
                                             Icon(
-                                              isPositive
-                                                  ? Icons.handshake_outlined
-                                                  : Icons.payments_outlined,
+                                              Icons.payments_outlined,
                                               size: 22,
-                                              color: isPositive
-                                                  ? Colors.green.shade400
-                                                  : Colors.red.shade400,
+                                              color: Colors.red.shade400,
                                             ),
                                             const SizedBox(width: 6),
                                             Text(
-                                              isPositive ? 'Settle' : 'Pay',
+                                              'Pay',
                                               style: TextStyle(
                                                 fontSize: 18,
                                                 fontWeight: FontWeight.w600,
-                                                color: isPositive
-                                                    ? Colors.green.shade400
-                                                    : Colors.red.shade400,
+                                                color: Colors.red.shade400,
                                               ),
                                             ),
                                           ],
@@ -1209,16 +1193,14 @@ class _BalancePageState extends State<BalancePage> {
                                     ),
                                   ),
 
-                                  // Divider between buttons
+                                  // Divider
                                   Container(
                                     width: 1,
                                     height: 50,
-                                    color: isPositive
-                                        ? Colors.green.withValues(alpha: 0.25)
-                                        : Colors.red.withValues(alpha: 0.25),
+                                    color: Colors.red.withValues(alpha: 0.25),
                                   ),
 
-                                  // Payment History Button
+                                  // Activity Button
                                   Expanded(
                                     child: GestureDetector(
                                       onTap: () => _showPaymentHistory(
@@ -1275,8 +1257,8 @@ class _BalancePageState extends State<BalancePage> {
                                 ],
                               ),
 
-                            // if it is settled, only show the payment history button centered
-                            if (isZero)
+                            // Settled or they owe you — Activity only
+                            if (isZero || isPositive)
                               GestureDetector(
                                 onTap: () => _showPaymentHistory(
                                   targetUserId: entry['user_id'] as String,
@@ -1325,6 +1307,193 @@ class _BalancePageState extends State<BalancePage> {
                                   ),
                                 ),
                               ),
+                            // // Full-width CTA — same style as MinePage
+                            // if (!isZero)
+                            //   Row(
+                            //     children: [
+                            //       // Pay/Settle Button
+                            //       Expanded(
+                            //         child: GestureDetector(
+                            //           onTap: () => _showPaymentDialog(
+                            //             targetUserId:
+                            //                 entry['user_id'] as String,
+                            //             targetName: entry['name'] as String,
+                            //             isSettle: isPositive,
+                            //             suggestedAmount: net.abs(),
+                            //           ),
+                            //           child: Container(
+                            //             padding: const EdgeInsets.symmetric(
+                            //               vertical: 14,
+                            //             ),
+                            //             decoration: BoxDecoration(
+                            //               color: isPositive
+                            //                   ? Colors.green.withValues(
+                            //                       alpha: 0.15,
+                            //                     )
+                            //                   : Colors.red.withValues(
+                            //                       alpha: 0.15,
+                            //                     ),
+                            //               borderRadius: const BorderRadius.only(
+                            //                 bottomLeft: Radius.circular(12),
+                            //               ),
+                            //               border: Border(
+                            //                 top: BorderSide(
+                            //                   color: isPositive
+                            //                       ? Colors.green.withValues(
+                            //                           alpha: 0.25,
+                            //                         )
+                            //                       : Colors.red.withValues(
+                            //                           alpha: 0.25,
+                            //                         ),
+                            //                 ),
+                            //               ),
+                            //             ),
+                            //             child: Row(
+                            //               mainAxisAlignment:
+                            //                   MainAxisAlignment.center,
+                            //               children: [
+                            //                 Icon(
+                            //                   isPositive
+                            //                       ? Icons.handshake_outlined
+                            //                       : Icons.payments_outlined,
+                            //                   size: 22,
+                            //                   color: isPositive
+                            //                       ? Colors.green.shade400
+                            //                       : Colors.red.shade400,
+                            //                 ),
+                            //                 const SizedBox(width: 6),
+                            //                 Text(
+                            //                   isPositive ? 'Settle' : 'Pay',
+                            //                   style: TextStyle(
+                            //                     fontSize: 18,
+                            //                     fontWeight: FontWeight.w600,
+                            //                     color: isPositive
+                            //                         ? Colors.green.shade400
+                            //                         : Colors.red.shade400,
+                            //                   ),
+                            //                 ),
+                            //               ],
+                            //             ),
+                            //           ),
+                            //         ),
+                            //       ),
+
+                            //       // Divider between buttons
+                            //       Container(
+                            //         width: 1,
+                            //         height: 50,
+                            //         color: isPositive
+                            //             ? Colors.green.withValues(alpha: 0.25)
+                            //             : Colors.red.withValues(alpha: 0.25),
+                            //       ),
+
+                            //       // Payment History Button
+                            //       Expanded(
+                            //         child: GestureDetector(
+                            //           onTap: () => _showPaymentHistory(
+                            //             targetUserId:
+                            //                 entry['user_id'] as String,
+                            //             targetName: entry['name'] as String,
+                            //             targetLastname:
+                            //                 entry['lastname'] as String,
+                            //             net: net,
+                            //             targetColor: userColor,
+                            //           ),
+                            //           child: Container(
+                            //             padding: const EdgeInsets.symmetric(
+                            //               vertical: 14,
+                            //             ),
+                            //             decoration: BoxDecoration(
+                            //               color: Colors.blue.withValues(
+                            //                 alpha: 0.10,
+                            //               ),
+                            //               borderRadius: const BorderRadius.only(
+                            //                 bottomRight: Radius.circular(12),
+                            //               ),
+                            //               border: Border(
+                            //                 top: BorderSide(
+                            //                   color: Colors.blue.withValues(
+                            //                     alpha: 0.25,
+                            //                   ),
+                            //                 ),
+                            //               ),
+                            //             ),
+                            //             child: Row(
+                            //               mainAxisAlignment:
+                            //                   MainAxisAlignment.center,
+                            //               children: [
+                            //                 Icon(
+                            //                   Icons.history,
+                            //                   size: 22,
+                            //                   color: Colors.blue.shade400,
+                            //                 ),
+                            //                 const SizedBox(width: 6),
+                            //                 Text(
+                            //                   'Activity',
+                            //                   style: TextStyle(
+                            //                     fontSize: 18,
+                            //                     fontWeight: FontWeight.w600,
+                            //                     color: Colors.blue.shade400,
+                            //                   ),
+                            //                 ),
+                            //               ],
+                            //             ),
+                            //           ),
+                            //         ),
+                            //       ),
+                            //     ],
+                            //   ),
+
+                            // // if it is settled, only show the payment history button centered
+                            // if (isZero)
+                            //   GestureDetector(
+                            //     onTap: () => _showPaymentHistory(
+                            //       targetUserId: entry['user_id'] as String,
+                            //       targetName: entry['name'] as String,
+                            //       targetLastname: entry['lastname'] as String,
+                            //       net: net,
+                            //       targetColor: userColor,
+                            //     ),
+                            //     child: Container(
+                            //       width: double.infinity,
+                            //       padding: const EdgeInsets.symmetric(
+                            //         vertical: 14,
+                            //       ),
+                            //       decoration: BoxDecoration(
+                            //         color: Colors.blue.withValues(alpha: 0.10),
+                            //         borderRadius: const BorderRadius.only(
+                            //           bottomLeft: Radius.circular(12),
+                            //           bottomRight: Radius.circular(12),
+                            //         ),
+                            //         border: Border(
+                            //           top: BorderSide(
+                            //             color: Colors.blue.withValues(
+                            //               alpha: 0.25,
+                            //             ),
+                            //           ),
+                            //         ),
+                            //       ),
+                            //       child: Row(
+                            //         mainAxisAlignment: MainAxisAlignment.center,
+                            //         children: [
+                            //           Icon(
+                            //             Icons.history,
+                            //             size: 22,
+                            //             color: Colors.blue.shade400,
+                            //           ),
+                            //           const SizedBox(width: 6),
+                            //           Text(
+                            //             'Activity',
+                            //             style: TextStyle(
+                            //               fontSize: 18,
+                            //               fontWeight: FontWeight.w600,
+                            //               color: Colors.blue.shade400,
+                            //             ),
+                            //           ),
+                            //         ],
+                            //       ),
+                            //     ),
+                            //   ),
                           ],
                         ),
                       ),
