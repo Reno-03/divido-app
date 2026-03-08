@@ -1,5 +1,6 @@
 import 'package:divido_app/providers/expense_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -101,24 +102,30 @@ class _BalancePageState extends State<BalancePage> {
     final userIds = netByUser.keys.toList();
     final users = await supabase
         .from('profiles')
-        .select('id, firstname, lastname, color')
+        .select(
+          'id, firstname, lastname, color, contact_number, is_gcash_ready',
+        )
         .inFilter('id', userIds);
 
     final userMap = {for (var u in users) u['id'] as String: u};
 
     return netByUser.entries.map((e) {
-        final user = userMap[e.key];
-        return {
-          'user_id': e.key,
-          'name': user != null
-              ? '${user['firstname']}'
-              : 'Unknown',
-          'lastname': user?['lastname'] ?? '',  
-          'net': e.value,
-          'color': user?['color'] as String? ?? '#6366F1',
-        };
-      }).toList()
-      ..sort((a, b) => (b['net'] as double).compareTo(a['net'] as double));
+      final user = userMap[e.key];
+      return {
+        'user_id': e.key,
+        'name': user != null ? '${user['firstname']}' : 'Unknown',
+        'lastname': user?['lastname'] ?? '',
+        'net': e.value,
+        'color': user?['color'] as String? ?? '#6366F1',
+        'contact_number':
+            user?['contact_number'] as String? ??
+            '', // add contact number indicator
+        'is_gcash_ready':
+            user?['is_gcash_ready'] as bool? ?? false, // gcash ready indicator
+      };
+    }).toList()..sort(
+      (a, b) => (b['net'] as double).compareTo(a['net'] as double),
+    );
   }
 
   String _getInitials(String firstname, String lastname) {
@@ -483,6 +490,77 @@ class _BalancePageState extends State<BalancePage> {
     );
   }
 
+  Widget _gcashIndicator({
+    required bool isReady,
+    required String contactNumber,
+  }) {
+    // No contact number at all
+    if (contactNumber.isEmpty) {
+      return Tooltip(
+        message: 'No contact number',
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(50),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/gcash_logo.png',
+                width: 16,
+                height: 16,
+                fit: BoxFit.contain,
+                color: Colors.white38, // 👈 greyed out logo
+                colorBlendMode: BlendMode.modulate,
+              ),
+              const SizedBox(width: 4),
+              const Icon(
+                Icons.remove_circle_outline,
+                size: 14,
+                color: Colors.white38,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Has contact number — show green or red
+    final color = isReady ? Colors.green : Colors.red;
+
+    return Tooltip(
+      message: isReady ? 'GCash: $contactNumber' : 'Not GCash ready',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: isReady ? const Color(0xFFE8FFF3) : const Color(0xFFFFECEC),
+          borderRadius: BorderRadius.circular(50),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/gcash_logo.png',
+              width: 16,
+              height: 16,
+              fit: BoxFit.contain,
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              isReady ? Icons.check_circle : Icons.cancel,
+              size: 14,
+              color: color,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Map<String, dynamic>>>(
@@ -541,8 +619,10 @@ class _BalancePageState extends State<BalancePage> {
                               child: Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.center, 
                                 children: [
                                   Row(
+                                    crossAxisAlignment: CrossAxisAlignment.center,
                                     children: [
                                       // Avatar badge
                                       Container(
@@ -561,7 +641,10 @@ class _BalancePageState extends State<BalancePage> {
                                         ),
                                         alignment: Alignment.center,
                                         child: Text(
-                                          _getInitials(entry['name'] as String, entry['lastname'] as String),
+                                          _getInitials(
+                                            entry['name'] as String,
+                                            entry['lastname'] as String,
+                                          ),
                                           style: const TextStyle(
                                             fontSize: 15,
                                             fontWeight: FontWeight.bold,
@@ -582,28 +665,112 @@ class _BalancePageState extends State<BalancePage> {
                                               fontSize: 20,
                                             ),
                                           ),
-                                          Text(
-                                            isZero
-                                                ? 'settled'
-                                                : isPositive
-                                                ? 'owes you'
-                                                : 'you owe',
-                                            style: TextStyle(
-                                              color: balanceColor,
-                                            ),
+
+                                          const SizedBox(height: 6),
+
+                                          // GCash pill + number + copy icon
+                                          Row(
+                                            children: [
+                                              _gcashIndicator(
+                                                isReady:
+                                                    entry['is_gcash_ready']
+                                                        as bool,
+                                                contactNumber:
+                                                    entry['contact_number']
+                                                        as String,
+                                              ),
+
+                                              if ((entry['contact_number']
+                                                      as String)
+                                                  .isNotEmpty) ...[
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  entry['contact_number']
+                                                      as String,
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.white
+                                                        .withValues(alpha: 0.7),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                GestureDetector(
+                                                  onTap: () {
+                                                    Clipboard.setData(
+                                                      ClipboardData(
+                                                        text:
+                                                            entry['contact_number']
+                                                                as String,
+                                                      ),
+                                                    );
+                                                    ScaffoldMessenger.of(
+                                                      context,
+                                                    ).showSnackBar(
+                                                      const SnackBar(
+                                                        content: Text(
+                                                          'Contact number copied!',
+                                                        ),
+                                                        duration: Duration(
+                                                          seconds: 1,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  child: Padding(
+                                                    padding: const EdgeInsets.only(left: 4),
+                                                    child: Icon(
+                                                      Icons.copy,
+                                                      size: 16,
+                                                      color: Colors.white
+                                                          .withValues(alpha: 0.4),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ] else ...[
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'No contact number',
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.white
+                                                        .withValues(alpha: 0.3),
+                                                    fontStyle: FontStyle.italic,
+                                                  ),
+                                                ),
+                                              ],
+                                            ],
                                           ),
                                         ],
                                       ),
                                     ],
                                   ),
                                   // Amount
-                                  Text(
-                                    '₱${net.abs().toStringAsFixed(2)}',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 33,
-                                      color: balanceColor,
-                                    ),
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,  
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '₱ ${net.abs().toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 33,
+                                          color: balanceColor,
+                                        ),
+                                      ),
+
+                                      Text(
+                                        isZero
+                                            ? 'settled'
+                                            : isPositive
+                                            ? 'owes you'
+                                            : 'you owe',
+                                        style: TextStyle(
+                                          color: balanceColor.withValues(alpha: 0.75),
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -696,7 +863,8 @@ class _BalancePageState extends State<BalancePage> {
                                         targetUserId:
                                             entry['user_id'] as String,
                                         targetName: entry['name'] as String,
-                                        targetLastname: entry['lastname'] as String,
+                                        targetLastname:
+                                            entry['lastname'] as String,
                                         net: net,
                                         targetColor: userColor,
                                       ),

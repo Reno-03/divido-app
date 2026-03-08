@@ -213,67 +213,65 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _gcashPill(bool isReady) {
-  final color = isReady ? Colors.green : Colors.red;
+    final color = isReady ? Colors.green : Colors.red;
 
-  return GestureDetector(
-    onTap: () async {
-      final newValue = !isReady;
+    return GestureDetector(
+      onTap: () async {
+        final newValue = !isReady;
 
-      // 1. Update UI instantly
-      CurrentUser.instance.isGcashReady = newValue;
-      setState(() {});
-
-      // 2. Sync to Supabase in background
-      try {
-        await Supabase.instance.client
-            .from('profiles')
-            .update({'is_gcash_ready': newValue})
-            .eq('id', CurrentUser.instance.id!);
-      } catch (e) {
-        // Revert on failure
-        CurrentUser.instance.isGcashReady = isReady;
+        // 1. Update UI instantly
+        CurrentUser.instance.isGcashReady = newValue;
         setState(() {});
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to update GCash status.')),
-          );
+
+        // 2. Sync to Supabase in background
+        try {
+          await Supabase.instance.client
+              .from('profiles')
+              .update({'is_gcash_ready': newValue})
+              .eq('id', CurrentUser.instance.id!);
+        } catch (e) {
+          // Revert on failure
+          CurrentUser.instance.isGcashReady = isReady;
+          setState(() {});
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Failed to update GCash status.')),
+            );
+          }
         }
-      }
-    },
-    child: AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: isReady
-            ? const Color(0xFFE8FFF3)
-            : const Color(0xFFFFECEC),
-        borderRadius: BorderRadius.circular(50),
-        border: Border.all(
-          color: isReady
-              ? Colors.green.withValues(alpha: 0.4)
-              : Colors.red.withValues(alpha: 0.4),
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: isReady ? const Color(0xFFE8FFF3) : const Color(0xFFFFECEC),
+          borderRadius: BorderRadius.circular(50),
+          border: Border.all(
+            color: isReady
+                ? Colors.green.withValues(alpha: 0.4)
+                : Colors.red.withValues(alpha: 0.4),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/gcash_logo.png',
+              width: 20,
+              height: 20,
+              fit: BoxFit.cover,
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              isReady ? Icons.check_circle : Icons.cancel,
+              size: 18,
+              color: color,
+            ),
+          ],
         ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Image.asset(
-            'assets/gcash_logo.png',
-            width: 20,
-            height: 20,
-            fit: BoxFit.cover,
-          ),
-          const SizedBox(width: 8),
-          Icon(
-            isReady ? Icons.check_circle : Icons.cancel,
-            size: 18,
-            color: color,
-          ),
-        ],
-      ),
-    ),
-  );
-}
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
