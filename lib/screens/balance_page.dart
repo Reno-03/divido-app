@@ -869,7 +869,7 @@ class _BalancePageState extends State<BalancePage> {
           children: [
             // 👇 Your own avatar + status at the top
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
