@@ -699,7 +699,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // this is the widget used for stacking the status bubble on tap of the Circle Avatar
+  // this is the widget used as a status bubble below of the Circle Avatar
   Widget _statusBubble(String? status) {
     return GestureDetector(
       onTap: _showStatusDialog,

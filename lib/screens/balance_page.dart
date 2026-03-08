@@ -562,6 +562,203 @@ class _BalancePageState extends State<BalancePage> {
     );
   }
 
+  void _showStatusDialog() {
+    final controller = TextEditingController(
+      text: CurrentUser.instance.status ?? '',
+    );
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            0,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Set Status',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey.withValues(alpha: 0.2),
+                      ),
+                      child: const Icon(Icons.close, size: 16),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                maxLength: 50,
+                decoration: InputDecoration(
+                  hintText: 'e.g. Pay me via GCash 😄',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: Colors.blue,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: isSaving
+                          ? null
+                          : () async {
+                              setModalState(() => isSaving = true);
+                              await Supabase.instance.client
+                                  .from('profiles')
+                                  .update({'status': null})
+                                  .eq('id', CurrentUser.instance.id!);
+                              CurrentUser.instance.status = null;
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              setState(() {});
+                            },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Clear'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton(
+                      onPressed: isSaving
+                          ? null
+                          : () async {
+                              setModalState(() => isSaving = true);
+                              final newStatus = controller.text.trim();
+                              await Supabase.instance.client
+                                  .from('profiles')
+                                  .update({
+                                    'status': newStatus.isEmpty
+                                        ? null
+                                        : newStatus,
+                                  })
+                                  .eq('id', CurrentUser.instance.id!);
+                              CurrentUser.instance.status = newStatus.isEmpty
+                                  ? null
+                                  : newStatus;
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              setState(() {});
+                            },
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: isSaving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Save',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _statusBubble(String? status) {
+    return GestureDetector(
+      onTap: _showStatusDialog,
+      child: Container(
+        margin: const EdgeInsets.only(top: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.edit_note_outlined,
+              size: 16,
+              color: Colors.white.withValues(alpha: 0.4),
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                status != null && status.isNotEmpty
+                    ? status
+                    : 'Tap to set a status...',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: status != null && status.isNotEmpty
+                      ? Colors.white.withValues(alpha: 0.85)
+                      : Colors.white.withValues(alpha: 0.35),
+                  fontStyle: status == null || status.isEmpty
+                      ? FontStyle.italic
+                      : FontStyle.normal,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<Map<String, dynamic>>>(
@@ -580,6 +777,34 @@ class _BalancePageState extends State<BalancePage> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // 👇 Your own avatar + status at the top
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Color(
+                      int.parse(
+                        'FF${(CurrentUser.instance.color ?? '#6366F1').replaceAll('#', '')}',
+                        radix: 16,
+                      ),
+                    ),
+                    child: Text(
+                      '${CurrentUser.instance.firstname?[0].toUpperCase() ?? ''}${CurrentUser.instance.lastname?[0].toUpperCase() ?? ''}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(child: _statusBubble(CurrentUser.instance.status)),
+                ],
+              ),
+            ),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {
@@ -590,8 +815,7 @@ class _BalancePageState extends State<BalancePage> {
                 child: ListView.builder(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
-                  itemCount:
-                      balances.length, //+ 2, // +2 for divider and logout
+                  itemCount: balances.length,
                   itemBuilder: (context, index) {
                     final entry = balances[index];
                     final double net = entry['net'] as double;
@@ -624,12 +848,11 @@ class _BalancePageState extends State<BalancePage> {
                                   vertical: 8,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.08),
+                                  color: Colors.white.withValues(alpha: 0.2),
                                   borderRadius: const BorderRadius.only(
                                     topLeft: Radius.circular(12),
                                     topRight: Radius.circular(12),
                                   ),
-                                  
                                 ),
                                 child: Row(
                                   children: [
@@ -637,7 +860,7 @@ class _BalancePageState extends State<BalancePage> {
                                       Icons.chat_bubble_outline,
                                       size: 13,
                                       color: Colors.white.withValues(
-                                        alpha: 0.6,
+                                        alpha: 0.8,
                                       ),
                                     ),
                                     const SizedBox(width: 6),
@@ -647,7 +870,7 @@ class _BalancePageState extends State<BalancePage> {
                                         style: TextStyle(
                                           fontSize: 13,
                                           color: Colors.white.withValues(
-                                            alpha: 0.6,
+                                            alpha: 0.8,
                                           ),
                                         ),
                                         maxLines: 1,
@@ -662,16 +885,14 @@ class _BalancePageState extends State<BalancePage> {
                             if ((entry['status'] as String).isNotEmpty)
                               Row(
                                 children: [
-                                  SizedBox(
-                                    width: 30,
-                                  ),
+                                  SizedBox(width: 30),
                                   ClipPath(
                                     clipper: _TriangleClipper(),
                                     child: Container(
                                       width: 12,
                                       height: 8,
                                       color: Colors.white.withValues(
-                                        alpha: 0.08,
+                                        alpha: 0.2,
                                       ),
                                     ),
                                   ),
@@ -679,7 +900,12 @@ class _BalancePageState extends State<BalancePage> {
                               ),
 
                             Padding(
-                              padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                              padding: const EdgeInsets.fromLTRB(
+                                20,
+                                10,
+                                20,
+                                20,
+                              ),
                               child: Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
@@ -1066,9 +1292,9 @@ class _TriangleClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     final path = Path();
-    path.moveTo(0, 0);                          // top-left
-    path.lineTo(size.width, 0);                 // top-right
-    path.lineTo(size.width / 2, size.height);   // bottom-center (point)
+    path.moveTo(0, 0); // top-left
+    path.lineTo(size.width, 0); // top-right
+    path.lineTo(size.width / 2, size.height); // bottom-center (point)
     path.close();
     return path;
   }
