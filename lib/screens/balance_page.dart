@@ -103,7 +103,7 @@ class _BalancePageState extends State<BalancePage> {
     final users = await supabase
         .from('profiles')
         .select(
-          'id, firstname, lastname, color, contact_number, is_gcash_ready',
+          'id, firstname, lastname, color, contact_number, is_gcash_ready, status',
         )
         .inFilter('id', userIds);
 
@@ -122,6 +122,7 @@ class _BalancePageState extends State<BalancePage> {
             '', // add contact number indicator
         'is_gcash_ready':
             user?['is_gcash_ready'] as bool? ?? false, // gcash ready indicator
+        'status': user?['status'] as String? ?? '',
       };
     }).toList()..sort(
       (a, b) => (b['net'] as double).compareTo(a['net'] as double),
@@ -614,8 +615,71 @@ class _BalancePageState extends State<BalancePage> {
                         opacity: isZero ? 0.45 : 1.0,
                         child: Column(
                           children: [
+                            // Status strip
+                            if ((entry['status'] as String).isNotEmpty)
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 15,
+                                  vertical: 8,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.08),
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(12),
+                                    topRight: Radius.circular(12),
+                                  ),
+                                  
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.chat_bubble_outline,
+                                      size: 13,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.6,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        entry['status'] as String,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.white.withValues(
+                                            alpha: 0.6,
+                                          ),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                            // Triangle pointer pointing down-left toward avatar
+                            if ((entry['status'] as String).isNotEmpty)
+                              Row(
+                                children: [
+                                  SizedBox(
+                                    width: 30,
+                                  ),
+                                  ClipPath(
+                                    clipper: _TriangleClipper(),
+                                    child: Container(
+                                      width: 12,
+                                      height: 8,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
                             Padding(
-                              padding: const EdgeInsets.all(20),
+                              padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
                               child: Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
@@ -632,7 +696,6 @@ class _BalancePageState extends State<BalancePage> {
                                         children: [
                                           Row(
                                             children: [
-                                              // Avatar badge
                                               Container(
                                                 width: 34,
                                                 height: 34,
@@ -997,4 +1060,19 @@ class _CopyContactButtonState extends State<_CopyContactButton> {
       ),
     );
   }
+}
+
+class _TriangleClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    path.moveTo(0, 0);                          // top-left
+    path.lineTo(size.width, 0);                 // top-right
+    path.lineTo(size.width / 2, size.height);   // bottom-center (point)
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(_TriangleClipper oldClipper) => false;
 }

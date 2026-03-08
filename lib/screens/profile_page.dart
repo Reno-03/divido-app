@@ -273,6 +273,163 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  void _showStatusDialog() {
+    final controller = TextEditingController(
+      text: CurrentUser.instance.status ?? '',
+    );
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            0,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Set Status',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey.withValues(alpha: 0.2),
+                      ),
+                      child: const Icon(Icons.close, size: 16),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              TextField(
+                controller: controller,
+                autofocus: true,
+                maxLength: 80,
+                decoration: InputDecoration(
+                  hintText: 'e.g. Pay me via GCash 😄',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: Colors.blue,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              Row(
+                children: [
+                  // Clear button
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: isSaving
+                          ? null
+                          : () async {
+                              setModalState(() => isSaving = true);
+                              await Supabase.instance.client
+                                  .from('profiles')
+                                  .update({'status': null})
+                                  .eq('id', CurrentUser.instance.id!);
+                              CurrentUser.instance.status = null;
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              setState(() {});
+                            },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Clear'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Save button
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton(
+                      onPressed: isSaving
+                          ? null
+                          : () async {
+                              setModalState(() => isSaving = true);
+                              final newStatus = controller.text.trim();
+                              await Supabase.instance.client
+                                  .from('profiles')
+                                  .update({
+                                    'status': newStatus.isEmpty
+                                        ? null
+                                        : newStatus,
+                                  })
+                                  .eq('id', CurrentUser.instance.id!);
+                              CurrentUser.instance.status = newStatus.isEmpty
+                                  ? null
+                                  : newStatus;
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              setState(() {});
+                            },
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: isSaving
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Save',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = CurrentUser.instance;
@@ -302,24 +459,62 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
 
-      body: Padding(
+      // NOTE: Instead of Padding, use SingleChildScrollView to make it scrollable
+      // because the profile page is now too long 
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Avatar
-            CircleAvatar(
-              radius: 48,
-              backgroundColor: userColor,
-              child: Text(
-                initials,
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+            // Stack is used here to place multiple widgets on tap of each other
+            GestureDetector(
+              onTap: _showStatusDialog,
+              child: Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 48,
+                    backgroundColor: userColor,
+                    child: Text(
+                      initials,
+                      style: const TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                  // edit hint
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                        border: Border.all(
+                          color: Color(0xFF171A3F),
+                          width: 2.0,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.edit,
+                        size: 13,
+                        color: Color(0xFF171A3F),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
+            const SizedBox(height: 8),
+
+            // Status bubble below avatar
+            _statusBubble(user.status),
             const SizedBox(height: 16),
 
             // Full name
@@ -499,6 +694,47 @@ class _ProfilePageState extends State<ProfilePage> {
           borderSide: BorderSide(
             color: Colors.white.withValues(alpha: 0.2), // 👈 change this
           ),
+        ),
+      ),
+    );
+  }
+
+  // this is the widget used for stacking the status bubble on tap of the Circle Avatar
+  Widget _statusBubble(String? status) {
+    return GestureDetector(
+      onTap: _showStatusDialog,
+      child: Container(
+        margin: const EdgeInsets.only(top: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.edit_note_outlined,
+              size: 16,
+              color: Colors.white.withValues(alpha: 0.4),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              status != null && status.isNotEmpty
+                  ? status
+                  : 'Tap to set a status...',
+              style: TextStyle(
+                fontSize: 13,
+                color: status != null && status.isNotEmpty
+                    ? Colors.white.withValues(alpha: 0.85)
+                    : Colors.white.withValues(alpha: 0.35),
+                fontStyle: status == null || status.isEmpty
+                    ? FontStyle.italic
+                    : FontStyle.normal,
+              ),
+            ),
+          ],
         ),
       ),
     );
