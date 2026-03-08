@@ -241,6 +241,56 @@ class _BalancePageState extends State<BalancePage> {
     );
   }
 
+  void _confirmDeletePayment({
+  required String paymentId,
+  required BuildContext ctx,
+  required String targetUserId,
+  required String targetName,
+  required String targetLastname,
+  required double net,
+  required Color targetColor,
+}) {
+  showDialog(
+    context: ctx,
+    builder: (dialogCtx) => AlertDialog(
+      title: const Text('Remove Payment'),
+      content: const Text('Are you sure you want to remove this payment? This cannot be undone.'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogCtx),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () async {
+            Navigator.pop(dialogCtx); // close confirm dialog
+            Navigator.pop(ctx);       // close payment history sheet
+
+            await supabase
+                .from('payments')
+                .delete()
+                .eq('id', paymentId);
+
+            setState(() {
+              _balanceFuture = _fetchNetBalances();
+            });
+
+            // Reopen payment history with updated data
+            _showPaymentHistory(
+              targetUserId: targetUserId,
+              targetName: targetName,
+              targetLastname: targetLastname,
+              net: net,
+              targetColor: targetColor,
+            );
+          },
+          style: FilledButton.styleFrom(backgroundColor: Colors.red),
+          child: const Text('Remove', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
+
   void _showPaymentHistory({
     required String targetUserId,
     required String targetName,
@@ -252,7 +302,7 @@ class _BalancePageState extends State<BalancePage> {
 
     final payments = await supabase
         .from('payments')
-        .select('amount, note, created_at, payer_id, payee_id')
+        .select('id, amount, note, created_at, payer_id, payee_id') // 👈 add id
         .or(
           'and(payer_id.eq.$myId,payee_id.eq.$targetUserId),and(payer_id.eq.$targetUserId,payee_id.eq.$myId)',
         )
@@ -429,6 +479,9 @@ class _BalancePageState extends State<BalancePage> {
                                     final amount = (p['amount'] as num)
                                         .toDouble();
                                     final note = p['note'] as String?;
+                                    final paymentId =
+                                        p['id']
+                                            as String; // 👈 need to add 'id' to the select
 
                                     return ListTile(
                                       leading: Container(
@@ -465,15 +518,53 @@ class _BalancePageState extends State<BalancePage> {
                                       subtitle: note != null && note.isNotEmpty
                                           ? Text(note)
                                           : null,
-                                      trailing: Text(
-                                        '₱${amount.toStringAsFixed(2)}',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15,
-                                          color: isPayer
-                                              ? Colors.red.shade400
-                                              : Colors.green.shade400,
-                                        ),
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            '₱${amount.toStringAsFixed(2)}',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 15,
+                                              color: isPayer
+                                                  ? Colors.red.shade400
+                                                  : Colors.green.shade400,
+                                            ),
+                                          ),
+                                          // 👇 Only show delete if current user is the payer
+                                          if (isPayer) ...[
+                                            const SizedBox(width: 8),
+                                            GestureDetector(
+                                              onTap: () =>
+                                                  _confirmDeletePayment(
+                                                    paymentId: paymentId,
+                                                    ctx: ctx,
+                                                    targetUserId: targetUserId,
+                                                    targetName: targetName,
+                                                    targetLastname:
+                                                        targetLastname,
+                                                    net: net,
+                                                    targetColor: targetColor,
+                                                  ),
+                                              child: Container(
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: Colors.red.withValues(
+                                                    alpha: 0.12,
+                                                  ),
+                                                ),
+                                                child: Icon(
+                                                  Icons.delete_outline,
+                                                  size: 16,
+                                                  color: Colors.red.shade400,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                     );
                                   }),
