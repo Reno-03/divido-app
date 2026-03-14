@@ -145,7 +145,8 @@ class _BalancePageState extends State<BalancePage> {
       text: suggestedAmount.abs().toStringAsFixed(2),
     );
     final noteController = TextEditingController();
-    bool isSubmitting = false; // local flag for pay button state
+    bool isSubmitting = false;
+    String paymentMethod = 'cash';
 
     showDialog(
       context: context,
@@ -178,6 +179,47 @@ class _BalancePageState extends State<BalancePage> {
                     border: OutlineInputBorder(),
                   ),
                 ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    const Text('Payment via:', style: TextStyle(fontSize: 13)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: SegmentedButton<String>(
+                        segments: [
+                          ButtonSegment(
+                            value: 'cash',
+                            label: Text('Cash'),
+                            icon: Icon(Icons.money, size: 16),
+                          ),
+                          ButtonSegment(
+                            value: 'gcash',
+                            label: const Text('GCash'),
+                            icon: Container(
+                              width: 20,
+                              height: 20,
+                              decoration: const BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                              ),
+                              padding: const EdgeInsets.all(2),
+                              child: Image.asset(
+                                'assets/gcash_logo.png',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                        ],
+                        selected: {paymentMethod},
+                        onSelectionChanged: (val) =>
+                            setDialogState(() => paymentMethod = val.first),
+                        style: ButtonStyle(
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
             actions: [
@@ -207,6 +249,7 @@ class _BalancePageState extends State<BalancePage> {
                           'note': noteController.text.isEmpty
                               ? null
                               : noteController.text,
+                          'method': paymentMethod,
                         });
 
                         if (ctx.mounted) Navigator.pop(ctx);
