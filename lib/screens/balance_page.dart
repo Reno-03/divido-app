@@ -1008,7 +1008,6 @@ class _BalancePageState extends State<BalancePage> {
     return GestureDetector(
       onTap: _showStatusDialog,
       child: Container(
-        margin: const EdgeInsets.only(top: 4),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.07),
