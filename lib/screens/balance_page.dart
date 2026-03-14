@@ -154,130 +154,259 @@ class _BalancePageState extends State<BalancePage> {
       // without building the entire BalancePage again
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
-          return AlertDialog(
-            title: Text(
-              isSettle ? 'Settle with $targetName' : 'Pay $targetName',
+          return Dialog(
+            backgroundColor: Color(0xFF171A3F),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: amountController,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  decoration: const InputDecoration(
-                    labelText: 'Amount (₱)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: noteController,
-                  decoration: const InputDecoration(
-                    labelText: 'Note (optional)',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    const Text('Payment via:', style: TextStyle(fontSize: 13)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: SegmentedButton<String>(
-                        segments: [
-                          ButtonSegment(
-                            value: 'cash',
-                            label: Text('Cash'),
-                            icon: Icon(Icons.money, size: 16),
-                          ),
-                          ButtonSegment(
-                            value: 'gcash',
-                            label: const Text('GCash'),
-                            icon: Container(
-                              width: 20,
-                              height: 20,
-                              decoration: const BoxDecoration(
-                                color: Colors.white,
-                                shape: BoxShape.circle,
-                              ),
-                              padding: const EdgeInsets.all(2),
-                              child: Image.asset(
-                                'assets/gcash_logo.png',
-                                fit: BoxFit.contain,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isSettle
+                              ? Colors.green.withValues(alpha: 0.15)
+                              : Colors.red.withValues(alpha: 0.15),
+                        ),
+                        child: Icon(
+                          isSettle
+                              ? Icons.handshake_outlined
+                              : Icons.payments_outlined,
+                          size: 20,
+                          color: isSettle
+                              ? Colors.green.shade400
+                              : Colors.red.shade400,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isSettle
+                                  ? 'Settle with $targetName'
+                                  : 'Pay $targetName',
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
+                            Text(
+                              isSettle
+                                  ? 'Record a received payment'
+                                  : 'Record a payment you made',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white.withValues(alpha: 0.45),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(ctx),
+                        child: Container(
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.grey.withValues(alpha: 0.2),
                           ),
-                        ],
-                        selected: {paymentMethod},
-                        onSelectionChanged: (val) =>
-                            setDialogState(() => paymentMethod = val.first),
-                        style: ButtonStyle(
-                          visualDensity: VisualDensity.compact,
+                          child: const Icon(Icons.close, size: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Amount field
+                  TextField(
+                    controller: amountController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    decoration: InputDecoration(
+                      prefixText: '₱  ',
+                      prefixStyle: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white.withValues(alpha: 0.5),
+                      ),
+                      hintText: '0.00',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: isSettle ? Colors.green : Colors.red,
+                          width: 1.5,
                         ),
                       ),
                     ),
-                  ],
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                // disable button while submitting
-                onPressed: isSubmitting
-                    ? null
-                    : () async {
-                        final amount = double.tryParse(amountController.text);
-                        if (amount == null || amount <= 0) return;
+                  ),
 
-                        // 👇 set loading true
-                        setDialogState(() => isSubmitting = true);
+                  const SizedBox(height: 12),
 
-                        final myId = _currentUser.id!;
-                        final payerId = isSettle ? targetUserId : myId;
-                        final payeeId = isSettle ? myId : targetUserId;
-
-                        await supabase.from('payments').insert({
-                          'payer_id': payerId,
-                          'payee_id': payeeId,
-                          'amount': amount,
-                          'note': noteController.text.isEmpty
-                              ? null
-                              : noteController.text,
-                          'method': paymentMethod,
-                        });
-
-                        if (ctx.mounted) Navigator.pop(ctx);
-
-                        setState(() {
-                          _balanceFuture = _fetchNetBalances();
-                        });
-                      },
-                style: FilledButton.styleFrom(
-                  backgroundColor: isSettle ? Colors.green : Colors.red,
-                ),
-
-                // show loading indicator while submitting
-                child: isSubmitting
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : Text(
-                        isSettle ? 'Settle' : 'Pay',
-                        style: TextStyle(color: Colors.white),
+                  // Note field
+                  TextField(
+                    controller: noteController,
+                    decoration: InputDecoration(
+                      hintText: 'Add a note... (optional)',
+                      prefixIcon: Icon(
+                        Icons.edit_note_outlined,
+                        color: Colors.white.withValues(alpha: 0.4),
                       ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.15),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: Colors.blue,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Payment method
+                  SegmentedButton<String>(
+                    expandedInsets: EdgeInsets.zero,
+                    segments: [
+                      const ButtonSegment(
+                        value: 'cash',
+                        label: Text('Cash'),
+                        icon: Icon(Icons.money, size: 16),
+                      ),
+                      ButtonSegment(
+                        value: 'gcash',
+                        label: const Text('GCash'),
+                        icon: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                          padding: const EdgeInsets.all(3),
+                          child: Image.asset(
+                            'assets/gcash_logo.png',
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ],
+                    selected: {paymentMethod},
+                    onSelectionChanged: (val) =>
+                        setDialogState(() => paymentMethod = val.first),
+                    style: ButtonStyle(
+                      visualDensity: VisualDensity.standard,
+                      backgroundColor: WidgetStateProperty.resolveWith<Color>((
+                        states,
+                      ) {
+                        if (states.contains(WidgetState.selected)) {
+                          return Colors.white.withValues(
+                            alpha: 0.3,
+                          ); 
+                        }
+                        return Colors.transparent; 
+                      }),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Confirm button
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      onPressed: isSubmitting
+                          ? null
+                          : () async {
+                              final amount = double.tryParse(
+                                amountController.text,
+                              );
+                              if (amount == null || amount <= 0) return;
+                              setDialogState(() => isSubmitting = true);
+
+                              final myId = _currentUser.id!;
+                              final payerId = isSettle ? targetUserId : myId;
+                              final payeeId = isSettle ? myId : targetUserId;
+
+                              await supabase.from('payments').insert({
+                                'payer_id': payerId,
+                                'payee_id': payeeId,
+                                'amount': amount,
+                                'note': noteController.text.isEmpty
+                                    ? null
+                                    : noteController.text,
+                                'method': paymentMethod,
+                              });
+
+                              if (ctx.mounted) Navigator.pop(ctx);
+                              setState(() {
+                                _balanceFuture = _fetchNetBalances();
+                              });
+                            },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: isSettle ? Colors.green : Colors.red,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: isSubmitting
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              isSettle ? 'Confirm Settle' : 'Confirm Payment',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           );
         },
       ),
@@ -344,7 +473,7 @@ class _BalancePageState extends State<BalancePage> {
 
     final payments = await supabase
         .from('payments')
-        .select('id, amount, note, created_at, payer_id, payee_id') // 👈 add id
+        .select('id, amount, note, created_at, payer_id, payee_id') 
         .or(
           'and(payer_id.eq.$myId,payee_id.eq.$targetUserId),and(payer_id.eq.$targetUserId,payee_id.eq.$myId)',
         )
