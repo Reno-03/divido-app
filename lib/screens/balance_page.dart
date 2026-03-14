@@ -335,11 +335,9 @@ class _BalancePageState extends State<BalancePage> {
                         states,
                       ) {
                         if (states.contains(WidgetState.selected)) {
-                          return Colors.white.withValues(
-                            alpha: 0.3,
-                          ); 
+                          return Colors.white.withValues(alpha: 0.3);
                         }
-                        return Colors.transparent; 
+                        return Colors.transparent;
                       }),
                     ),
                   ),
@@ -473,7 +471,7 @@ class _BalancePageState extends State<BalancePage> {
 
     final payments = await supabase
         .from('payments')
-        .select('id, amount, note, created_at, payer_id, payee_id') 
+        .select('id, amount, note, created_at, payer_id, payee_id, method')
         .or(
           'and(payer_id.eq.$myId,payee_id.eq.$targetUserId),and(payer_id.eq.$targetUserId,payee_id.eq.$myId)',
         )
@@ -655,28 +653,57 @@ class _BalancePageState extends State<BalancePage> {
                                             as String; // 👈 need to add 'id' to the select
 
                                     return ListTile(
-                                      leading: Container(
-                                        width: 36,
-                                        height: 36,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: isPayer
-                                              ? Colors.red.withValues(
-                                                  alpha: 0.15,
-                                                )
-                                              : Colors.green.withValues(
-                                                  alpha: 0.15,
-                                                ),
-                                        ),
-                                        child: Icon(
-                                          isPayer
-                                              ? Icons.arrow_upward
-                                              : Icons.arrow_downward,
-                                          size: 18,
-                                          color: isPayer
-                                              ? Colors.red.shade400
-                                              : Colors.green.shade400,
-                                        ),
+                                      leading: Stack(
+                                        clipBehavior: Clip.none,
+                                        children: [
+                                          Container(
+                                            width: 36,
+                                            height: 36,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: isPayer
+                                                  ? Colors.red.withValues(
+                                                      alpha: 0.15,
+                                                    )
+                                                  : Colors.green.withValues(
+                                                      alpha: 0.15,
+                                                    ),
+                                            ),
+                                            child: Icon(
+                                              isPayer
+                                                  ? Icons.arrow_upward
+                                                  : Icons.arrow_downward,
+                                              size: 18,
+                                              color: isPayer
+                                                  ? Colors.red.shade400
+                                                  : Colors.green.shade400,
+                                            ),
+                                          ),
+                                          // method badge — bottom right of avatar
+                                          Positioned(
+                                            bottom: -4,
+                                            right: -4,
+                                            child: Container(
+                                              width: 16,
+                                              height: 16,
+                                              decoration: const BoxDecoration(
+                                                color: Colors.white,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              padding: const EdgeInsets.all(2),
+                                              child: p['method'] == 'gcash'
+                                                  ? Image.asset(
+                                                      'assets/gcash_logo.png',
+                                                      fit: BoxFit.contain,
+                                                    )
+                                                  : const Icon(
+                                                      Icons.money,
+                                                      size: 10,
+                                                      color: Colors.green,
+                                                    ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                       title: Text(
                                         isPayer
