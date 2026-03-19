@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For formatting dates
+import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import '../providers/expense_provider.dart';
@@ -18,6 +19,52 @@ class _AllPageState extends State<AllPage> {
   Widget build(BuildContext context) {
     final expenseProvider = Provider.of<ExpenseProvider>(context);
     final expenses = expenseProvider.expenses;
+
+     if (expenseProvider.isLoading) {
+      return Shimmer.fromColors(
+        baseColor: Colors.white.withValues(alpha: 0.06),
+        highlightColor: Colors.white.withValues(alpha: 0.15),
+        child: ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: 5,
+          itemBuilder: (_, __) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // date divider skeleton
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    children: [
+                      const Expanded(child: Divider()),
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                        width: 120,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      const Expanded(child: Divider()),
+                    ],
+                  ),
+                ),
+                // expense card skeleton
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  height: 160,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    }
 
     if (expenses.isEmpty) {
       return const Center(child: Text('No expenses found'));

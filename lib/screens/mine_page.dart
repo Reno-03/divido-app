@@ -4,6 +4,7 @@ import 'package:divido_app/services/current_user.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MinePage extends StatefulWidget {
@@ -109,6 +110,52 @@ class _MinePageState extends State<MinePage> {
   Widget build(BuildContext context) {
     final expenseProvider = Provider.of<ExpenseProvider>(context);
     final currentUserId = CurrentUser.instance.id;
+
+    if (expenseProvider.isLoading) {
+      return Shimmer.fromColors(
+        baseColor: Colors.white.withValues(alpha: 0.06),
+        highlightColor: Colors.white.withValues(alpha: 0.15),
+        child: ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: 5,
+          itemBuilder: (_, __) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // date divider skeleton
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    children: [
+                      const Expanded(child: Divider()),
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 12),
+                        width: 120,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      const Expanded(child: Divider()),
+                    ],
+                  ),
+                ),
+                // expense card skeleton
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  height: 250,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+    }
 
     final myExpenses = expenseProvider.expenses
         .where((expense) => expense['owner_id'] == currentUserId)
