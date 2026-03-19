@@ -15,14 +15,27 @@ class BalancePage extends StatefulWidget {
   State<BalancePage> createState() => _BalancePageState();
 }
 
-class _BalancePageState extends State<BalancePage> {
+class _BalancePageState extends State<BalancePage>
+    with TickerProviderStateMixin {
   final supabase = Supabase.instance.client;
   late Future<List<Map<String, dynamic>>> _balanceFuture;
+
+  late AnimationController _nudgeController;
+  late Animation<double> _nudgeAnimation;
 
   @override
   void initState() {
     super.initState();
     _balanceFuture = _fetchNetBalances();
+
+    _nudgeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+
+    _nudgeAnimation = Tween<double>(begin: 0.2, end: 1.0).animate(
+      CurvedAnimation(parent: _nudgeController, curve: Curves.easeInOut),
+    );
 
     // Re-fetch balances whenever expenses change
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -41,11 +54,67 @@ class _BalancePageState extends State<BalancePage> {
 
   @override
   void dispose() {
+    _nudgeController.dispose();
+
     Provider.of<ExpenseProvider>(
       context,
       listen: false,
     ).removeListener(_onExpensesChanged);
+
     super.dispose();
+  }
+
+  Future<void> _nudge({
+    required String targetUserId,
+    required String targetName,
+    required int currentCount,
+    required String lastNudgedAt,
+  }) async {
+    final myId = _currentUser.id!;
+
+    // Check max
+    if (currentCount >= 3) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Max nudges reached for $targetName')),
+        );
+      }
+      return;
+    }
+
+    // Check cooldown
+    if (lastNudgedAt.isNotEmpty) {
+      final last = DateTime.parse(lastNudgedAt).toLocal();
+      final diff = DateTime.now().difference(last);
+      if (diff.inHours < 12) {
+        final remaining = 12 - diff.inHours;
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('You can nudge $targetName again in ${remaining}h'),
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    // Upsert nudge
+    await supabase.from('nudges').upsert({
+      'from_user_id': myId,
+      'to_user_id': targetUserId,
+      'nudge_count': currentCount + 1,
+      'last_nudged_at': DateTime.now().toUtc().toIso8601String(),
+    }, onConflict: 'from_user_id, to_user_id');
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$targetName has been nudged! 🔔')),
+      );
+      setState(() {
+        _balanceFuture = _fetchNetBalances();
+      });
+    }
   }
 
   Future<List<Map<String, dynamic>>> _fetchNetBalances() async {
@@ -109,8 +178,30 @@ class _BalancePageState extends State<BalancePage> {
 
     final userMap = {for (var u in users) u['id'] as String: u};
 
+    // Fetch nudges sent by me (to show cooldown/max on nudge button)
+    final nudgesSent = await supabase
+        .from('nudges')
+        .select('to_user_id, nudge_count, last_nudged_at')
+        .eq('from_user_id', myId);
+
+    // Fetch nudges received by me (to show glow on my cards)
+    final nudgesReceived = await supabase
+        .from('nudges')
+        .select('from_user_id, nudge_count')
+        .eq('to_user_id', myId);
+
+    final nudgesSentMap = {
+      for (var n in nudgesSent) n['to_user_id'] as String: n,
+    };
+    final nudgesReceivedMap = {
+      for (var n in nudgesReceived) n['from_user_id'] as String: n,
+    };
+
     return netByUser.entries.map((e) {
       final user = userMap[e.key];
+      final nudgeSent = nudgesSentMap[e.key];
+      final nudgeReceived = nudgesReceivedMap[e.key];
+
       return {
         'user_id': e.key,
         'name': user != null ? '${user['firstname']}' : 'Unknown',
@@ -123,6 +214,12 @@ class _BalancePageState extends State<BalancePage> {
         'is_gcash_ready':
             user?['is_gcash_ready'] as bool? ?? false, // gcash ready indicator
         'status': user?['status'] as String? ?? '',
+        // nudge sent to this person
+        'nudge_count': nudgeSent?['nudge_count'] as int? ?? 0,
+        'last_nudged_at': nudgeSent?['last_nudged_at'] as String? ?? '',
+        // nudge received from this person
+        'is_nudged': nudgeReceived != null,
+        'nudged_count_received': nudgeReceived?['nudge_count'] as int? ?? 0,
       };
     }).toList()..sort(
       (a, b) => (b['net'] as double).compareTo(a['net'] as double),
@@ -1115,14 +1212,18 @@ class _BalancePageState extends State<BalancePage> {
                     final bool isZero = net.abs() < 0.01;
                     final bool isPositive = net > 0;
 
+                    final bool isNudged = entry['is_nudged'] as bool;
+                    final int nudgedCountReceived =
+                        entry['nudged_count_received'] as int;
+
                     final Color balanceColor = isZero
                         ? Colors.grey
                         : isPositive
                         ? Colors.green
                         : Colors.red;
 
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
+                    // 👇 wrap only if nudged
+                    Widget cardWidget = Card(
                       child: Opacity(
                         opacity: isZero ? 0.45 : 1.0,
                         child: Column(
@@ -1335,10 +1436,10 @@ class _BalancePageState extends State<BalancePage> {
                               ),
                             ),
 
+                            // You owe them — Pay + Activity
                             if (!isZero && !isPositive)
                               Row(
                                 children: [
-                                  // Pay Button
                                   Expanded(
                                     child: GestureDetector(
                                       onTap: () => _showPaymentDialog(
@@ -1390,15 +1491,11 @@ class _BalancePageState extends State<BalancePage> {
                                       ),
                                     ),
                                   ),
-
-                                  // Divider
                                   Container(
                                     width: 1,
                                     height: 50,
                                     color: Colors.red.withValues(alpha: 0.25),
                                   ),
-
-                                  // Activity Button
                                   Expanded(
                                     child: GestureDetector(
                                       onTap: () => _showPaymentHistory(
@@ -1455,8 +1552,134 @@ class _BalancePageState extends State<BalancePage> {
                                 ],
                               ),
 
-                            // Settled or they owe you — Activity only
-                            if (isZero || isPositive)
+                            // They owe you — Nudge + Activity
+                            if (!isZero && isPositive)
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () => _nudge(
+                                        targetUserId:
+                                            entry['user_id'] as String,
+                                        targetName: entry['name'] as String,
+                                        currentCount:
+                                            entry['nudge_count'] as int,
+                                        lastNudgedAt:
+                                            entry['last_nudged_at'] as String,
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: _getNudgeColor(
+                                            entry['nudge_count'] as int,
+                                          ).withValues(alpha: 0.15),
+                                          borderRadius: const BorderRadius.only(
+                                            bottomLeft: Radius.circular(12),
+                                          ),
+                                          border: Border(
+                                            top: BorderSide(
+                                              color: _getNudgeColor(
+                                                entry['nudge_count'] as int,
+                                              ).withValues(alpha: 0.25),
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.notifications_outlined,
+                                              size: 22,
+                                              color: _getNudgeColor(
+                                                entry['nudge_count'] as int,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              entry['nudge_count'] == 0
+                                                  ? 'Nudge'
+                                                  : 'Nudge x${entry['nudge_count']}',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w600,
+                                                color: _getNudgeColor(
+                                                  entry['nudge_count'] as int,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    width: 1,
+                                    height: 50,
+                                    color: _getNudgeColor(
+                                      entry['nudge_count'] as int,
+                                    ).withValues(alpha: 0.25),
+                                  ),
+                                  Expanded(
+                                    child: GestureDetector(
+                                      onTap: () => _showPaymentHistory(
+                                        targetUserId:
+                                            entry['user_id'] as String,
+                                        targetName: entry['name'] as String,
+                                        targetLastname:
+                                            entry['lastname'] as String,
+                                        net: net,
+                                        targetColor: userColor,
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 14,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue.withValues(
+                                            alpha: 0.10,
+                                          ),
+                                          borderRadius: const BorderRadius.only(
+                                            bottomRight: Radius.circular(12),
+                                          ),
+                                          border: Border(
+                                            top: BorderSide(
+                                              color: Colors.blue.withValues(
+                                                alpha: 0.25,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Icon(
+                                              Icons.history,
+                                              size: 22,
+                                              color: Colors.blue.shade400,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              'Activity',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.blue.shade400,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                            // Settled — Activity only
+                            if (isZero)
                               GestureDetector(
                                 onTap: () => _showPaymentHistory(
                                   targetUserId: entry['user_id'] as String,
@@ -1505,196 +1728,43 @@ class _BalancePageState extends State<BalancePage> {
                                   ),
                                 ),
                               ),
-                            // // Full-width CTA — same style as MinePage
-                            // if (!isZero)
-                            //   Row(
-                            //     children: [
-                            //       // Pay/Settle Button
-                            //       Expanded(
-                            //         child: GestureDetector(
-                            //           onTap: () => _showPaymentDialog(
-                            //             targetUserId:
-                            //                 entry['user_id'] as String,
-                            //             targetName: entry['name'] as String,
-                            //             isSettle: isPositive,
-                            //             suggestedAmount: net.abs(),
-                            //           ),
-                            //           child: Container(
-                            //             padding: const EdgeInsets.symmetric(
-                            //               vertical: 14,
-                            //             ),
-                            //             decoration: BoxDecoration(
-                            //               color: isPositive
-                            //                   ? Colors.green.withValues(
-                            //                       alpha: 0.15,
-                            //                     )
-                            //                   : Colors.red.withValues(
-                            //                       alpha: 0.15,
-                            //                     ),
-                            //               borderRadius: const BorderRadius.only(
-                            //                 bottomLeft: Radius.circular(12),
-                            //               ),
-                            //               border: Border(
-                            //                 top: BorderSide(
-                            //                   color: isPositive
-                            //                       ? Colors.green.withValues(
-                            //                           alpha: 0.25,
-                            //                         )
-                            //                       : Colors.red.withValues(
-                            //                           alpha: 0.25,
-                            //                         ),
-                            //                 ),
-                            //               ),
-                            //             ),
-                            //             child: Row(
-                            //               mainAxisAlignment:
-                            //                   MainAxisAlignment.center,
-                            //               children: [
-                            //                 Icon(
-                            //                   isPositive
-                            //                       ? Icons.handshake_outlined
-                            //                       : Icons.payments_outlined,
-                            //                   size: 22,
-                            //                   color: isPositive
-                            //                       ? Colors.green.shade400
-                            //                       : Colors.red.shade400,
-                            //                 ),
-                            //                 const SizedBox(width: 6),
-                            //                 Text(
-                            //                   isPositive ? 'Settle' : 'Pay',
-                            //                   style: TextStyle(
-                            //                     fontSize: 18,
-                            //                     fontWeight: FontWeight.w600,
-                            //                     color: isPositive
-                            //                         ? Colors.green.shade400
-                            //                         : Colors.red.shade400,
-                            //                   ),
-                            //                 ),
-                            //               ],
-                            //             ),
-                            //           ),
-                            //         ),
-                            //       ),
-
-                            //       // Divider between buttons
-                            //       Container(
-                            //         width: 1,
-                            //         height: 50,
-                            //         color: isPositive
-                            //             ? Colors.green.withValues(alpha: 0.25)
-                            //             : Colors.red.withValues(alpha: 0.25),
-                            //       ),
-
-                            //       // Payment History Button
-                            //       Expanded(
-                            //         child: GestureDetector(
-                            //           onTap: () => _showPaymentHistory(
-                            //             targetUserId:
-                            //                 entry['user_id'] as String,
-                            //             targetName: entry['name'] as String,
-                            //             targetLastname:
-                            //                 entry['lastname'] as String,
-                            //             net: net,
-                            //             targetColor: userColor,
-                            //           ),
-                            //           child: Container(
-                            //             padding: const EdgeInsets.symmetric(
-                            //               vertical: 14,
-                            //             ),
-                            //             decoration: BoxDecoration(
-                            //               color: Colors.blue.withValues(
-                            //                 alpha: 0.10,
-                            //               ),
-                            //               borderRadius: const BorderRadius.only(
-                            //                 bottomRight: Radius.circular(12),
-                            //               ),
-                            //               border: Border(
-                            //                 top: BorderSide(
-                            //                   color: Colors.blue.withValues(
-                            //                     alpha: 0.25,
-                            //                   ),
-                            //                 ),
-                            //               ),
-                            //             ),
-                            //             child: Row(
-                            //               mainAxisAlignment:
-                            //                   MainAxisAlignment.center,
-                            //               children: [
-                            //                 Icon(
-                            //                   Icons.history,
-                            //                   size: 22,
-                            //                   color: Colors.blue.shade400,
-                            //                 ),
-                            //                 const SizedBox(width: 6),
-                            //                 Text(
-                            //                   'Activity',
-                            //                   style: TextStyle(
-                            //                     fontSize: 18,
-                            //                     fontWeight: FontWeight.w600,
-                            //                     color: Colors.blue.shade400,
-                            //                   ),
-                            //                 ),
-                            //               ],
-                            //             ),
-                            //           ),
-                            //         ),
-                            //       ),
-                            //     ],
-                            //   ),
-
-                            // // if it is settled, only show the payment history button centered
-                            // if (isZero)
-                            //   GestureDetector(
-                            //     onTap: () => _showPaymentHistory(
-                            //       targetUserId: entry['user_id'] as String,
-                            //       targetName: entry['name'] as String,
-                            //       targetLastname: entry['lastname'] as String,
-                            //       net: net,
-                            //       targetColor: userColor,
-                            //     ),
-                            //     child: Container(
-                            //       width: double.infinity,
-                            //       padding: const EdgeInsets.symmetric(
-                            //         vertical: 14,
-                            //       ),
-                            //       decoration: BoxDecoration(
-                            //         color: Colors.blue.withValues(alpha: 0.10),
-                            //         borderRadius: const BorderRadius.only(
-                            //           bottomLeft: Radius.circular(12),
-                            //           bottomRight: Radius.circular(12),
-                            //         ),
-                            //         border: Border(
-                            //           top: BorderSide(
-                            //             color: Colors.blue.withValues(
-                            //               alpha: 0.25,
-                            //             ),
-                            //           ),
-                            //         ),
-                            //       ),
-                            //       child: Row(
-                            //         mainAxisAlignment: MainAxisAlignment.center,
-                            //         children: [
-                            //           Icon(
-                            //             Icons.history,
-                            //             size: 22,
-                            //             color: Colors.blue.shade400,
-                            //           ),
-                            //           const SizedBox(width: 6),
-                            //           Text(
-                            //             'Activity',
-                            //             style: TextStyle(
-                            //               fontSize: 18,
-                            //               fontWeight: FontWeight.w600,
-                            //               color: Colors.blue.shade400,
-                            //             ),
-                            //           ),
-                            //         ],
-                            //       ),
-                            //     ),
-                            //   ),
                           ],
                         ),
                       ),
+                    );
+
+                    if (isNudged) {
+                      cardWidget = AnimatedBuilder(
+                        animation: _nudgeAnimation,
+                        builder: (context, child) => Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(13),
+                            border: Border.all(
+                              color: _getNudgeGlowColor(
+                                nudgedCountReceived,
+                              ).withValues(alpha: _nudgeAnimation.value),
+                              width: 2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _getNudgeGlowColor(nudgedCountReceived)
+                                    .withValues(
+                                      alpha: _nudgeAnimation.value * 0.3,
+                                    ),
+                                blurRadius: 12,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          child: child,
+                        ),
+                        child: cardWidget,
+                      );
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: cardWidget,
                     );
                   },
                 ),
@@ -1705,6 +1775,19 @@ class _BalancePageState extends State<BalancePage> {
       },
     );
   }
+}
+
+Color _getNudgeColor(int count) {
+  if (count == 0) return Colors.orange;
+  if (count == 1) return Colors.orange;
+  if (count == 2) return Colors.deepOrange;
+  return Colors.red; // count == 3
+}
+
+Color _getNudgeGlowColor(int count) {
+  if (count == 1) return Colors.orange;
+  if (count == 2) return Colors.deepOrange;
+  return Colors.red; // count == 3
 }
 
 class _CopyContactButton extends StatefulWidget {
