@@ -1216,6 +1216,21 @@ class _BalancePageState extends State<BalancePage>
                     final int nudgedCountReceived =
                         entry['nudged_count_received'] as int;
 
+                    final int nudgeCount = entry['nudge_count'] as int;
+                    final String lastNudgedAt =
+                        entry['last_nudged_at'] as String;
+
+                    // Check cooldown
+                    bool isNudgeOnCooldown = false;
+                    if (lastNudgedAt.isNotEmpty) {
+                      final last = DateTime.parse(lastNudgedAt).toLocal();
+                      final diff = DateTime.now().difference(last);
+                      isNudgeOnCooldown = diff.inHours < 12;
+                    }
+
+                    final bool isNudgeDisabled =
+                        isNudgeOnCooldown || nudgeCount >= 3;
+
                     final Color balanceColor = isZero
                         ? Colors.grey
                         : isPositive
@@ -1558,31 +1573,40 @@ class _BalancePageState extends State<BalancePage>
                                 children: [
                                   Expanded(
                                     child: GestureDetector(
-                                      onTap: () => _nudge(
-                                        targetUserId:
-                                            entry['user_id'] as String,
-                                        targetName: entry['name'] as String,
-                                        currentCount:
-                                            entry['nudge_count'] as int,
-                                        lastNudgedAt:
-                                            entry['last_nudged_at'] as String,
-                                      ),
+                                      onTap: isNudgeDisabled
+                                          ? null // 👈 disabled — no action
+                                          : () => _nudge(
+                                              targetUserId:
+                                                  entry['user_id'] as String,
+                                              targetName:
+                                                  entry['name'] as String,
+                                              currentCount: nudgeCount,
+                                              lastNudgedAt: lastNudgedAt,
+                                            ),
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(
                                           vertical: 14,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: _getNudgeColor(
-                                            entry['nudge_count'] as int,
-                                          ).withValues(alpha: 0.15),
+                                          color: isNudgeDisabled
+                                              ? Colors.white.withValues(
+                                                  alpha: 0.04,
+                                                ) // 👈 grayed
+                                              : _getNudgeColor(
+                                                  nudgeCount,
+                                                ).withValues(alpha: 0.15),
                                           borderRadius: const BorderRadius.only(
                                             bottomLeft: Radius.circular(12),
                                           ),
                                           border: Border(
                                             top: BorderSide(
-                                              color: _getNudgeColor(
-                                                entry['nudge_count'] as int,
-                                              ).withValues(alpha: 0.25),
+                                              color: isNudgeDisabled
+                                                  ? Colors.white.withValues(
+                                                      alpha: 0.08,
+                                                    )
+                                                  : _getNudgeColor(
+                                                      nudgeCount,
+                                                    ).withValues(alpha: 0.25),
                                             ),
                                           ),
                                         ),
@@ -1591,23 +1615,40 @@ class _BalancePageState extends State<BalancePage>
                                               MainAxisAlignment.center,
                                           children: [
                                             Icon(
-                                              Icons.notifications_outlined,
+                                              isNudgeOnCooldown
+                                                  ? Icons
+                                                        .hourglass_empty // 👈 cooldown icon
+                                                  : nudgeCount >= 3
+                                                  ? Icons
+                                                        .notifications_off_outlined // 👈 max icon
+                                                  : Icons
+                                                        .notifications_outlined,
                                               size: 22,
-                                              color: _getNudgeColor(
-                                                entry['nudge_count'] as int,
-                                              ),
+                                              color: isNudgeDisabled
+                                                  ? Colors.white.withValues(
+                                                      alpha: 0.25,
+                                                    )
+                                                  : _getNudgeColor(nudgeCount),
                                             ),
                                             const SizedBox(width: 6),
                                             Text(
-                                              entry['nudge_count'] == 0
+                                              isNudgeOnCooldown
+                                                  ? 'Nudge Cooldown'
+                                                  : nudgeCount >= 3
+                                                  ? 'Nudge x3'
+                                                  : nudgeCount == 0
                                                   ? 'Nudge'
-                                                  : 'Nudge x${entry['nudge_count']}',
+                                                  : 'Nudge x$nudgeCount',
                                               style: TextStyle(
                                                 fontSize: 18,
                                                 fontWeight: FontWeight.w600,
-                                                color: _getNudgeColor(
-                                                  entry['nudge_count'] as int,
-                                                ),
+                                                color: isNudgeDisabled
+                                                    ? Colors.white.withValues(
+                                                        alpha: 0.25,
+                                                      )
+                                                    : _getNudgeColor(
+                                                        nudgeCount,
+                                                      ),
                                               ),
                                             ),
                                           ],
@@ -1618,9 +1659,7 @@ class _BalancePageState extends State<BalancePage>
                                   Container(
                                     width: 1,
                                     height: 50,
-                                    color: _getNudgeColor(
-                                      entry['nudge_count'] as int,
-                                    ).withValues(alpha: 0.25),
+                                    color: Colors.blue.withValues(alpha: 0.25),
                                   ),
                                   Expanded(
                                     child: GestureDetector(
