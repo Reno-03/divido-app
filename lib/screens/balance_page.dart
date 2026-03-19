@@ -198,33 +198,50 @@ class _BalancePageState extends State<BalancePage>
       for (var n in nudgesReceived) n['from_user_id'] as String: n,
     };
 
-    return netByUser.entries.map((e) {
-      final user = userMap[e.key];
-      final nudgeSent = nudgesSentMap[e.key];
-      final nudgeReceived = nudgesReceivedMap[e.key];
+    return netByUser.entries
+        .map((e) {
+          final user = userMap[e.key];
+          final nudgeSent = nudgesSentMap[e.key];
+          final nudgeReceived = nudgesReceivedMap[e.key];
 
-      return {
-        'user_id': e.key,
-        'name': user != null ? '${user['firstname']}' : 'Unknown',
-        'lastname': user?['lastname'] ?? '',
-        'net': e.value,
-        'color': user?['color'] as String? ?? '#6366F1',
-        'contact_number':
-            user?['contact_number'] as String? ??
-            '', // add contact number indicator
-        'is_gcash_ready':
-            user?['is_gcash_ready'] as bool? ?? false, // gcash ready indicator
-        'status': user?['status'] as String? ?? '',
-        // nudge sent to this person
-        'nudge_count': nudgeSent?['nudge_count'] as int? ?? 0,
-        'last_nudged_at': nudgeSent?['last_nudged_at'] as String? ?? '',
-        // nudge received from this person
-        'is_nudged': nudgeReceived != null,
-        'nudged_count_received': nudgeReceived?['nudge_count'] as int? ?? 0,
-      };
-    }).toList()..sort(
-      (a, b) => (b['net'] as double).compareTo(a['net'] as double),
-    );
+          return {
+            'user_id': e.key,
+            'name': user != null ? '${user['firstname']}' : 'Unknown',
+            'lastname': user?['lastname'] ?? '',
+            'net': e.value,
+            'color': user?['color'] as String? ?? '#6366F1',
+            'contact_number':
+                user?['contact_number'] as String? ??
+                '', // add contact number indicator
+            'is_gcash_ready':
+                user?['is_gcash_ready'] as bool? ??
+                false, // gcash ready indicator
+            'status': user?['status'] as String? ?? '',
+            // nudge sent to this person
+            'nudge_count': nudgeSent?['nudge_count'] as int? ?? 0,
+            'last_nudged_at': nudgeSent?['last_nudged_at'] as String? ?? '',
+            // nudge received from this person
+            'is_nudged': nudgeReceived != null,
+            'nudged_count_received': nudgeReceived?['nudge_count'] as int? ?? 0,
+          };
+        })
+        .toList() // updated — nudged cards first, then by net amount
+      ..sort((a, b) {
+        final aNudged = a['nudged_count_received'] as int;
+        final bNudged = b['nudged_count_received'] as int;
+
+        // primary: most nudged first
+        if (bNudged != aNudged) return bNudged.compareTo(aNudged);
+
+        // secondary: largest amount you owe (negative net) first
+        final aOwed = (a['net'] as double)
+            .clamp(double.negativeInfinity, 0)
+            .abs();
+        final bOwed = (b['net'] as double)
+            .clamp(double.negativeInfinity, 0)
+            .abs();
+        return bOwed.compareTo(aOwed);
+      });
   }
 
   String _getInitials(String firstname, String lastname) {
@@ -1150,58 +1167,58 @@ class _BalancePageState extends State<BalancePage>
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _balanceFuture,
       builder: (context, snapshot) {
-       if (snapshot.connectionState == ConnectionState.waiting) {
-  return Shimmer.fromColors(
-    baseColor: Colors.white.withValues(alpha: 0.06),
-    highlightColor: Colors.white.withValues(alpha: 0.15),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        // ── skeleton: avatar + status row ─────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Shimmer.fromColors(
+            baseColor: Colors.white.withValues(alpha: 0.06),
+            highlightColor: Colors.white.withValues(alpha: 0.15),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // ── skeleton: avatar + status row ─────────────────────
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 180,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 180,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                // ── skeleton: balance cards ────────────────────────────
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: 5,
+                    itemBuilder: (_, _) => Container(
+                      margin: const EdgeInsets.only(bottom: 24),
+                      height: 200,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ),
-        // ── skeleton: balance cards ────────────────────────────
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: 5,
-            itemBuilder: (_, _) => Container(
-              margin: const EdgeInsets.only(bottom: 24),
-              height: 200,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
+              ],
             ),
-          ),
-        ),
-      ],
-    ),
-  );
-}
+          );
+        }
 
         if (snapshot.hasError) {
           return Center(child: Text('Error: ${snapshot.error}'));
@@ -1278,7 +1295,7 @@ class _BalancePageState extends State<BalancePage>
                       final last = DateTime.parse(lastNudgedAt).toLocal();
                       final diff = DateTime.now().difference(last);
                       isNudgeOnCooldown = diff.inHours < 12;
-                       nudgeCooldownHoursLeft = (12 - diff.inHours).clamp(1, 12);
+                      nudgeCooldownHoursLeft = (12 - diff.inHours).clamp(1, 12);
                     }
 
                     final bool isNudgeDisabled =
