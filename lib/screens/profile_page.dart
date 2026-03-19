@@ -2,6 +2,7 @@ import 'package:divido_app/constants/color_options.dart';
 import 'package:divido_app/providers/expense_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:divido_app/services/current_user.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -430,6 +431,75 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // Add _pickAndUploadAvatar method to ProfilePage:
+  Future<void> _pickAndUploadAvatar() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 80,
+    );
+    if (picked == null) return;
+
+    try {
+      final bytes = await picked.readAsBytes();
+      final userId = CurrentUser.instance.id!;
+
+      // ✅ detect mime from bytes, not from the path
+      String contentType = 'image/jpeg'; // safe default
+      if (bytes.length >= 4) {
+        if (bytes[0] == 0x89 && bytes[1] == 0x50) {
+          contentType = 'image/png';
+        } else if (bytes[0] == 0xFF && bytes[1] == 0xD8) {
+          contentType = 'image/jpeg';
+        } else if (bytes[0] == 0x47 && bytes[1] == 0x49) {
+          contentType = 'image/gif';
+        } else if (bytes[0] == 0x52 && bytes[1] == 0x49) {
+          contentType = 'image/webp';
+        }
+      }
+
+      final ext = contentType.split('/').last; // 'jpeg', 'png', etc.
+      final path = '$userId/avatar.$ext';
+
+      await Supabase.instance.client.storage
+          .from('avatars')
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(upsert: true, contentType: contentType),
+          );
+
+      final rawUrl = Supabase.instance.client.storage
+          .from('avatars')
+          .getPublicUrl(path);
+
+      final url = '$rawUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+
+      await Supabase.instance.client
+          .from('profiles')
+          .update({'avatar_url': rawUrl})
+          .eq('id', userId);
+
+      CurrentUser.instance.avatarUrl = url;
+      setState(() {});
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Avatar updated!')));
+      }
+    } catch (e) {
+      debugPrint('Avatar upload error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = CurrentUser.instance;
@@ -460,58 +530,94 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
 
       // NOTE: Instead of Padding, use SingleChildScrollView to make it scrollable
-      // because the profile page is now too long 
+      // because the profile page is now too long
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Avatar
-            // Stack is used here to place multiple widgets on tap of each other
-            GestureDetector(
-              onTap: _showStatusDialog,
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
-                  CircleAvatar(
-                    radius: 48,
-                    backgroundColor: userColor,
-                    child: Text(
-                      initials,
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 1),
+                      width: 2,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        blurRadius: 16,
+                        spreadRadius: 4,
+                      ),
+                    ],
                   ),
-                  // edit hint
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                        border: Border.all(
-                          color: Color(0xFF171A3F),
-                          width: 2.0,
+                  child: ClipOval(
+                    child: Material(
+                      color: userColor,
+                      child: InkWell(
+                        onTap: _pickAndUploadAvatar,
+                        child: SizedBox(
+                          width: 96,
+                          height: 96,
+                          child: CurrentUser.instance.avatarUrl != null
+                              ? Image.network(
+                                  CurrentUser.instance.avatarUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => Center(
+                                    child: Text(
+                                      initials,
+                                      style: const TextStyle(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : Center(
+                                  child: Text(
+                                    initials,
+                                    style: const TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
                         ),
                       ),
-                      child: const Icon(
-                        Icons.edit,
-                        size: 13,
-                        color: Color(0xFF171A3F),
-                      ),
                     ),
                   ),
-                ],
-              ),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      border: Border.all(
+                        color: const Color(0xFF171A3F),
+                        width: 2.0,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      size: 14,
+                      color: Color(0xFF171A3F),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
 
             // Status bubble below avatar
             _statusBubble(user.status),
