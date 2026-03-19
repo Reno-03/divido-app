@@ -1772,6 +1772,19 @@ class _BalancePageState extends State<BalancePage>
                       ),
                     );
 
+                    String _getNudgePhrase(int count) {
+                      switch (count) {
+                        case 1:
+                          return 'Alayun la pagbayad!';
+                        case 2:
+                          return 'Ayaw nala pagbinayad!';
+                        case 3:
+                          return 'PAGBAYAD NA!';
+                        default:
+                          return 'Nudged!';
+                      }
+                    }
+
                     if (isNudged) {
                       cardWidget = AnimatedBuilder(
                         animation: _nudgeAnimation,
@@ -1798,6 +1811,58 @@ class _BalancePageState extends State<BalancePage>
                           child: child,
                         ),
                         child: cardWidget,
+                      );
+
+                      // Wrap in Stack to add nudge count badge
+                      cardWidget = Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          cardWidget,
+                          Positioned(
+                            top: -8,
+                            right: -8,
+                            child: AnimatedBuilder(
+                              animation: _nudgeAnimation,
+                              builder: (context, child) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getNudgeGlowColor(
+                                    nudgedCountReceived,
+                                  ),
+                                  borderRadius: BorderRadius.circular(50),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color:
+                                          _getNudgeGlowColor(
+                                            nudgedCountReceived,
+                                          ).withValues(
+                                            alpha: _nudgeAnimation.value * 0.6,
+                                          ),
+                                      blurRadius: 8,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _getNudgePhrase(nudgedCountReceived),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       );
                     }
 
