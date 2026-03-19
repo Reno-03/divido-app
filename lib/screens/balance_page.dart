@@ -1220,12 +1220,15 @@ class _BalancePageState extends State<BalancePage>
                     final String lastNudgedAt =
                         entry['last_nudged_at'] as String;
 
+                    int nudgeCooldownHoursLeft = 0;
+
                     // Check cooldown
                     bool isNudgeOnCooldown = false;
                     if (lastNudgedAt.isNotEmpty) {
                       final last = DateTime.parse(lastNudgedAt).toLocal();
                       final diff = DateTime.now().difference(last);
                       isNudgeOnCooldown = diff.inHours < 12;
+                       nudgeCooldownHoursLeft = (12 - diff.inHours).clamp(1, 12);
                     }
 
                     final bool isNudgeDisabled =
@@ -1633,7 +1636,7 @@ class _BalancePageState extends State<BalancePage>
                                             const SizedBox(width: 6),
                                             Text(
                                               isNudgeOnCooldown
-                                                  ? 'Nudge Cooldown'
+                                                  ? 'Cooldown (${nudgeCooldownHoursLeft}h)'
                                                   : nudgeCount >= 3
                                                   ? 'Nudge x3'
                                                   : nudgeCount == 0
@@ -1772,7 +1775,7 @@ class _BalancePageState extends State<BalancePage>
                       ),
                     );
 
-                    String _getNudgePhrase(int count) {
+                    String getNudgePhrase(int count) {
                       switch (count) {
                         case 1:
                           return 'Alayun la pagbayad!';
@@ -1819,7 +1822,7 @@ class _BalancePageState extends State<BalancePage>
                         children: [
                           cardWidget,
                           Positioned(
-                            top: -8,
+                            top: -9,
                             right: -8,
                             child: AnimatedBuilder(
                               animation: _nudgeAnimation,
@@ -1850,9 +1853,9 @@ class _BalancePageState extends State<BalancePage>
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(
-                                      _getNudgePhrase(nudgedCountReceived),
+                                      getNudgePhrase(nudgedCountReceived),
                                       style: const TextStyle(
-                                        fontSize: 11,
+                                        fontSize: 9,
                                         fontWeight: FontWeight.bold,
                                         color: Colors.white,
                                       ),
@@ -1867,7 +1870,7 @@ class _BalancePageState extends State<BalancePage>
                     }
 
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.only(bottom: 24),
                       child: cardWidget,
                     );
                   },
