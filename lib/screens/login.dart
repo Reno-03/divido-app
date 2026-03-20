@@ -28,64 +28,69 @@ class _LoginPageState extends State<LoginPage> {
   // change login to use username instead of email
   // lookup email by username, then sign in with email + password
   Future<void> _login() async {
-  final username = usernameController.text.trim();
-  final password = passwordController.text.trim();
+    final username = usernameController.text.trim();
+    final password = passwordController.text.trim();
 
-  if (username.isEmpty || password.isEmpty) {
-    setState(() => _errorMessage = 'Please fill in all fields.');
-    return;
-  }
-
-  setState(() {
-    _isLoading = true;
-    _errorMessage = null;
-  });
-
-  try {
-    // 1. Look up email by username
-    final profile = await _supabase
-        .from('profiles')
-        .select('email')
-        .eq('username', username)
-        .maybeSingle();
-
-    if (profile == null) {
-      setState(() => _errorMessage = 'User not found.');
+    if (username.isEmpty || password.isEmpty) {
+      setState(() => _errorMessage = 'Please fill in all fields.');
       return;
     }
 
-    // 2. Sign in with their actual email
-    final authResponse = await _supabase.auth.signInWithPassword(
-      email: profile['email'],
-      password: password,
-    );
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
 
-    if (authResponse.user == null) {
-      setState(() => _errorMessage = 'Invalid username or password.');
-      return;
+    try {
+      // 1. Look up email by username
+      final usernameProfile = await _supabase
+          .from('profiles')
+          .select('email')
+          .eq('username', username)
+          .maybeSingle();
+
+      if (usernameProfile == null) {
+        setState(() => _errorMessage = 'User not found.');
+        return;
+      }
+
+      // 2. Sign in with their actual email
+      final authResponse = await _supabase.auth.signInWithPassword(
+        email: usernameProfile['email'],
+        password: password,
+      );
+
+      if (authResponse.user == null) {
+        setState(() => _errorMessage = 'Invalid username or password.');
+        return;
+      }
+
+      // 3. Fetch full profile
+      final fullProfile = await _supabase
+          .from('profiles')
+          .select()
+          .eq('id', authResponse.user!.id)
+          .single();
+
+      // 4. Save current user
+      CurrentUser.instance.setFromMap(fullProfile);
+
+      if (!mounted) return;
+
+      // 5. Route based on avatar_url
+      if (fullProfile['avatar_url'] == null) {
+        Navigator.pushReplacementNamed(context, '/avatar-setup');
+      } else {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
+    } on AuthException catch (e) {
+      setState(() => _errorMessage = e.message);
+    } catch (e) {
+      setState(() => _errorMessage = 'Something went wrong. Try again.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-
-    // 3. Fetch full profile
-    final fullProfile = await _supabase
-        .from('profiles')
-        .select()
-        .eq('id', authResponse.user!.id)
-        .single();
-
-    // 4. Save current user
-    CurrentUser.instance.setFromMap(fullProfile);
-
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, '/home');
-    }
-  } on AuthException catch (e) {
-    setState(() => _errorMessage = e.message);
-  } catch (e) {
-    setState(() => _errorMessage = 'Something went wrong. Try again.');
-  } finally {
-    if (mounted) setState(() => _isLoading = false);
   }
-}
 
   @override
   Widget build(BuildContext context) {

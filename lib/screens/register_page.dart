@@ -35,7 +35,7 @@ class _RegisterPageState extends State<RegisterPage> {
     _usernameController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
-    _emailController.dispose(); 
+    _emailController.dispose();
     _contactNumberController.dispose();
     super.dispose();
   }
@@ -46,7 +46,6 @@ class _RegisterPageState extends State<RegisterPage> {
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
-    
 
     // Validation
     if (firstName.isEmpty ||
@@ -117,11 +116,11 @@ class _RegisterPageState extends State<RegisterPage> {
           .select()
           .single();
 
-      // 4. Auto-login after registration
+      // 4. Set local user
       CurrentUser.instance.setFromMap(profile);
 
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/avatar-setup');
+        Navigator.pushReplacementNamed(context, '/email-confirm');
       }
     } catch (e) {
       setState(() => _errorMessage = 'Something went wrong. Try again.');
