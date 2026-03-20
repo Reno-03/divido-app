@@ -18,11 +18,7 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
       backgroundColor: Color(0xFF171A3F),
       title: Row(
         children: [
-          Icon(
-            Icons.new_releases_outlined,
-            color: Colors.white,
-            size: 22,
-          ),
+          Icon(Icons.new_releases_outlined, color: Colors.white, size: 22),
           const SizedBox(width: 8),
           const Text(
             "What's New",
@@ -42,7 +38,7 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
               borderRadius: BorderRadius.circular(50),
             ),
             child: Text(
-              'v0.4.0-beta',
+              'v0.5.0-beta — Nudge You',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.white,
@@ -53,22 +49,22 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
           const SizedBox(height: 14),
 
           _section('✨ New', [
-            'Edit your profile, color, and GCash number',
-            'Copy GCash numbers directly from balance cards',
-            'Add a status message visible to others',
-            'Delete or edit your own expenses',
-            'Remove payments you made',
+            'Add Payment with Cash or GCash via segmented button',
+            'Upload and edit your circle avatar photo on Profile page',
+            'Nudge feature — poke people who owe you (replaces Settle button)',
           ]),
           const SizedBox(height: 10),
-          _section('🔧 Improved', [
-            'Balance cards now show GCash and contact info clearly',
-            'Profile changes reflect everywhere instantly',
-            'Long expense titles no longer overflow',
+          _section('🔧 Optimized', [
+            'Balance page header now properly aligns avatar and status bubble',
+            'Shimmer skeletal loading on All, Mine, and Balance pages',
+            'Improved Payment dialog UI/UX',
+            'Balance cards sorted by most nudged first, then by amount owed',
+            'Avatar photo with initials fallback across All, Mine, Balance, Profile, and sidebar',
+            'Better UX for editing and removing avatar photo on web and mobile PWA',
+            'Avatar upload step added after registration',
           ]),
           const SizedBox(height: 10),
-          _section('🗑️ Removed', [
-            'Settle button (coming back as Nudge feature soon!)',
-          ]),
+          _section('🗑️ Removed', ['Email confirmation temporarily disabled']),
 
           const SizedBox(height: 16),
 
