@@ -36,7 +36,7 @@
   - Session restoration on app start
 
 - **Expense Management**
-  - Create expenses with a title and total amount
+  - Create expenses with a title and total amount.
   - Split equally between participants or set **custom amounts per payer**
   - View all expenses, your own expenses, and an overall balance view
   - Expenses and breakdowns persisted in Supabase tables (`expenses`, `expense_breakdowns`, `profiles`)
