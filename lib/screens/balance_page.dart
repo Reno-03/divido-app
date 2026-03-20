@@ -1236,23 +1236,52 @@ class _BalancePageState extends State<BalancePage>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Color(
+                  () {
+                    final avatarUrl = CurrentUser.instance.avatarUrl;
+                    final bgColor = Color(
                       int.parse(
                         'FF${(CurrentUser.instance.color ?? '#6366F1').replaceAll('#', '')}',
                         radix: 16,
                       ),
-                    ),
-                    child: Text(
-                      '${CurrentUser.instance.firstname?[0].toUpperCase() ?? ''}${CurrentUser.instance.lastname?[0].toUpperCase() ?? ''}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    );
+                    final initials =
+                        '${CurrentUser.instance.firstname?[0].toUpperCase() ?? ''}${CurrentUser.instance.lastname?[0].toUpperCase() ?? ''}';
+
+                    return Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: bgColor,
                       ),
-                    ),
-                  ),
+                      clipBehavior: Clip.antiAlias,
+                      child: avatarUrl != null && avatarUrl.isNotEmpty
+                          ? Image.network(
+                              avatarUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => Center(
+                                child: Text(
+                                  initials,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Center(
+                              child: Text(
+                                initials,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                    );
+                  }(),
                   const SizedBox(width: 8),
                   Flexible(child: _statusBubble(CurrentUser.instance.status)),
                 ],
