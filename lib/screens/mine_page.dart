@@ -90,7 +90,6 @@ class _MinePageState extends State<MinePage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      showDragHandle: true,
       useSafeArea: true,
       barrierColor: Colors.black.withValues(alpha: 0.85),
       shape: const RoundedRectangleBorder(
