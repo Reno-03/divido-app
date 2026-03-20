@@ -62,6 +62,8 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
             'Avatar photo with initials fallback across All, Mine, Balance, Profile, and sidebar',
             'Better UX for editing and removing avatar photo on web and mobile PWA',
             'Avatar upload step added after registration',
+            'Improve UI/UX for Creating Expense Modal',
+            'Improve UI/UX for Editing Expense Modal'
           ]),
           const SizedBox(height: 10),
           _section('🗑️ Removed', ['Email confirmation temporarily disabled']),
