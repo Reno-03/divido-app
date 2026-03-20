@@ -77,12 +77,7 @@ class _LoginPageState extends State<LoginPage> {
 
       if (!mounted) return;
 
-      // 5. Route based on avatar_url
-      if (fullProfile['avatar_url'] == null) {
-        Navigator.pushReplacementNamed(context, '/avatar-setup');
-      } else {
-        Navigator.pushReplacementNamed(context, '/home');
-      }
+      Navigator.pushReplacementNamed(context, '/home');
     } on AuthException catch (e) {
       setState(() => _errorMessage = e.message);
     } catch (e) {

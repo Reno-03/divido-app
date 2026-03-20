@@ -99,15 +99,15 @@ class _AvatarSetupPageState extends State<AvatarSetupPage> {
       setState(() {});
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Photo uploaded!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Photo uploaded!')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Upload failed: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
@@ -129,7 +129,7 @@ class _AvatarSetupPageState extends State<AvatarSetupPage> {
           child: Column(
             children: [
               const Spacer(),
-              
+
               // title
               const Text(
                 'Add a profile photo',
@@ -159,12 +159,10 @@ class _AvatarSetupPageState extends State<AvatarSetupPage> {
                   clipBehavior: Clip.none,
                   alignment: Alignment.center,
                   children: [
+                    // replace the single Container with border + clipBehavior
                     Container(
-                      width: 120,
-                      height: 120,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: _userColor,
                         border: Border.all(
                           color: Colors.white.withValues(alpha: 0.8),
                           width: 2.5,
@@ -177,48 +175,57 @@ class _AvatarSetupPageState extends State<AvatarSetupPage> {
                           ),
                         ],
                       ),
-                      clipBehavior: Clip.antiAlias,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          hasPhoto
-                              ? Image.network(
-                                  user.avatarUrl!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => Center(
-                                    child: Text(
-                                      _initials,
-                                      style: const TextStyle(
-                                        fontSize: 40,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                      child: ClipOval(
+                        child: SizedBox(
+                          width: 120,
+                          height: 120,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              // color background
+                              Container(color: _userColor),
+
+                              // photo or initials
+                              hasPhoto
+                                  ? Image.network(
+                                      user.avatarUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => Center(
+                                        child: Text(
+                                          _initials,
+                                          style: const TextStyle(
+                                            fontSize: 40,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : Center(
+                                      child: Text(
+                                        _initials,
+                                        style: const TextStyle(
+                                          fontSize: 40,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                )
-                              : Center(
-                                  child: Text(
-                                    _initials,
-                                    style: const TextStyle(
-                                      fontSize: 40,
-                                      fontWeight: FontWeight.bold,
+
+                              // uploading overlay
+                              if (_isUploading)
+                                Container(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
                                       color: Colors.white,
                                     ),
                                   ),
                                 ),
-
-                          // uploading overlay
-                          if (_isUploading)
-                            Container(
-                              color: Colors.black.withValues(alpha: 0.5),
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                        ],
+                            ],
+                          ),
+                        ),
                       ),
                     ),
 
@@ -276,10 +283,7 @@ class _AvatarSetupPageState extends State<AvatarSetupPage> {
                       : Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Icon(
-                              Icons.photo_library_outlined,
-                              size: 20,
-                            ),
+                            const Icon(Icons.photo_library_outlined, size: 20),
                             const SizedBox(width: 8),
                             Text(
                               hasPhoto ? 'Change Photo' : 'Choose Photo',
@@ -315,8 +319,9 @@ class _AvatarSetupPageState extends State<AvatarSetupPage> {
                     hasPhoto ? 'Continue →' : 'Skip for now',
                     style: TextStyle(
                       fontSize: 15,
-                      fontWeight:
-                          hasPhoto ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight: hasPhoto
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                       color: hasPhoto
                           ? Colors.white.withValues(alpha: 0.9)
                           : Colors.white.withValues(alpha: 0.35),

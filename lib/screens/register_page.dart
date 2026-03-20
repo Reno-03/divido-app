@@ -120,7 +120,7 @@ class _RegisterPageState extends State<RegisterPage> {
       CurrentUser.instance.setFromMap(profile);
 
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/email-confirm');
+        Navigator.pushReplacementNamed(context, '/avatar-setup');
       }
     } catch (e) {
       setState(() => _errorMessage = 'Something went wrong. Try again.');
