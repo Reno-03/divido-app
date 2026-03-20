@@ -173,7 +173,7 @@ class _BalancePageState extends State<BalancePage>
     final users = await supabase
         .from('profiles')
         .select(
-          'id, firstname, lastname, color, contact_number, is_gcash_ready, status',
+          'id, firstname, lastname, color, contact_number, is_gcash_ready, status, avatar_url',
         )
         .inFilter('id', userIds);
 
@@ -223,6 +223,7 @@ class _BalancePageState extends State<BalancePage>
             // nudge received from this person
             'is_nudged': nudgeReceived != null,
             'nudged_count_received': nudgeReceived?['nudge_count'] as int? ?? 0,
+            'avatar_url': user?['avatar_url'] as String? ?? '',
           };
         })
         .toList() // updated — nudged cards first, then by net amount
@@ -1396,35 +1397,74 @@ class _BalancePageState extends State<BalancePage>
                                         children: [
                                           Row(
                                             children: [
-                                              Container(
-                                                width: 34,
-                                                height: 34,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  gradient: LinearGradient(
-                                                    begin: Alignment.topLeft,
-                                                    end: Alignment.bottomRight,
-                                                    colors: [
-                                                      userColor,
-                                                      userColor.withValues(
-                                                        alpha: 0.7,
-                                                      ),
-                                                    ],
+                                              () {
+                                                final avatarUrl =
+                                                    entry['avatar_url']
+                                                        as String?;
+                                                return Container(
+                                                  width: 34,
+                                                  height: 34,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    gradient: LinearGradient(
+                                                      begin: Alignment.topLeft,
+                                                      end:
+                                                          Alignment.bottomRight,
+                                                      colors: [
+                                                        userColor,
+                                                        userColor.withValues(
+                                                          alpha: 0.7,
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ),
-                                                ),
-                                                alignment: Alignment.center,
-                                                child: Text(
-                                                  _getInitials(
-                                                    entry['name'] as String,
-                                                    entry['lastname'] as String,
-                                                  ),
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
+                                                  clipBehavior: Clip.antiAlias,
+                                                  child:
+                                                      avatarUrl != null &&
+                                                          avatarUrl.isNotEmpty
+                                                      ? Image.network(
+                                                          avatarUrl,
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder: (_, _, _) => Center(
+                                                            child: Text(
+                                                              _getInitials(
+                                                                entry['name']
+                                                                    as String,
+                                                                entry['lastname']
+                                                                    as String,
+                                                              ),
+                                                              style: const TextStyle(
+                                                                fontSize: 12,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                color: Colors
+                                                                    .white,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        )
+                                                      : Center(
+                                                          child: Text(
+                                                            _getInitials(
+                                                              entry['name']
+                                                                  as String,
+                                                              entry['lastname']
+                                                                  as String,
+                                                            ),
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 12,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  color: Colors
+                                                                      .white,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                );
+                                              }(),
                                               const SizedBox(width: 12),
                                               Text(
                                                 entry['name'] as String,

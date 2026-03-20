@@ -263,9 +263,11 @@ class _MinePageState extends State<MinePage> {
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 20,
                                                     decoration: isPaid
-                                                        ? TextDecoration.lineThrough
+                                                        ? TextDecoration
+                                                              .lineThrough
                                                         : null,
-                                                    decorationColor: Colors.white54,
+                                                    decorationColor:
+                                                        Colors.white54,
                                                   ),
                                                 ),
                                               ),
@@ -287,7 +289,9 @@ class _MinePageState extends State<MinePage> {
                                                                 Map<
                                                                   String,
                                                                   dynamic
-                                                                >.from(e as Map),
+                                                                >.from(
+                                                                  e as Map,
+                                                                ),
                                                           )
                                                           .toList(), // 👈 cast each element
                                                   provider: expenseProvider,
@@ -299,7 +303,9 @@ class _MinePageState extends State<MinePage> {
                                                   decoration: BoxDecoration(
                                                     shape: BoxShape.circle,
                                                     color: Colors.white
-                                                        .withValues(alpha: 0.08),
+                                                        .withValues(
+                                                          alpha: 0.08,
+                                                        ),
                                                   ),
                                                   child: Icon(
                                                     Icons.edit_outlined,
@@ -381,32 +387,70 @@ class _MinePageState extends State<MinePage> {
                                           ),
                                           child: Row(
                                             children: [
-                                              Container(
-                                                width: 32,
-                                                height: 32,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  gradient: LinearGradient(
-                                                    begin: Alignment.topLeft,
-                                                    end: Alignment.bottomRight,
-                                                    colors: [
-                                                      userColor,
-                                                      userColor.withValues(
-                                                        alpha: 0.7,
-                                                      ),
-                                                    ],
+                                              () {
+                                                final avatarUrl =
+                                                    user?['avatar_url']
+                                                        as String?;
+                                                return Container(
+                                                  width: 32,
+                                                  height: 32,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    gradient: LinearGradient(
+                                                      begin: Alignment.topLeft,
+                                                      end:
+                                                          Alignment.bottomRight,
+                                                      colors: [
+                                                        userColor,
+                                                        userColor.withValues(
+                                                          alpha: 0.7,
+                                                        ),
+                                                      ],
+                                                    ),
                                                   ),
-                                                ),
-                                                alignment: Alignment.center,
-                                                child: Text(
-                                                  initials,
-                                                  style: const TextStyle(
-                                                    fontSize: 12,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
-                                              ),
+                                                  clipBehavior: Clip.antiAlias,
+                                                  child:
+                                                      avatarUrl != null &&
+                                                          avatarUrl.isNotEmpty
+                                                      ? Image.network(
+                                                          avatarUrl,
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder:
+                                                              (
+                                                                _,
+                                                                _,
+                                                                _,
+                                                              ) => Center(
+                                                                child: Text(
+                                                                  initials,
+                                                                  style: const TextStyle(
+                                                                    fontSize:
+                                                                        12,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                    color: Colors
+                                                                        .white,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                        )
+                                                      : Center(
+                                                          child: Text(
+                                                            initials,
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 12,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  color: Colors
+                                                                      .white,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                );
+                                              }(),
                                               const SizedBox(width: 10),
                                               Expanded(
                                                 child: Text(

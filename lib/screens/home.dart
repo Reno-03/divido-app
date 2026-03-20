@@ -141,13 +141,42 @@ class _HomePageState extends State<HomePage> {
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 accountEmail: Text(CurrentUser.instance.email ?? ''),
-                currentAccountPicture: CircleAvatar(
-                  backgroundColor: userColor, // use the parsed user color
-                  child: Text(
-                    '${CurrentUser.instance.firstname?[0].toUpperCase()}${CurrentUser.instance.lastname?[0].toUpperCase() ?? ''}',
-                    style: const TextStyle(fontSize: 24, color: Colors.white),
-                  ),
-                ),
+                currentAccountPicture: () {
+                  final avatarUrl = CurrentUser.instance.avatarUrl;
+                  final initials =
+                      '${CurrentUser.instance.firstname?[0].toUpperCase() ?? ''}${CurrentUser.instance.lastname?[0].toUpperCase() ?? ''}';
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: userColor,
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: avatarUrl != null && avatarUrl.isNotEmpty
+                        ? Image.network(
+                            avatarUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => Center(
+                              child: Text(
+                                initials,
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Center(
+                            child: Text(
+                              initials,
+                              style: const TextStyle(
+                                fontSize: 24,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                  );
+                }(),
               ),
 
               // Nav items

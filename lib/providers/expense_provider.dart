@@ -22,7 +22,7 @@ class ExpenseProvider extends ChangeNotifier {
         expense_breakdowns (
           payer_id,
           amount,
-          profiles (id, firstname, lastname, color)
+          profiles (id, firstname, lastname, color, avatar_url)
         )
       ''')
         .order('created_at', ascending: false);

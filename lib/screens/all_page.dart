@@ -20,7 +20,7 @@ class _AllPageState extends State<AllPage> {
     final expenseProvider = Provider.of<ExpenseProvider>(context);
     final expenses = expenseProvider.expenses;
 
-     if (expenseProvider.isLoading) {
+    if (expenseProvider.isLoading) {
       return Shimmer.fromColors(
         baseColor: Colors.white.withValues(alpha: 0.06),
         highlightColor: Colors.white.withValues(alpha: 0.15),
@@ -127,7 +127,7 @@ class _AllPageState extends State<AllPage> {
                       ),
                     ),
                     ...expensesForDate.map((expense) {
-                      final isPaid = expense['is_paid'] == true; 
+                      final isPaid = expense['is_paid'] == true;
                       final owner = expense['profiles'];
                       final ownerId = owner?['id'];
                       final breakdowns =
@@ -142,7 +142,8 @@ class _AllPageState extends State<AllPage> {
                           .toList();
 
                       // Get owner color
-                      final ownerRawColor = expense['profiles']?['color'] as String? ?? '#6366F1';
+                      final ownerRawColor =
+                          expense['profiles']?['color'] as String? ?? '#6366F1';
                       final ownerColor = Color(
                         int.parse(
                           'FF${ownerRawColor.replaceAll('#', '')}',
@@ -155,7 +156,9 @@ class _AllPageState extends State<AllPage> {
                         opacity: isPaid ? 0.45 : 1.0,
                         child: Card(
                           margin: const EdgeInsets.only(bottom: 12),
-                          color: ownerColor.withValues(alpha: 0.1), // subtle tint
+                          color: ownerColor.withValues(
+                            alpha: 0.1,
+                          ), // subtle tint
                           child: Container(
                             decoration: BoxDecoration(
                               border: Border(
@@ -182,8 +185,10 @@ class _AllPageState extends State<AllPage> {
                                               style: TextStyle(
                                                 fontWeight: FontWeight.bold,
                                                 fontSize: 20,
-                                                decoration: isPaid ? TextDecoration.lineThrough : null,  // 👈
-                                                decorationColor: Colors.white54, 
+                                                decoration: isPaid
+                                                    ? TextDecoration.lineThrough
+                                                    : null, // 👈
+                                                decorationColor: Colors.white54,
                                               ),
                                             ),
                                             Text(
@@ -206,8 +211,10 @@ class _AllPageState extends State<AllPage> {
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 33,
-                                          decoration: isPaid ? TextDecoration.lineThrough : null,  // 👈
-                                          decorationColor: Colors.white54, 
+                                          decoration: isPaid
+                                              ? TextDecoration.lineThrough
+                                              : null, // 👈
+                                          decorationColor: Colors.white54,
                                         ),
                                       ),
                                     ],
@@ -215,7 +222,9 @@ class _AllPageState extends State<AllPage> {
                                   const SizedBox(height: 8),
                                   const Text(
                                     'Payers:',
-                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                   const SizedBox(height: 4),
                                   ...filteredBreakdowns.map((b) {
@@ -225,13 +234,13 @@ class _AllPageState extends State<AllPage> {
                                     final payerName = user != null
                                         ? '$firstName $lastName'
                                         : 'Unknown';
-                        
+
                                     // Generate initials
                                     final initials = [
                                       firstName.isNotEmpty ? firstName[0] : '',
                                       lastName.isNotEmpty ? lastName[0] : '',
                                     ].join().toUpperCase();
-                        
+
                                     final rawColor =
                                         user?['color'] as String? ?? '#6366F1';
                                     final userColor = Color(
@@ -240,7 +249,7 @@ class _AllPageState extends State<AllPage> {
                                         radix: 16,
                                       ),
                                     );
-                        
+
                                     return Padding(
                                       padding: const EdgeInsets.only(top: 6),
                                       child: Container(
@@ -252,36 +261,73 @@ class _AllPageState extends State<AllPage> {
                                           color: Colors.white.withValues(
                                             alpha: 0.04,
                                           ),
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
                                         ),
                                         child: Row(
                                           children: [
-                                            Container(
-                                              width: 32,
-                                              height: 32,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                gradient: LinearGradient(
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                  colors: [
-                                                    userColor,
-                                                    userColor.withValues(
-                                                      alpha: 0.7,
-                                                    ),
-                                                  ],
+                                            // Use a lambda function here,  which evaluates if the avatar_url is available or not
+                                            // prio: use custom image circle avatar
+                                            // fallback: use user's initials and a the chosen color as bg gradient of the circle avatar
+                                            () {
+                                              final avatarUrl =
+                                                  user?['avatar_url']
+                                                      as String?;
+                                              return Container(
+                                                width: 32,
+                                                height: 32,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                    colors: [
+                                                      userColor,
+                                                      userColor.withValues(
+                                                        alpha: 0.7,
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
-                                              ),
-                                              alignment: Alignment.center,
-                                              child: Text(
-                                                initials,
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                            ),
+                                                clipBehavior: Clip.antiAlias,
+                                                child:
+                                                    avatarUrl != null &&
+                                                        avatarUrl.isNotEmpty
+                                                    ? Image.network(
+                                                        avatarUrl,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder:
+                                                            (_, _, _) => Center(
+                                                              child: Text(
+                                                                initials,
+                                                                style: const TextStyle(
+                                                                  fontSize: 12,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  color: Colors
+                                                                      .white,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                      )
+                                                    : Center(
+                                                        child: Text(
+                                                          initials,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 12,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                color: Colors
+                                                                    .white,
+                                                              ),
+                                                        ),
+                                                      ),
+                                              );
+                                            }(),
                                             const SizedBox(width: 10),
                                             Expanded(
                                               child: Text(
