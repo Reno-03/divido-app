@@ -500,6 +500,199 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  void _showAvatarOptions() {
+    final hasAvatar =
+        CurrentUser.instance.avatarUrl != null &&
+        CurrentUser.instance.avatarUrl!.isNotEmpty;
+
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Profile Photo',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey.withValues(alpha: 0.2),
+                    ),
+                    child: const Icon(Icons.close, size: 16),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Upload / Change
+            GestureDetector(
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickAndUploadAvatar();
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.blue.withValues(alpha: 0.15),
+                      ),
+                      child: Icon(
+                        Icons.photo_library_outlined,
+                        size: 18,
+                        color: Colors.blue.shade300,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Text(
+                      hasAvatar ? 'Change Photo' : 'Upload Photo',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      Icons.chevron_right,
+                      color: Colors.white.withValues(alpha: 0.3),
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Remove (only if avatar exists)
+            if (hasAvatar) ...[
+              const SizedBox(height: 10),
+              GestureDetector(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _removeAvatar();
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.red.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.red.withValues(alpha: 0.15),
+                        ),
+                        child: Icon(
+                          Icons.delete_outline,
+                          size: 18,
+                          color: Colors.red.shade400,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Text(
+                        'Remove Photo',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.red.shade400,
+                        ),
+                      ),
+                      const Spacer(),
+                      Icon(
+                        Icons.chevron_right,
+                        color: Colors.red.withValues(alpha: 0.3),
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _removeAvatar() async {
+    final userId = CurrentUser.instance.id!;
+
+    try {
+      // delete from storage (try both extensions)
+      for (final ext in ['jpeg', 'png', 'gif', 'webp']) {
+        try {
+          await Supabase.instance.client.storage.from('avatars').remove([
+            '$userId/avatar.$ext',
+          ]);
+        } catch (_) {}
+      }
+
+      // clear from profiles table
+      await Supabase.instance.client
+          .from('profiles')
+          .update({'avatar_url': null})
+          .eq('id', userId);
+
+      CurrentUser.instance.avatarUrl = null;
+      setState(() {});
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Photo removed.')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to remove photo: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = CurrentUser.instance;
@@ -560,7 +753,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Material(
                       color: userColor,
                       child: InkWell(
-                        onTap: _pickAndUploadAvatar,
+                        onTap: _showAvatarOptions,
                         child: SizedBox(
                           width: 96,
                           height: 96,
