@@ -1,10 +1,13 @@
 import 'package:divido_app/constants/color_options.dart';
 import 'package:divido_app/providers/expense_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:web/web.dart' as web;
+import 'dart:js_interop';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -14,6 +17,9 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  bool _isRemovingAvatar = false;
+  bool _isUploadingAvatar = false;
+
   void _showEditModal() {
     final user = CurrentUser.instance;
     final firstNameController = TextEditingController(text: user.firstname);
@@ -431,36 +437,27 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  // Add _pickAndUploadAvatar method to ProfilePage:
-  Future<void> _pickAndUploadAvatar() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 512,
-      maxHeight: 512,
-      imageQuality: 80,
-    );
-    if (picked == null) return;
-
+  Future<void> _uploadBytes(Uint8List bytes, String? mimeType) async {
+    setState(() => _isUploadingAvatar = true);
     try {
-      final bytes = await picked.readAsBytes();
       final userId = CurrentUser.instance.id!;
 
-      // ✅ detect mime from bytes, not from the path
-      String contentType = 'image/jpeg'; // safe default
-      if (bytes.length >= 4) {
-        if (bytes[0] == 0x89 && bytes[1] == 0x50) {
-          contentType = 'image/png';
-        } else if (bytes[0] == 0xFF && bytes[1] == 0xD8) {
-          contentType = 'image/jpeg';
-        } else if (bytes[0] == 0x47 && bytes[1] == 0x49) {
-          contentType = 'image/gif';
-        } else if (bytes[0] == 0x52 && bytes[1] == 0x49) {
-          contentType = 'image/webp';
+      String contentType = mimeType ?? 'image/jpeg';
+      if (mimeType == null || mimeType.isEmpty) {
+        if (bytes.length >= 4) {
+          if (bytes[0] == 0x89 && bytes[1] == 0x50) {
+            contentType = 'image/png';
+          } else if (bytes[0] == 0xFF && bytes[1] == 0xD8) {
+            contentType = 'image/jpeg';
+          } else if (bytes[0] == 0x47 && bytes[1] == 0x49) {
+            contentType = 'image/gif';
+          } else if (bytes[0] == 0x52 && bytes[1] == 0x49) {
+            contentType = 'image/webp';
+          }
         }
       }
 
-      final ext = contentType.split('/').last; // 'jpeg', 'png', etc.
+      final ext = contentType.split('/').last;
       final path = '$userId/avatar.$ext';
 
       await Supabase.instance.client.storage
@@ -491,13 +488,49 @@ class _ProfilePageState extends State<ProfilePage> {
         ).showSnackBar(const SnackBar(content: Text('Avatar updated!')));
       }
     } catch (e) {
-      debugPrint('Avatar upload error: $e');
       if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
       }
+    } finally {
+      if (mounted) setState(() => _isUploadingAvatar = false);
     }
+  }
+
+  // Add _pickAndUploadAvatar method to ProfilePage:
+  Future<void> _pickAndUploadAvatar() async {
+    if (kIsWeb) {
+      final input = web.HTMLInputElement()
+        ..type = 'file'
+        ..accept = 'image/*';
+
+      input.click();
+
+      await input.onChange.first;
+
+      final files = input.files;
+      if (files == null || files.length == 0) return;
+
+      final file = files.item(0)!;
+      final arrayBuffer = await file.arrayBuffer().toDart;
+      final bytes = Uint8List.view(arrayBuffer.toDart);
+
+      await _uploadBytes(bytes, file.type);
+      return;
+    }
+
+    // native
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 80,
+    );
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    await _uploadBytes(bytes, null);
   }
 
   void _showAvatarOptions() {
@@ -658,10 +691,11 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _removeAvatar() async {
+    setState(() => _isRemovingAvatar = true);
+
     final userId = CurrentUser.instance.id!;
 
     try {
-      // delete from storage (try both extensions)
       for (final ext in ['jpeg', 'png', 'gif', 'webp']) {
         try {
           await Supabase.instance.client.storage.from('avatars').remove([
@@ -670,14 +704,12 @@ class _ProfilePageState extends State<ProfilePage> {
         } catch (_) {}
       }
 
-      // clear from profiles table
       await Supabase.instance.client
           .from('profiles')
           .update({'avatar_url': null})
           .eq('id', userId);
 
       CurrentUser.instance.avatarUrl = null;
-      setState(() {});
 
       if (mounted) {
         ScaffoldMessenger.of(
@@ -690,6 +722,8 @@ class _ProfilePageState extends State<ProfilePage> {
           context,
         ).showSnackBar(SnackBar(content: Text('Failed to remove photo: $e')));
       }
+    } finally {
+      if (mounted) setState(() => _isRemovingAvatar = false);
     }
   }
 
@@ -734,6 +768,7 @@ class _ProfilePageState extends State<ProfilePage> {
               clipBehavior: Clip.none,
               alignment: Alignment.center,
               children: [
+                // avatar circle
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
@@ -753,61 +788,128 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Material(
                       color: userColor,
                       child: InkWell(
-                        onTap: _showAvatarOptions,
+                        onTap: _isRemovingAvatar
+                            ? null
+                            : () {
+                                if (kIsWeb) {
+                                  _pickAndUploadAvatar();
+                                } else {
+                                  _showAvatarOptions();
+                                }
+                              },
                         child: SizedBox(
                           width: 96,
                           height: 96,
-                          child: CurrentUser.instance.avatarUrl != null
-                              ? Image.network(
-                                  CurrentUser.instance.avatarUrl!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => Center(
-                                    child: Text(
-                                      initials,
-                                      style: const TextStyle(
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              // photo or initials
+                              CurrentUser.instance.avatarUrl != null
+                                  ? Image.network(
+                                      CurrentUser.instance.avatarUrl!,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => Center(
+                                        child: Text(
+                                          initials,
+                                          style: const TextStyle(
+                                            fontSize: 32,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  : Center(
+                                      child: Text(
+                                        initials,
+                                        style: const TextStyle(
+                                          fontSize: 32,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                )
-                              : Center(
-                                  child: Text(
-                                    initials,
-                                    style: const TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.bold,
+
+                              // loading overlay while deleting OR uploading
+                              if (_isRemovingAvatar || _isUploadingAvatar)
+                                Container(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
                                       color: Colors.white,
                                     ),
                                   ),
                                 ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                      border: Border.all(
-                        color: const Color(0xFF171A3F),
-                        width: 2.0,
+
+                // camera badge (bottom right) — hidden while deleting
+                if (!_isRemovingAvatar)
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: () {
+                        if (kIsWeb) {
+                          _pickAndUploadAvatar();
+                        } else {
+                          _showAvatarOptions();
+                        }
+                      },
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white,
+                          border: Border.all(
+                            color: const Color(0xFF171A3F),
+                            width: 2.0,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          size: 14,
+                          color: Color(0xFF171A3F),
+                        ),
                       ),
                     ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      size: 14,
-                      color: Color(0xFF171A3F),
+                  ),
+
+                // delete badge (top right) — hidden while deleting
+                if (CurrentUser.instance.avatarUrl != null &&
+                    CurrentUser.instance.avatarUrl!.isNotEmpty &&
+                    !_isRemovingAvatar)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: _removeAvatar,
+                      child: Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.red.shade400,
+                          border: Border.all(
+                            color: const Color(0xFF171A3F),
+                            width: 2.0,
+                          ),
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          size: 13,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 12),
