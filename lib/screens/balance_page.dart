@@ -198,6 +198,18 @@ class _BalancePageState extends State<BalancePage>
       for (var n in nudgesReceived) n['from_user_id'] as String: n,
     };
 
+    // ── clean up stale nudges where balance flipped ────────────────
+    for (final entry in netByUser.entries) {
+      if (entry.value >= 0) {
+        // you owe them or settled — delete any nudge they sent to you
+        await supabase
+            .from('nudges')
+            .delete()
+            .eq('from_user_id', entry.key)
+            .eq('to_user_id', myId);
+      }
+    }
+
     return netByUser.entries
         .map((e) {
           final user = userMap[e.key];
