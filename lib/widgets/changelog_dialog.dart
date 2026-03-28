@@ -31,6 +31,7 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Version label
+          // Version label
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
@@ -38,7 +39,7 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
               borderRadius: BorderRadius.circular(50),
             ),
             child: Text(
-              'v0.5.0-beta — Nudge You',
+              'v0.6.0-beta — Let\'s Group Now!',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.white,
@@ -48,25 +49,25 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
           ),
           const SizedBox(height: 14),
 
-          _section('✨ New', [
-            'Add Payment with Cash or GCash via segmented button',
-            'Upload and edit your circle avatar photo on Profile page',
-            'Nudge feature — poke people who owe you (replaces Settle button)',
+          _section('🚀 New', [
+            'Group System — create and join groups with shared expenses, balances, and members',
+            'Invite Code — join groups using a simple 8-character code',
+            'Group-scoped Expenses — expenses are now tied to a specific group',
+            'Group-scoped Balances — balances are calculated per group only',
+            'Group-scoped Payments — payments are now isolated per group',
+            'Groups Page — manage, create, join, view invite codes, or leave groups',
           ]),
           const SizedBox(height: 10),
-          _section('🔧 Optimized', [
-            'Balance page header now properly aligns avatar and status bubble',
-            'Shimmer skeletal loading on All, Mine, and Balance pages',
-            'Improved Payment dialog UI/UX',
-            'Balance cards sorted by most nudged first, then by amount owed',
-            'Avatar photo with initials fallback across All, Mine, Balance, Profile, and sidebar',
-            'Better UX for editing and removing avatar photo on web and mobile PWA',
-            'Avatar upload step added after registration',
-            'Improve UI/UX for Creating Expense Modal',
-            'Improve UI/UX for Editing Expense Modal'
+          _section('⚡ Optimized', [
+            'Auto group selection on login with instant expense loading',
+            'App bar now shows active group and allows quick switching',
+            'Payer list scoped to current group when creating/editing expenses',
+            'Data migration — existing data moved to a General group with no loss',
           ]),
           const SizedBox(height: 10),
-          _section('🗑️ Removed', ['Email confirmation temporarily disabled']),
+          _section('🗑️ Removed', [
+            'Global expense view — all data is now scoped per group',
+          ]),
 
           const SizedBox(height: 16),
 
