@@ -163,7 +163,7 @@ class _GroupsPageState extends State<GroupsPage> {
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: const Color(0xFF171A3F),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 24),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -319,7 +319,7 @@ class _GroupsPageState extends State<GroupsPage> {
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: const Color(0xFF171A3F),
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 24),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -556,7 +556,7 @@ class _GroupsPageState extends State<GroupsPage> {
                                   foregroundColor: const Color(0xFF171A3F),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 20,
-                                    vertical: 14,
+                                    vertical: 20,
                                   ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -571,7 +571,7 @@ class _GroupsPageState extends State<GroupsPage> {
                                 style: OutlinedButton.styleFrom(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 20,
-                                    vertical: 14,
+                                    vertical: 20,
                                   ),
                                   side: BorderSide(
                                     color: Colors.white.withValues(alpha: 0.3),
@@ -738,7 +738,7 @@ class _GroupsPageState extends State<GroupsPage> {
                           style: FilledButton.styleFrom(
                             backgroundColor: Colors.white,
                             foregroundColor: const Color(0xFF171A3F),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: const EdgeInsets.symmetric(vertical: 24),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -755,7 +755,7 @@ class _GroupsPageState extends State<GroupsPage> {
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding: const EdgeInsets.symmetric(vertical: 24),
                             side: BorderSide(
                               color: Colors.white.withValues(alpha: 0.3),
                             ),

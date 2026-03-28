@@ -353,7 +353,7 @@ class HomePageState extends State<HomePage> {
                           foregroundColor: const Color(0xFF171A3F),
                           padding: const EdgeInsets.symmetric(
                             horizontal: 24,
-                            vertical: 14,
+                            vertical: 24,
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
