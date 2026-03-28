@@ -1,5 +1,6 @@
 import 'package:divido_app/constants/color_options.dart';
 import 'package:divido_app/providers/expense_provider.dart';
+import 'package:divido_app/providers/group_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:divido_app/services/current_user.dart';
@@ -1023,6 +1024,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 onPressed: () async {
                   await Supabase.instance.client.auth.signOut();
                   CurrentUser.instance.clear();
+                  Provider.of<GroupProvider>(context, listen: false).clear();
                   if (context.mounted) {
                     Navigator.pushReplacementNamed(context, '/login');
                   }

@@ -1,3 +1,4 @@
+import 'package:divido_app/providers/group_provider.dart';
 import 'package:divido_app/screens/avatar_setup_page.dart';
 import 'package:divido_app/screens/email_confirmation_page.dart';
 import 'package:divido_app/screens/home.dart';
@@ -43,6 +44,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ExpenseProvider()),
+        ChangeNotifierProvider(create: (_) => GroupProvider()),
       ],
       child: MaterialApp(
         title: 'Divido',
