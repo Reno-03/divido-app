@@ -1,3 +1,4 @@
+import 'package:divido_app/providers/group_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For formatting dates
 import 'package:shimmer/shimmer.dart';
@@ -90,7 +91,11 @@ class _AllPageState extends State<AllPage> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {
-              await expenseProvider.refresh();
+              final groupId = Provider.of<GroupProvider>(
+                context,
+                listen: false,
+              ).selectedGroupId;
+              await expenseProvider.refresh(groupId);
             },
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),

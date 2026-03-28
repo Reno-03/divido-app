@@ -183,7 +183,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           Provider.of<ExpenseProvider>(
                             context,
                             listen: false,
-                          ).refresh();
+                          ).refresh(null);
 
                           setState(() {}); // refresh ProfilePage
                         },

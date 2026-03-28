@@ -1,4 +1,6 @@
+import 'package:divido_app/providers/group_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:divido_app/services/current_user.dart';
 
@@ -45,13 +47,19 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
   }
 
   Future<void> _loadUsers() async {
+    final groupProvider = Provider.of<GroupProvider>(context, listen: false);
+    final memberIds = groupProvider.members
+        .map((m) => m['id'] as String)
+        .toList();
+
     final response = await _supabase
         .from('profiles')
-        .select('id, firstname, lastname, color, avatar_url');
+        .select('id, firstname, lastname, color, avatar_url')
+        .inFilter('id', memberIds);
 
-    final users = List<Map<String, dynamic>>.from(response)
-        .where((u) => u['id'] != _currentUserId)
-        .toList();
+    final users = List<Map<String, dynamic>>.from(
+      response,
+    ).where((u) => u['id'] != _currentUserId).toList();
 
     final Set<String> preSelected = {};
     final Map<String, String> preAmounts = {};
@@ -71,7 +79,8 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
     final allAmounts = widget.initialBreakdowns
         .map((b) => (b['amount'] as num).toDouble())
         .toList();
-    final isEqual = allAmounts.isNotEmpty &&
+    final isEqual =
+        allAmounts.isNotEmpty &&
         allAmounts.every((a) => (a - allAmounts.first).abs() < 0.01);
 
     setState(() {
@@ -145,8 +154,8 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
         final amount = _isEqualSplit
             ? ((total / allPayerIds.length) * 100).round() / 100
             : payerId == _currentUserId
-                ? double.tryParse(_ownerCustomAmount.text) ?? 0
-                : double.tryParse(_customAmounts[payerId]?.text ?? '') ?? 0;
+            ? double.tryParse(_ownerCustomAmount.text) ?? 0
+            : double.tryParse(_customAmounts[payerId]?.text ?? '') ?? 0;
 
         await _supabase.from('expense_breakdowns').insert({
           'expense_id': widget.expenseId,
@@ -159,9 +168,9 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to save: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to save: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -298,10 +307,7 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
               children: [
                 const Text(
                   'Edit Expense',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
@@ -332,13 +338,11 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
             // total
             TextField(
               controller: _totalController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: _inputDecoration('Total Amount', prefix: '₱  '),
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
               ),
+              decoration: _inputDecoration('Total Amount', prefix: '₱  '),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               onChanged: (_) => setState(() {}),
             ),
 
@@ -573,8 +577,8 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
                               controller: _customAmounts[uid],
                               keyboardType:
                                   const TextInputType.numberWithOptions(
-                                decimal: true,
-                              ),
+                                    decimal: true,
+                                  ),
                               textAlign: TextAlign.right,
                               decoration: _inlineAmountDecoration(),
                               onChanged: (_) => setState(() {}),
@@ -613,15 +617,15 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
                   color: isExact
                       ? Colors.green.withValues(alpha: 0.1)
                       : isOver
-                          ? Colors.red.withValues(alpha: 0.1)
-                          : Colors.white.withValues(alpha: 0.04),
+                      ? Colors.red.withValues(alpha: 0.1)
+                      : Colors.white.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: isExact
                         ? Colors.green.withValues(alpha: 0.3)
                         : isOver
-                            ? Colors.red.withValues(alpha: 0.3)
-                            : Colors.white.withValues(alpha: 0.1),
+                        ? Colors.red.withValues(alpha: 0.3)
+                        : Colors.white.withValues(alpha: 0.1),
                   ),
                 ),
                 child: Row(
@@ -630,29 +634,29 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
                       isExact
                           ? Icons.check_circle_outline
                           : isOver
-                              ? Icons.error_outline
-                              : Icons.info_outline,
+                          ? Icons.error_outline
+                          : Icons.info_outline,
                       size: 16,
                       color: isExact
                           ? Colors.green.shade400
                           : isOver
-                              ? Colors.red.shade400
-                              : Colors.white54,
+                          ? Colors.red.shade400
+                          : Colors.white54,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       isExact
                           ? 'Amounts match total'
                           : isOver
-                              ? 'Over by ₱${remaining.abs().toStringAsFixed(2)}'
-                              : 'Remaining: ₱${remaining.toStringAsFixed(2)}',
+                          ? 'Over by ₱${remaining.abs().toStringAsFixed(2)}'
+                          : 'Remaining: ₱${remaining.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 13,
                         color: isExact
                             ? Colors.green.shade400
                             : isOver
-                                ? Colors.red.shade400
-                                : Colors.white54,
+                            ? Colors.red.shade400
+                            : Colors.white54,
                       ),
                     ),
                   ],

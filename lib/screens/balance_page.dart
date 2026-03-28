@@ -1,4 +1,5 @@
 import 'package:divido_app/providers/expense_provider.dart';
+import 'package:divido_app/providers/group_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -122,27 +123,40 @@ class _BalancePageState extends State<BalancePage>
     final myId = _currentUser.id;
     if (myId == null) return [];
 
+    // get group member IDs
+    final groupProvider = Provider.of<GroupProvider>(context, listen: false);
+    final groupId = groupProvider.selectedGroupId;
+    if (groupId == null) return [];
+
+    final memberIds = groupProvider.members
+        .map((m) => m['id'] as String)
+        .toList();
+
     final ownerExpenses = await supabase
         .from('expense_breakdowns')
         .select('amount, expense_id, payer_id, expenses!inner(owner_id)')
         .eq('expenses.owner_id', myId)
+        .eq('expenses.group_id', groupId)
         .neq('payer_id', myId);
 
     final payerExpenses = await supabase
         .from('expense_breakdowns')
         .select('amount, payer_id, expense_id, expenses!inner(owner_id)')
         .eq('payer_id', myId)
+        .eq('expenses.group_id', groupId)
         .neq('expenses.owner_id', myId);
 
     final paymentsMade = await supabase
         .from('payments')
         .select('amount, payee_id')
-        .eq('payer_id', myId);
+        .eq('payer_id', myId)
+        .eq('group_id', groupId);
 
     final paymentsReceived = await supabase
         .from('payments')
         .select('amount, payer_id')
-        .eq('payee_id', myId);
+        .eq('payee_id', myId)
+        .eq('group_id', groupId);
 
     final Map<String, double> netByUser = {};
 
@@ -166,7 +180,8 @@ class _BalancePageState extends State<BalancePage>
       netByUser[uid] = (netByUser[uid] ?? 0) - (p['amount'] as num).toDouble();
     }
 
-    netByUser.remove(myId);
+    // filter to only group members
+    netByUser.removeWhere((uid, _) => !memberIds.contains(uid));
     if (netByUser.isEmpty) return [];
 
     final userIds = netByUser.keys.toList();
@@ -497,6 +512,7 @@ class _BalancePageState extends State<BalancePage>
                                     ? null
                                     : noteController.text,
                                 'method': paymentMethod,
+                                'group_id': Provider.of<GroupProvider>(context, listen: false).selectedGroupId,
                               });
 
                               if (ctx.mounted) Navigator.pop(ctx);
@@ -596,6 +612,7 @@ class _BalancePageState extends State<BalancePage>
     required Color targetColor,
   }) async {
     final myId = _currentUser.id!;
+    final groupProvider = Provider.of<GroupProvider>(context, listen: false); 
 
     final payments = await supabase
         .from('payments')
@@ -603,6 +620,7 @@ class _BalancePageState extends State<BalancePage>
         .or(
           'and(payer_id.eq.$myId,payee_id.eq.$targetUserId),and(payer_id.eq.$targetUserId,payee_id.eq.$myId)',
         )
+        .eq('group_id', groupProvider.selectedGroupId!)
         .order('created_at', ascending: false);
 
     if (!mounted) return;

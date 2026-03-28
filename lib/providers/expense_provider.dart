@@ -7,24 +7,28 @@ class ExpenseProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _expenses = [];
   List<Map<String, dynamic>> get expenses => _expenses;
 
-  bool _isLoading = true;
+  bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  Future<void> fetchExpenses() async {
+  String? _currentGroupId;
+
+  Future<void> fetchExpenses(String groupId) async {
     _isLoading = true;
+    _currentGroupId = groupId;
     notifyListeners();
 
     final response = await supabase
         .from('expenses')
         .select('''
         *,
-        profiles (id, firstname, lastname, color),
+        profiles (id, firstname, lastname, color, avatar_url),
         expense_breakdowns (
           payer_id,
           amount,
           profiles (id, firstname, lastname, color, avatar_url)
         )
       ''')
+        .eq('group_id', groupId) // filter by group
         .order('created_at', ascending: false);
 
     _expenses = List<Map<String, dynamic>>.from(response);
@@ -32,8 +36,10 @@ class ExpenseProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> refresh() async {
-    await fetchExpenses();
+  Future<void> refresh(String? groupId) async {
+    final gid = groupId ?? _currentGroupId;
+    if (gid == null) return;
+    await fetchExpenses(gid);
   }
 
   void toggleExpensePaidLocally(String expenseId, bool newValue) {

@@ -1,4 +1,6 @@
+import 'package:divido_app/providers/group_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:divido_app/services/current_user.dart';
 
@@ -9,7 +11,8 @@ class CreateExpenseModal extends StatefulWidget {
     Set<String> payerIds,
     Map<String, double> customAmounts,
     bool isEqualSplit,
-  ) onSubmit;
+  )
+  onSubmit;
 
   const CreateExpenseModal({super.key, required this.onSubmit});
 
@@ -38,12 +41,19 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
   }
 
   Future<void> _loadUsers() async {
+    final groupProvider = Provider.of<GroupProvider>(context, listen: false);
+    final memberIds = groupProvider.members
+        .map((m) => m['id'] as String)
+        .toList();
+
     final response = await _supabase
         .from('profiles')
-        .select('id, firstname, lastname, color, avatar_url');
-    final users = List<Map<String, dynamic>>.from(response)
-        .where((u) => u['id'] != _currentUserId)
-        .toList();
+        .select('id, firstname, lastname, color, avatar_url')
+        .inFilter('id', memberIds); // 👈 only group members
+
+    final users = List<Map<String, dynamic>>.from(
+      response,
+    ).where((u) => u['id'] != _currentUserId).toList();
 
     setState(() {
       _users = users;
@@ -126,10 +136,7 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
     return Container(
       width: 34,
       height: 34,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
       clipBehavior: Clip.antiAlias,
       child: avatarUrl != null && avatarUrl.isNotEmpty
           ? Image.network(
@@ -228,10 +235,7 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
               children: [
                 const Text(
                   'New Expense',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
@@ -262,13 +266,11 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
             // total field
             TextField(
               controller: _totalController,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              decoration: _inputDecoration('Total Amount', prefix: '₱  '),
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
               ),
+              decoration: _inputDecoration('Total Amount', prefix: '₱  '),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               onChanged: (_) => setState(() {}),
             ),
 
@@ -370,13 +372,9 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
                   children: [
                     // current user avatar
                     () {
-                      final raw =
-                          CurrentUser.instance.color ?? '#6366F1';
+                      final raw = CurrentUser.instance.color ?? '#6366F1';
                       final color = Color(
-                        int.parse(
-                          'FF${raw.replaceAll('#', '')}',
-                          radix: 16,
-                        ),
+                        int.parse('FF${raw.replaceAll('#', '')}', radix: 16),
                       );
                       final initials =
                           '${CurrentUser.instance.firstname?[0].toUpperCase() ?? ''}${CurrentUser.instance.lastname?[0].toUpperCase() ?? ''}';
@@ -477,8 +475,7 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
               )
             else
               ..._users.map((user) {
-                final name =
-                    '${user['firstname']} ${user['lastname']}';
+                final name = '${user['firstname']} ${user['lastname']}';
                 final uid = user['id'] as String;
                 final isSelected = _selectedUsers.contains(uid);
 
@@ -532,14 +529,15 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
                                   controller: _customAmounts[uid],
                                   keyboardType:
                                       const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
+                                        decimal: true,
+                                      ),
                                   textAlign: TextAlign.right,
                                   decoration: InputDecoration(
                                     prefixText: '₱ ',
                                     prefixStyle: TextStyle(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.5),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.5,
+                                      ),
                                     ),
                                     hintText: '0.00',
                                     isDense: true,
@@ -549,8 +547,9 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(8),
                                       borderSide: BorderSide(
-                                        color: Colors.white
-                                            .withValues(alpha: 0.15),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.15,
+                                        ),
                                       ),
                                     ),
                                     focusedBorder: OutlineInputBorder(
@@ -599,15 +598,15 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
                   color: isExact
                       ? Colors.green.withValues(alpha: 0.1)
                       : isOver
-                          ? Colors.red.withValues(alpha: 0.1)
-                          : Colors.white.withValues(alpha: 0.04),
+                      ? Colors.red.withValues(alpha: 0.1)
+                      : Colors.white.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: isExact
                         ? Colors.green.withValues(alpha: 0.3)
                         : isOver
-                            ? Colors.red.withValues(alpha: 0.3)
-                            : Colors.white.withValues(alpha: 0.1),
+                        ? Colors.red.withValues(alpha: 0.3)
+                        : Colors.white.withValues(alpha: 0.1),
                   ),
                 ),
                 child: Row(
@@ -616,29 +615,29 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
                       isExact
                           ? Icons.check_circle_outline
                           : isOver
-                              ? Icons.error_outline
-                              : Icons.info_outline,
+                          ? Icons.error_outline
+                          : Icons.info_outline,
                       size: 16,
                       color: isExact
                           ? Colors.green.shade400
                           : isOver
-                              ? Colors.red.shade400
-                              : Colors.white54,
+                          ? Colors.red.shade400
+                          : Colors.white54,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       isExact
                           ? 'Amounts match total'
                           : isOver
-                              ? 'Over by ₱${remaining.abs().toStringAsFixed(2)}'
-                              : 'Remaining: ₱${remaining.toStringAsFixed(2)}',
+                          ? 'Over by ₱${remaining.abs().toStringAsFixed(2)}'
+                          : 'Remaining: ₱${remaining.toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 13,
                         color: isExact
                             ? Colors.green.shade400
                             : isOver
-                                ? Colors.red.shade400
-                                : Colors.white54,
+                            ? Colors.red.shade400
+                            : Colors.white54,
                       ),
                     ),
                   ],

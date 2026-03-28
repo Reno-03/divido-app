@@ -1,4 +1,5 @@
 import 'package:divido_app/providers/expense_provider.dart';
+import 'package:divido_app/providers/group_provider.dart';
 import 'package:divido_app/screens/edit_expense_modal.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:flutter/material.dart';
@@ -63,7 +64,7 @@ class _MinePageState extends State<MinePage> {
               Navigator.pop(ctx);
               try {
                 await supabase.from('expenses').delete().eq('id', expenseId);
-                await provider.refresh();
+                await provider.refresh(null);
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -100,7 +101,7 @@ class _MinePageState extends State<MinePage> {
         initialTitle: currentTitle,
         initialTotal: currentTotal,
         initialBreakdowns: breakdowns,
-        onSaved: provider.refresh,
+        onSaved: () => provider.refresh(null),
       ),
     );
   }
@@ -179,7 +180,13 @@ class _MinePageState extends State<MinePage> {
       children: [
         Expanded(
           child: RefreshIndicator(
-            onRefresh: () async => await expenseProvider.refresh(),
+            onRefresh: () async {
+              final groupId = Provider.of<GroupProvider>(
+                context,
+                listen: false,
+              ).selectedGroupId;
+              if (groupId != null) await expenseProvider.refresh(groupId);
+            },
             child: ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),

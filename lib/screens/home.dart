@@ -1,4 +1,5 @@
 import 'package:divido_app/screens/create_expense_modal.dart';
+import 'package:divido_app/screens/groups_page.dart';
 import 'package:divido_app/services/changelog_service.dart';
 import 'package:divido_app/widgets/changelog_dialog.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:divido_app/services/current_user.dart';
 
 import '../providers/expense_provider.dart';
+import '../providers/group_provider.dart';
 import 'all_page.dart';
 import 'mine_page.dart';
 import 'balance_page.dart';
@@ -15,20 +17,21 @@ class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
   @override
-  State<HomePage> createState() => _HomePageState();
+  HomePageState createState() => HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = const [AllPage(), MinePage(), BalancePage()];
+
+  late VoidCallback _groupListener;
 
   @override
   void initState() {
     super.initState();
 
     Future.microtask(() async {
-      // Check actual Supabase session, not just in-memory
       final session = Supabase.instance.client.auth.currentSession;
 
       if (session == null || CurrentUser.instance.id == null) {
@@ -36,7 +39,24 @@ class _HomePageState extends State<HomePage> {
         return;
       }
 
-      Provider.of<ExpenseProvider>(context, listen: false).fetchExpenses();
+      final groupProvider = Provider.of<GroupProvider>(context, listen: false);
+      final expenseProvider = Provider.of<ExpenseProvider>(
+        context,
+        listen: false,
+      );
+
+      // store listener so we can remove it on dispose
+      _groupListener = () {
+        final groupId = groupProvider.selectedGroupId;
+        if (groupId != null) {
+          expenseProvider.fetchExpenses(groupId);
+        }
+      };
+
+      groupProvider.addListener(_groupListener);
+
+      // initial fetch — this triggers the listener which fetches expenses
+      await groupProvider.fetchGroups();
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -51,9 +71,15 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // ==============================
-  // CREATE EXPENSE
-  // ==============================
+  @override
+  void dispose() {
+    Provider.of<GroupProvider>(
+      context,
+      listen: false,
+    ).removeListener(_groupListener);
+    super.dispose();
+  }
+
   Future<void> _createExpense(
     String title,
     double total,
@@ -63,10 +89,21 @@ class _HomePageState extends State<HomePage> {
   ) async {
     final supabase = Supabase.instance.client;
     final currentUserId = CurrentUser.instance.id;
+    final groupId = Provider.of<GroupProvider>(
+      context,
+      listen: false,
+    ).selectedGroupId;
+
+    if (groupId == null) return;
 
     final expenseResponse = await supabase
         .from('expenses')
-        .insert({'title': title, 'total': total, 'owner_id': currentUserId})
+        .insert({
+          'title': title,
+          'total': total,
+          'owner_id': currentUserId,
+          'group_id': groupId, // attach to group
+        })
         .select()
         .single();
 
@@ -84,12 +121,9 @@ class _HomePageState extends State<HomePage> {
       });
     }
 
-    await Provider.of<ExpenseProvider>(context, listen: false).refresh();
+    await Provider.of<ExpenseProvider>(context, listen: false).refresh(groupId);
   }
 
-  // ==============================
-  // CREATE MODAL
-  // ==============================
   void _showCreateExpenseModal() {
     showModalBottomSheet(
       context: context,
@@ -98,129 +132,269 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ==============================
-  // BUILD
-  // ==============================
   @override
   Widget build(BuildContext context) {
-    // Parse the user's color
     final rawColor = CurrentUser.instance.color ?? '#6366F1';
     final userColor = Color(
       int.parse('FF${rawColor.replaceAll('#', '')}', radix: 16),
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        // Dynamic title based on selected tab
-        title: Text(
-          _currentIndex == 0
-              ? 'All Expenses'
-              : _currentIndex == 1
-              ? 'My Expenses'
-              : 'Balances',
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-        ),
-        leading: Builder(
-          builder: (context) => IconButton(
-            icon: const Icon(Icons.menu),
-            onPressed: () => Scaffold.of(context).openDrawer(),
-          ),
-        ),
-      ),
-      drawer: Drawer(
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Profile Header
-              UserAccountsDrawerHeader(
-                decoration: const BoxDecoration(
-                  color: Color(0xFF171A3F), // match app background
-                ),
-                accountName: Text(
-                  '${CurrentUser.instance.firstname} ${CurrentUser.instance.lastname ?? ''}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                accountEmail: Text(CurrentUser.instance.email ?? ''),
-                currentAccountPicture: () {
-                  final avatarUrl = CurrentUser.instance.avatarUrl;
-                  final initials =
-                      '${CurrentUser.instance.firstname?[0].toUpperCase() ?? ''}${CurrentUser.instance.lastname?[0].toUpperCase() ?? ''}';
+    return Consumer<GroupProvider>(
+      builder: (context, groupProvider, _) {
+        final selectedGroup = groupProvider.selectedGroup;
+        final hasGroups = groupProvider.groups.isNotEmpty;
 
-                  return Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: userColor,
+        return Scaffold(
+          appBar: AppBar(
+            title: GestureDetector(
+              onTap: () => Navigator.pushNamed(context, '/groups'),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      selectedGroup != null
+                          ? selectedGroup['name'] as String
+                          : _currentIndex == 0
+                          ? 'All Expenses'
+                          : _currentIndex == 1
+                          ? 'My Expenses'
+                          : 'Balances',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    clipBehavior: Clip.antiAlias,
-                    child: avatarUrl != null && avatarUrl.isNotEmpty
-                        ? Image.network(
-                            avatarUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => Center(
-                              child: Text(
-                                initials,
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                          )
-                        : Center(
-                            child: Text(
-                              initials,
-                              style: const TextStyle(
-                                fontSize: 24,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                  );
-                }(),
+                  ),
+                  if (hasGroups) ...[
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 20,
+                      color: Colors.white.withValues(alpha: 0.6),
+                    ),
+                  ],
+                ],
               ),
-
-              // Nav items
-              ListTile(
-                leading: const Icon(Icons.person_outline),
-                title: const Text('Profile'),
-                onTap: () {
-                  Navigator.pop(context); // close drawer
-                  Navigator.pushNamed(context, '/profile').then((_) {
-                    setState(
-                      () {},
-                    ); // 👈 rebuilds HomePage (and drawer) after editing prfole
-                  });
-                },
+            ),
+            leading: Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
+            ),
+            actions: [
+              // groups button
+              IconButton(
+                icon: const Icon(Icons.group_outlined),
+                onPressed: () =>
+                    Navigator.pushNamed(context, '/groups').then((_) {
+                      // refresh expenses when coming back from groups
+                      final gid = groupProvider.selectedGroupId;
+                      if (gid != null) {
+                        Provider.of<ExpenseProvider>(
+                          context,
+                          listen: false,
+                        ).fetchExpenses(gid);
+                      }
+                    }),
               ),
             ],
           ),
-        ),
-      ),
-      body: IndexedStack(index: _currentIndex, children: _pages),
 
-      floatingActionButton: _currentIndex == 1
-          ? FloatingActionButton(
-              onPressed: _showCreateExpenseModal,
-              child: const Icon(Icons.add),
-            )
-          : null,
+          drawer: Drawer(
+            child: SafeArea(
+              child: Column(
+                children: [
+                  UserAccountsDrawerHeader(
+                    decoration: const BoxDecoration(color: Color(0xFF171A3F)),
+                    accountName: Text(
+                      '${CurrentUser.instance.firstname} ${CurrentUser.instance.lastname ?? ''}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    accountEmail: Text(CurrentUser.instance.email ?? ''),
+                    currentAccountPicture: () {
+                      final avatarUrl = CurrentUser.instance.avatarUrl;
+                      final initials =
+                          '${CurrentUser.instance.firstname?[0].toUpperCase() ?? ''}${CurrentUser.instance.lastname?[0].toUpperCase() ?? ''}';
+                      return Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: userColor,
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: avatarUrl != null && avatarUrl.isNotEmpty
+                            ? Image.network(
+                                avatarUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Center(
+                                  child: Text(
+                                    initials,
+                                    style: const TextStyle(
+                                      fontSize: 24,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            : Center(
+                                child: Text(
+                                  initials,
+                                  style: const TextStyle(
+                                    fontSize: 24,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                      );
+                    }(),
+                  ),
 
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.list), label: 'All'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Mine'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
-            label: 'Balance',
+                  // selected group indicator
+                  if (selectedGroup != null)
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.blue.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.group_outlined,
+                            size: 16,
+                            color: Colors.blue.shade300,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              selectedGroup['name'] as String,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.blue.shade300,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  ListTile(
+                    leading: const Icon(Icons.group_outlined),
+                    title: const Text('Groups'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/groups');
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.person_outline),
+                    title: const Text('Profile'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/profile').then((_) {
+                        setState(() {});
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
           ),
-        ],
-      ),
+
+          // show no group selected state
+          body: !hasGroups
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.group_outlined,
+                        size: 64,
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No group selected',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Create or join a group to get started',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      FilledButton.icon(
+                        onPressed: () =>
+                            Navigator.pushNamed(context, '/groups'),
+                        icon: const Icon(Icons.group_outlined, size: 18),
+                        label: const Text(
+                          'Go to Groups',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF171A3F),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : IndexedStack(index: _currentIndex, children: _pages),
+
+          floatingActionButton: hasGroups && _currentIndex == 1
+              ? FloatingActionButton(
+                  onPressed: _showCreateExpenseModal,
+                  child: const Icon(Icons.add),
+                )
+              : null,
+
+          bottomNavigationBar: hasGroups
+              ? BottomNavigationBar(
+                  currentIndex: _currentIndex,
+                  onTap: (index) => setState(() => _currentIndex = index),
+                  items: const [
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.list),
+                      label: 'All',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.person),
+                      label: 'Mine',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.account_balance_wallet),
+                      label: 'Balance',
+                    ),
+                  ],
+                )
+              : null,
+        );
+      },
     );
   }
 }
