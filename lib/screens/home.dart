@@ -1,5 +1,4 @@
 import 'package:divido_app/screens/create_expense_modal.dart';
-import 'package:divido_app/screens/groups_page.dart';
 import 'package:divido_app/services/changelog_service.dart';
 import 'package:divido_app/widgets/changelog_dialog.dart';
 import 'package:flutter/material.dart';
