@@ -29,12 +29,21 @@ class GroupProvider extends ChangeNotifier {
 
       final response = await _supabase
           .from('group_members')
-          .select('group_id, groups(id, name, description, invite_code, created_by, created_at)')
+          .select(
+            'group_id, groups(id, name, description, invite_code, created_by, created_at)',
+          )
           .eq('user_id', userId);
 
       _groups = response
           .map((e) => e['groups'] as Map<String, dynamic>)
           .toList();
+
+      // sort by created_at ascending (oldest first)
+      _groups.sort((a, b) {
+        final aDate = DateTime.parse(a['created_at'] as String);
+        final bDate = DateTime.parse(b['created_at'] as String);
+        return aDate.compareTo(bDate); // oldest first
+      });
 
       // auto-select first group if none selected
       if (_selectedGroup == null && _groups.isNotEmpty) {
@@ -58,7 +67,9 @@ class GroupProvider extends ChangeNotifier {
   Future<void> _fetchMembers(String groupId) async {
     final response = await _supabase
         .from('group_members')
-        .select('user_id, profiles(id, firstname, lastname, color, avatar_url, contact_number, is_gcash_ready)')
+        .select(
+          'user_id, profiles(id, firstname, lastname, color, avatar_url, contact_number, is_gcash_ready)',
+        )
         .eq('group_id', groupId);
 
     _members = response
