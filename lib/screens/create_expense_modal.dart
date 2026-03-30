@@ -660,7 +660,6 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
                     boxShadow: [
                       BoxShadow(
                         color: Colors.white.withOpacity(0.1),
-                        offset: const Offset(0, 4),
                         blurRadius: 8,
                       ),
                     ],

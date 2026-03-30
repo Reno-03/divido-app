@@ -46,37 +46,140 @@ class _MinePageState extends State<MinePage> {
     }
   }
 
-  void _confirmDelete(String expenseId, ExpenseProvider provider) {
-    showDialog(
+  void _confirmDelete(
+    String expenseId,
+    String expenseTitle,
+    ExpenseProvider provider,
+  ) {
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Expense'),
-        content: const Text(
-          'Are you sure you want to delete this expense? This cannot be undone.',
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      builder: (context) => Container(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF171A3F),
+            borderRadius: BorderRadius.circular(20),
           ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              try {
-                await supabase.from('expenses').delete().eq('id', expenseId);
-                await provider.refresh(null);
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Failed to delete expense.')),
-                  );
-                }
-              }
-            },
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag handle
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+
+              // Title
+              const Text(
+                'Delete Expense',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Confirmation message with expense title
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: const TextStyle(fontSize: 14, color: Colors.white70),
+                  children: [
+                    const TextSpan(
+                      text: 'Are you sure you want to delete the expense ',
+                    ),
+                    TextSpan(
+                      text: expenseTitle,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const TextSpan(text: '? This action cannot be undone.'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.1),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        try {
+                          await supabase
+                              .from('expenses')
+                              .delete()
+                              .eq('id', expenseId);
+                          await provider.refresh(null);
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Failed to delete expense.'),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.red.withValues(alpha: 0.15),
+                        foregroundColor: Colors.red.shade400,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        'Delete',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -578,6 +681,8 @@ class _MinePageState extends State<MinePage> {
                                     child: GestureDetector(
                                       onTap: () => _confirmDelete(
                                         expenseId,
+                                        expense['title'] ??
+                                            'Untitled', // 👈 pass the title here
                                         expenseProvider,
                                       ),
                                       child: Container(
