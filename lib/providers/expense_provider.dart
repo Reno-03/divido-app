@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ExpenseProvider extends ChangeNotifier {
@@ -31,7 +32,26 @@ class ExpenseProvider extends ChangeNotifier {
         .eq('group_id', groupId) // filter by group
         .order('created_at', ascending: false);
 
-    _expenses = List<Map<String, dynamic>>.from(response);
+    _expenses = List<Map<String, dynamic>>.from(response).map((expense) {
+      final e = Map<String, dynamic>.from(expense);
+
+      // Parse date ONCE
+      final createdAt = DateTime.parse(e['created_at'] + 'Z').toLocal();
+
+      // Precompute searchable fields
+      e['search_title'] = (e['title'] as String? ?? '').toLowerCase();
+
+      e['search_date_str'] = DateFormat(
+        'MMMM d, yyyy',
+      ).format(createdAt).toLowerCase();
+
+      e['search_date_key'] = DateFormat('yyyy-MM-dd').format(createdAt);
+
+      // Store parsed DateTime 
+      e['created_at_local'] = createdAt;
+
+      return e;
+    }).toList();
     _isLoading = false;
     notifyListeners();
   }

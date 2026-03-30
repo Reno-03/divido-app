@@ -53,19 +53,9 @@ class _AllPageState extends State<AllPage> {
     final expenses = _searchQuery.isEmpty
         ? allExpenses
         : allExpenses.where((expense) {
-            final title = (expense['title'] as String? ?? '').toLowerCase();
-            final createdAt = DateTime.parse(
-              expense['created_at'] + 'Z',
-            ).toLocal();
-            final dateStr = DateFormat(
-              'MMMM d, yyyy',
-            ).format(createdAt).toLowerCase();
-            final dateKey = DateFormat(
-              'yyyy-MM-dd',
-            ).format(createdAt).toLowerCase();
-            return title.contains(_searchQuery) ||
-                dateStr.contains(_searchQuery) ||
-                dateKey.contains(_searchQuery);
+            return expense['search_title'].contains(_searchQuery) ||
+                expense['search_date_str'].contains(_searchQuery) ||
+                expense['search_date_key'].contains(_searchQuery);
           }).toList();
 
     if (expenseProvider.isLoading) {
@@ -122,8 +112,7 @@ class _AllPageState extends State<AllPage> {
     final Map<String, List<Map<String, dynamic>>> grouped = {};
 
     for (var expense in expenses) {
-      // NOTE: use created_at with 'Z' suffix to ensure it's parsed as UTC, then convert to local time
-      final createdAt = DateTime.parse(expense['created_at'] + 'Z').toLocal();
+      final createdAt = expense['created_at_local'] as DateTime;
       final dateKey = DateFormat('yyyy-MM-dd').format(createdAt);
 
       grouped.putIfAbsent(dateKey, () => []);
