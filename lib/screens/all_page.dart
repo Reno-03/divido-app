@@ -413,13 +413,13 @@ class _AllPageState extends State<AllPage> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.blueAccent,
+                        color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
                         'Filtered',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFF171A3F),
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
