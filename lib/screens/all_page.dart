@@ -5,6 +5,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import '../providers/expense_provider.dart';
+import 'dart:async';
 
 class AllPage extends StatefulWidget {
   const AllPage({super.key});
@@ -18,18 +19,29 @@ class _AllPageState extends State<AllPage> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
+  Timer? _debounce;
+
   @override
   void initState() {
     super.initState();
     _searchController.addListener(() {
-      setState(
-        () => _searchQuery = _searchController.text.trim().toLowerCase(),
-      );
+      if (_debounce?.isActive ?? false) {
+        _debounce!.cancel();
+      }
+
+      _debounce = Timer(const Duration(milliseconds: 400), () {
+        if (!mounted) return;
+
+        setState(() {
+          _searchQuery = _searchController.text.trim().toLowerCase();
+        });
+      });
     });
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }
