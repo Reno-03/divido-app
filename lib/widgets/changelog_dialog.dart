@@ -39,7 +39,7 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
               borderRadius: BorderRadius.circular(50),
             ),
             child: Text(
-              'v0.6.0-beta — Let\'s Group Now!',
+              'v0.7.0-beta — Search & Filter Expenses',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.white,
@@ -49,24 +49,20 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
           ),
           const SizedBox(height: 14),
 
+          // New features
           _section('🚀 New', [
-            'Group System — create and join groups with shared expenses, balances, and members',
-            'Invite Code — join groups using a simple 8-character code',
-            'Group-scoped Expenses — expenses are now tied to a specific group',
-            'Group-scoped Balances — balances are calculated per group only',
-            'Group-scoped Payments — payments are now isolated per group',
-            'Groups Page — manage, create, join, view invite codes, or leave groups',
+            'Add a Search Bar in All Expense (search by date or Title)',
+            'Add a FAB for Filtering; filter by paid status or involvement',
+            'Add a "filtered" stack on the search bar and filter FAB',
           ]),
           const SizedBox(height: 10),
+
+          // Optimizations
           _section('⚡ Optimized', [
-            'Auto group selection on login with instant expense loading',
-            'App bar now shows active group and allows quick switching',
-            'Payer list scoped to current group when creating/editing expenses',
-            'Data migration — existing data moved to a General group with no loss',
-          ]),
-          const SizedBox(height: 10),
-          _section('🗑️ Removed', [
-            'Global expense view — all data is now scoped per group',
+            'Fallback text displayed on Balance Pages if no expenses',
+            'On Groups page, the first group is now the oldest by creation date',
+            'Create Expense button is now easier to tap',
+            'Improved UI for Delete Expense popup message',
           ]),
 
           const SizedBox(height: 16),
