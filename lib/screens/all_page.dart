@@ -295,6 +295,7 @@ class _AllPageState extends State<AllPage> {
       ),
     );
   }
+  bool get _isFiltered => !(_showPaid && _showUnpaid && !_onlyMine);
 
   @override
   Widget build(BuildContext context) {
@@ -374,54 +375,57 @@ class _AllPageState extends State<AllPage> {
           // search bar
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search by title or date...',
-                hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.35),
-                  fontSize: 14,
-                ),
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: Colors.white.withValues(alpha: 0.35),
-                  size: 20,
-                ),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? GestureDetector(
-                        onTap: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                        child: Icon(
-                          Icons.close,
-                          color: Colors.white.withValues(alpha: 0.4),
-                          size: 18,
-                        ),
-                      )
-                    : null,
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.06),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.1),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search by title or date...',
+                    hintStyle: TextStyle(
+                      color: Colors.white.withOpacity(0.35),
+                      fontSize: 14,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: Colors.white.withOpacity(0.35),
+                      size: 20,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.06),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
                   ),
+                  style: const TextStyle(fontSize: 14),
                 ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Colors.blue, width: 1.5),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
-              style: const TextStyle(fontSize: 14),
+
+                // Filter indicator
+                if (_isFiltered)
+                  Positioned(
+                    right: -5,
+                    top: -5,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blueAccent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Filtered',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
 
