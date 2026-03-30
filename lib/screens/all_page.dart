@@ -295,6 +295,7 @@ class _AllPageState extends State<AllPage> {
       ),
     );
   }
+
   bool get _isFiltered => !(_showPaid && _showUnpaid && !_onlyMine);
 
   @override
@@ -432,7 +433,7 @@ class _AllPageState extends State<AllPage> {
           // empty states
           if (allExpenses.isEmpty)
             const Expanded(child: Center(child: Text('No expenses found')))
-          else if (expenses.isEmpty && _searchQuery.isNotEmpty)
+          else if (expenses.isEmpty && (_searchQuery.isNotEmpty || _isFiltered))
             Expanded(
               child: Center(
                 child: Column(
@@ -445,7 +446,9 @@ class _AllPageState extends State<AllPage> {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'No results for "$_searchQuery"',
+                      _searchQuery.isNotEmpty
+                          ? 'No results for "$_searchQuery"'
+                          : 'No expenses match the selected filters',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.35),
                         fontSize: 14,
@@ -761,9 +764,33 @@ class _AllPageState extends State<AllPage> {
         ],
       ),
 
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openFilterDialog(currentUserId),
-        child: const Icon(Icons.filter_list),
+      floatingActionButton: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          FloatingActionButton(
+            onPressed: () => _openFilterDialog(currentUserId),
+            child: const Icon(Icons.filter_list),
+          ),
+
+          // Filter indicator dot
+          if (_isFiltered)
+            Positioned(
+              top: -5,
+              right: -5,
+              child: Container(
+                width: 18,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: Color(0xFF171A3F), 
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white, // optional white border
+                    width: 1.5,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
