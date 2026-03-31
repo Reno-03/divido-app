@@ -10,6 +10,7 @@ class EditExpenseModal extends StatefulWidget {
   final double initialTotal;
   final List<Map<String, dynamic>> initialBreakdowns;
   final Future<void> Function() onSaved;
+  final String initialDescription;
 
   const EditExpenseModal({
     super.key,
@@ -18,6 +19,7 @@ class EditExpenseModal extends StatefulWidget {
     required this.initialTotal,
     required this.initialBreakdowns,
     required this.onSaved,
+    required this.initialDescription,
   });
 
   @override
@@ -28,6 +30,7 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
   final _titleController = TextEditingController();
   final _totalController = TextEditingController();
   final _ownerCustomAmount = TextEditingController();
+  final _descriptionController = TextEditingController();
 
   final _selectedUsers = <String>{};
   final _customAmounts = <String, TextEditingController>{};
@@ -43,6 +46,7 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
     super.initState();
     _titleController.text = widget.initialTitle;
     _totalController.text = widget.initialTotal.toStringAsFixed(2);
+    _descriptionController.text = widget.initialDescription;
     _loadUsers();
   }
 
@@ -102,6 +106,7 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
     _titleController.dispose();
     _totalController.dispose();
     _ownerCustomAmount.dispose();
+    _descriptionController.dispose();
     for (final c in _customAmounts.values) {
       c.dispose();
     }
@@ -140,7 +145,11 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
     try {
       await _supabase
           .from('expenses')
-          .update({'title': title, 'total': total})
+          .update({
+            'title': title,
+            'total': total,
+            'description': _descriptionController.text.trim(),
+          })
           .eq('id', widget.expenseId);
 
       await _supabase
@@ -330,6 +339,14 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
             TextField(
               controller: _titleController,
               decoration: _inputDecoration('Title'),
+              style: const TextStyle(fontSize: 16),
+            ),
+
+            const SizedBox(height: 14),
+
+            TextField(
+              controller: _descriptionController,
+              decoration: _inputDecoration('Description'),
               style: const TextStyle(fontSize: 16),
             ),
 

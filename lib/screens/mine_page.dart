@@ -190,6 +190,7 @@ class _MinePageState extends State<MinePage> {
     required double currentTotal,
     required List<Map<String, dynamic>> breakdowns,
     required ExpenseProvider provider,
+    required String currentDescription,
   }) {
     showModalBottomSheet(
       context: context,
@@ -204,6 +205,7 @@ class _MinePageState extends State<MinePage> {
         initialTitle: currentTitle,
         initialTotal: currentTotal,
         initialBreakdowns: breakdowns,
+        initialDescription: currentDescription,
         onSaved: () => provider.refresh(null),
       ),
     );
@@ -403,6 +405,9 @@ class _MinePageState extends State<MinePage> {
                                                                 ),
                                                           )
                                                           .toList(), // 👈 cast each element
+                                                  currentDescription:
+                                                      expense['description'] ??
+                                                      '',
                                                   provider: expenseProvider,
                                                 ),
                                                 child: Container(
