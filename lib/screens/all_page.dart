@@ -1,4 +1,5 @@
 import 'package:divido_app/providers/group_provider.dart';
+import 'package:divido_app/screens/expense_detail_page.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For formatting dates
 import 'package:shimmer/shimmer.dart';
@@ -108,7 +109,7 @@ class _AllPageState extends State<AllPage> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -133,7 +134,7 @@ class _AllPageState extends State<AllPage> {
                           height: 28,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.grey.withOpacity(0.2),
+                            color: Colors.grey.withValues(alpha: 0.2),
                           ),
                           child: const Icon(Icons.close, size: 16),
                         ),
@@ -180,10 +181,10 @@ class _AllPageState extends State<AllPage> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.04),
+                              color: Colors.white.withValues(alpha: 0.04),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.1),
+                                color: Colors.white.withValues(alpha: 0.1),
                               ),
                             ),
                             child: Center(
@@ -191,7 +192,7 @@ class _AllPageState extends State<AllPage> {
                                 'Reset',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white.withOpacity(0.65),
+                                  color: Colors.white.withValues(alpha: 0.65),
                                   fontSize: 16,
                                 ),
                               ),
@@ -213,7 +214,7 @@ class _AllPageState extends State<AllPage> {
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.white.withOpacity(0.3),
+                                  color: Colors.white.withValues(alpha: 0.3),
                                   offset: const Offset(0, 4),
                                   blurRadius: 8,
                                 ),
@@ -256,13 +257,13 @@ class _AllPageState extends State<AllPage> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: value
-              ? Colors.blue.withOpacity(0.1)
-              : Colors.white.withOpacity(0.04),
+              ? Colors.blue.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: value
-                ? Colors.blue.withOpacity(0.3)
-                : Colors.white.withOpacity(0.1),
+                ? Colors.blue.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.1),
           ),
         ),
         child: Row(
@@ -287,7 +288,7 @@ class _AllPageState extends State<AllPage> {
                   : Icon(
                       Icons.circle_outlined,
                       key: const ValueKey('unchecked'),
-                      color: Colors.white.withOpacity(0.25),
+                      color: Colors.white.withValues(alpha: 0.25),
                     ),
             ),
           ],
@@ -384,16 +385,16 @@ class _AllPageState extends State<AllPage> {
                   decoration: InputDecoration(
                     hintText: 'Search by title or date...',
                     hintStyle: TextStyle(
-                      color: Colors.white.withOpacity(0.35),
+                      color: Colors.white.withValues(alpha: 0.35),
                       fontSize: 14,
                     ),
                     prefixIcon: Icon(
                       Icons.search,
-                      color: Colors.white.withOpacity(0.35),
+                      color: Colors.white.withValues(alpha: 0.35),
                       size: 20,
                     ),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.06),
+                    fillColor: Colors.white.withValues(alpha: 0.06),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -531,224 +532,294 @@ class _AllPageState extends State<AllPage> {
                             ),
                           );
 
-                          return AnimatedOpacity(
-                            duration: const Duration(milliseconds: 300),
-                            opacity: isPaid ? 0.45 : 1.0,
-                            child: Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              color: ownerColor.withValues(
-                                alpha: 0.1,
-                              ), // subtle tint
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    left: BorderSide(
-                                      color: ownerColor,
-                                      width: 5,
+                          return Hero(
+                            tag: 'expense_${expense['id']}',
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  PageRouteBuilder(
+                                    transitionDuration: const Duration(
+                                      milliseconds: 400,
                                     ),
+                                    reverseTransitionDuration: const Duration(
+                                      milliseconds: 300,
+                                    ),
+                                    pageBuilder: (_, animation, _) =>
+                                        ExpenseDetailPage(
+                                          expense: expense,
+                                          ownerColor: ownerColor,
+                                        ),
+                                    transitionsBuilder: (_, animation, _, child) {
+                                      final fade = CurvedAnimation(
+                                        parent: animation,
+                                        curve: Curves.easeOut,
+                                      );
+
+                                      final scale =
+                                          Tween<double>(
+                                            begin: 0.95,
+                                            end: 1.0,
+                                          ).animate(
+                                            CurvedAnimation(
+                                              parent: animation,
+                                              curve: Curves.easeOutCubic,
+                                            ),
+                                          );
+
+                                      return FadeTransition(
+                                        opacity: fade,
+                                        child: ScaleTransition(
+                                          scale: scale,
+                                          child: Material(
+                                            color: Colors
+                                                .transparent, // ensures smooth Hero
+                                            child: ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              child: Container(
+                                                color: Color(0xFF171A3F), // matches detail page bg
+                                                child:
+                                                    child, // your card content
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(25),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  expense['title'] ?? '',
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 20,
-                                                    decoration: isPaid
-                                                        ? TextDecoration
-                                                              .lineThrough
-                                                        : null, // 👈
-                                                    decorationColor:
-                                                        Colors.white54,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  ownerName,
-                                                  style: const TextStyle(
-                                                    fontSize: 14,
-                                                    color: Color.fromARGB(
-                                                      137,
-                                                      255,
-                                                      255,
-                                                      255,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          Text(
-                                            '₱ ${expense['total']}',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 33,
-                                              decoration: isPaid
-                                                  ? TextDecoration.lineThrough
-                                                  : null, // 👈
-                                              decorationColor: Colors.white54,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        'Payers:',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
+                                );
+                              },
+                              child: AnimatedOpacity(
+                                duration: const Duration(milliseconds: 300),
+                                opacity: isPaid ? 0.45 : 1.0,
+                                child: Card(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  color: ownerColor.withValues(
+                                    alpha: 0.1,
+                                  ), // subtle tint
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      border: Border(
+                                        left: BorderSide(
+                                          color: ownerColor,
+                                          width: 5,
                                         ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      ...filteredBreakdowns.map((b) {
-                                        final user = b['profiles'];
-                                        final firstName =
-                                            user?['firstname'] ?? '';
-                                        final lastName =
-                                            user?['lastname'] ?? '';
-                                        final payerName = user != null
-                                            ? '$firstName $lastName'
-                                            : 'Unknown';
-
-                                        // Generate initials
-                                        final initials = [
-                                          firstName.isNotEmpty
-                                              ? firstName[0]
-                                              : '',
-                                          lastName.isNotEmpty
-                                              ? lastName[0]
-                                              : '',
-                                        ].join().toUpperCase();
-
-                                        final rawColor =
-                                            user?['color'] as String? ??
-                                            '#6366F1';
-                                        final userColor = Color(
-                                          int.parse(
-                                            'FF${rawColor.replaceAll('#', '')}',
-                                            radix: 16,
-                                          ),
-                                        );
-
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 6,
-                                          ),
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 10,
-                                              vertical: 8,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.04,
-                                              ),
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                // Use a lambda function here,  which evaluates if the avatar_url is available or not
-                                                // prio: use custom image circle avatar
-                                                // fallback: use user's initials and a the chosen color as bg gradient of the circle avatar
-                                                () {
-                                                  final avatarUrl =
-                                                      user?['avatar_url']
-                                                          as String?;
-                                                  return Container(
-                                                    width: 32,
-                                                    height: 32,
-                                                    decoration: BoxDecoration(
-                                                      shape: BoxShape.circle,
-                                                      gradient: LinearGradient(
-                                                        begin:
-                                                            Alignment.topLeft,
-                                                        end: Alignment
-                                                            .bottomRight,
-                                                        colors: [
-                                                          userColor,
-                                                          userColor.withValues(
-                                                            alpha: 0.7,
-                                                          ),
-                                                        ],
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(25),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      expense['title'] ?? '',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        fontSize: 20,
+                                                        decoration: isPaid
+                                                            ? TextDecoration
+                                                                  .lineThrough
+                                                            : null, // 👈
+                                                        decorationColor:
+                                                            Colors.white54,
                                                       ),
                                                     ),
-                                                    clipBehavior:
-                                                        Clip.antiAlias,
-                                                    child:
-                                                        avatarUrl != null &&
-                                                            avatarUrl.isNotEmpty
-                                                        ? Image.network(
-                                                            avatarUrl,
-                                                            fit: BoxFit.cover,
-                                                            errorBuilder: (_, _, _) => Center(
-                                                              child: Text(
-                                                                initials,
-                                                                style: const TextStyle(
-                                                                  fontSize: 12,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  color: Colors
-                                                                      .white,
-                                                                ),
-                                                              ),
-                                                            ),
-                                                          )
-                                                        : Center(
-                                                            child: Text(
-                                                              initials,
-                                                              style: const TextStyle(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                                color: Colors
-                                                                    .white,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                  );
-                                                }(),
-                                                const SizedBox(width: 10),
-                                                Expanded(
-                                                  child: Text(
-                                                    payerName,
-                                                    style: const TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w500,
+                                                    Text(
+                                                      ownerName,
+                                                      style: const TextStyle(
+                                                        fontSize: 14,
+                                                        color: Color.fromARGB(
+                                                          137,
+                                                          255,
+                                                          255,
+                                                          255,
+                                                        ),
+                                                      ),
                                                     ),
-                                                  ),
+                                                  ],
                                                 ),
-                                                Text(
-                                                  '₱${b['amount']}',
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: Colors.white
-                                                        .withOpacity(0.65),
-                                                  ),
+                                              ),
+                                              Text(
+                                                '₱ ${expense['total']}',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 33,
+                                                  decoration: isPaid
+                                                      ? TextDecoration
+                                                            .lineThrough
+                                                      : null, // 👈
+                                                  decorationColor:
+                                                      Colors.white54,
                                                 ),
-                                              ],
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 8),
+                                          const Text(
+                                            'Payers:',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                        );
-                                      }),
-                                    ],
+                                          const SizedBox(height: 4),
+                                          ...filteredBreakdowns.map((b) {
+                                            final user = b['profiles'];
+                                            final firstName =
+                                                user?['firstname'] ?? '';
+                                            final lastName =
+                                                user?['lastname'] ?? '';
+                                            final payerName = user != null
+                                                ? '$firstName $lastName'
+                                                : 'Unknown';
+
+                                            // Generate initials
+                                            final initials = [
+                                              firstName.isNotEmpty
+                                                  ? firstName[0]
+                                                  : '',
+                                              lastName.isNotEmpty
+                                                  ? lastName[0]
+                                                  : '',
+                                            ].join().toUpperCase();
+
+                                            final rawColor =
+                                                user?['color'] as String? ??
+                                                '#6366F1';
+                                            final userColor = Color(
+                                              int.parse(
+                                                'FF${rawColor.replaceAll('#', '')}',
+                                                radix: 16,
+                                              ),
+                                            );
+
+                                            return Padding(
+                                              padding: const EdgeInsets.only(
+                                                top: 6,
+                                              ),
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 10,
+                                                      vertical: 8,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.04),
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    // Use a lambda function here,  which evaluates if the avatar_url is available or not
+                                                    // prio: use custom image circle avatar
+                                                    // fallback: use user's initials and a the chosen color as bg gradient of the circle avatar
+                                                    () {
+                                                      final avatarUrl =
+                                                          user?['avatar_url']
+                                                              as String?;
+                                                      return Container(
+                                                        width: 32,
+                                                        height: 32,
+                                                        decoration: BoxDecoration(
+                                                          shape:
+                                                              BoxShape.circle,
+                                                          gradient: LinearGradient(
+                                                            begin: Alignment
+                                                                .topLeft,
+                                                            end: Alignment
+                                                                .bottomRight,
+                                                            colors: [
+                                                              userColor,
+                                                              userColor
+                                                                  .withValues(
+                                                                    alpha: 0.7,
+                                                                  ),
+                                                            ],
+                                                          ),
+                                                        ),
+                                                        clipBehavior:
+                                                            Clip.antiAlias,
+                                                        child:
+                                                            avatarUrl != null &&
+                                                                avatarUrl
+                                                                    .isNotEmpty
+                                                            ? Image.network(
+                                                                avatarUrl,
+                                                                fit: BoxFit
+                                                                    .cover,
+                                                                errorBuilder: (_, _, _) => Center(
+                                                                  child: Text(
+                                                                    initials,
+                                                                    style: const TextStyle(
+                                                                      fontSize:
+                                                                          12,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                      color: Colors
+                                                                          .white,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                              )
+                                                            : Center(
+                                                                child: Text(
+                                                                  initials,
+                                                                  style: const TextStyle(
+                                                                    fontSize:
+                                                                        12,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                    color: Colors
+                                                                        .white,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                      );
+                                                    }(),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                      child: Text(
+                                                        payerName,
+                                                        style: const TextStyle(
+                                                          fontSize: 14,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      '₱${b['amount']}',
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Colors.white
+                                                            .withValues(alpha: 0.65),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            );
+                                          }),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -781,7 +852,7 @@ class _AllPageState extends State<AllPage> {
                 width: 18,
                 height: 18,
                 decoration: BoxDecoration(
-                  color: Color(0xFF171A3F), 
+                  color: Color(0xFF171A3F),
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: Colors.white, // optional white border
