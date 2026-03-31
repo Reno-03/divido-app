@@ -85,6 +85,7 @@ class HomePageState extends State<HomePage> {
     Set<String> payerIds,
     Map<String, double> customAmounts,
     bool isEqualSplit,
+    String description,
   ) async {
     final supabase = Supabase.instance.client;
     final currentUserId = CurrentUser.instance.id;
@@ -102,6 +103,7 @@ class HomePageState extends State<HomePage> {
           'total': total,
           'owner_id': currentUserId,
           'group_id': groupId, // attach to group
+          'description': description,
         })
         .select()
         .single();

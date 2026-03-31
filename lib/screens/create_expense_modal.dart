@@ -11,6 +11,7 @@ class CreateExpenseModal extends StatefulWidget {
     Set<String> payerIds,
     Map<String, double> customAmounts,
     bool isEqualSplit,
+    String description,
   )
   onSubmit;
 
@@ -24,6 +25,7 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
   final _titleController = TextEditingController();
   final _totalController = TextEditingController();
   final _ownerCustomAmount = TextEditingController();
+  final _descriptionController = TextEditingController();
 
   final _selectedUsers = <String>{};
   final _customAmounts = <String, TextEditingController>{};
@@ -68,6 +70,7 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
     _titleController.dispose();
     _totalController.dispose();
     _ownerCustomAmount.dispose();
+    _descriptionController.dispose();
     for (final c in _customAmounts.values) {
       c.dispose();
     }
@@ -86,6 +89,7 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
   Future<void> _submit() async {
     final title = _titleController.text.trim();
     final total = double.tryParse(_totalController.text) ?? 0;
+    final description = _descriptionController.text.trim();
 
     if (title.isEmpty || total <= 0) return;
     if (_selectedUsers.isEmpty) return;
@@ -118,6 +122,7 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
       payerIds,
       customAmountValues,
       _isEqualSplit,
+      description,
     );
 
     if (mounted) Navigator.pop(context);
@@ -261,6 +266,15 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
               style: const TextStyle(fontSize: 16),
             ),
 
+            const SizedBox(height: 14),
+
+            // Description
+            TextField(
+              controller: _descriptionController,
+              decoration: _inputDecoration('Description (Optional)'),
+              style: const TextStyle(fontSize: 16),
+              maxLines: null, // allows multiline
+            ),
             const SizedBox(height: 14),
 
             // total field
