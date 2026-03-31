@@ -39,7 +39,7 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
               borderRadius: BorderRadius.circular(50),
             ),
             child: Text(
-              'v0.8.0-beta - Interactive Expense Cards + Description',
+              'v0.8.0-beta - Interactive Cards',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.white,
