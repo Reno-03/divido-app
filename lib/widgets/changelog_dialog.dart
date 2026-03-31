@@ -39,7 +39,7 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
               borderRadius: BorderRadius.circular(50),
             ),
             child: Text(
-              'v0.7.0-beta — Search & Filter Expenses',
+              'v0.8.0-beta - Interactive Expense Cards + Description',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.white,
@@ -51,20 +51,16 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
 
           // New features
           _section('🚀 New', [
-            'Add a Search Bar in All Expense (search by date or Title)',
-            'Add a FAB for Filtering; filter by paid status or involvement',
-            'Add a "filtered" stack on the search bar and filter FAB',
+            'All expense cards in All Page are interactive; tap to view full details including description and created at',
+            'Added Description field to Expense Add and Edit Modal Sheets (multiline input)',
           ]),
           const SizedBox(height: 10),
 
           // Optimizations
           _section('⚡ Optimized', [
-            'Fallback text displayed on Balance Pages if no expenses',
-            'On Groups page, the first group is now the oldest by creation date',
-            'Create Expense button is now easier to tap',
-            'Improved UI for Delete Expense popup message',
+            'Followed iOS-feel vibe using Hero widget and animations',
+            'Description is shown immediately on Mine Page',
           ]),
-
           const SizedBox(height: 16),
 
           // Don't show again checkbox
