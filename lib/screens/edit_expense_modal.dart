@@ -346,6 +346,11 @@ class _EditExpenseModalState extends State<EditExpenseModal> {
 
             TextField(
               controller: _descriptionController,
+              keyboardType: TextInputType.multiline, // allows Enter key
+              maxLines: null, // expands as user types
+              minLines: 3, // optional, gives initial height
+              textInputAction:
+                  TextInputAction.newline, // Enter inserts a newline
               decoration: _inputDecoration('Description'),
               style: const TextStyle(fontSize: 16),
             ),

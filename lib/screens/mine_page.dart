@@ -447,6 +447,39 @@ class _MinePageState extends State<MinePage> {
                                       ],
                                     ),
 
+                                    // Description block (full-width background)
+                                    if (expense['description'] != null &&
+                                        expense['description']
+                                            .toString()
+                                            .isNotEmpty)
+                                      Padding(
+                                        padding: const EdgeInsets.only(top: 6),
+                                        child: Container(
+                                          width: double.infinity,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.04,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              10,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            expense['description'],
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.white.withValues(
+                                                alpha: 0.65,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+
                                     const SizedBox(height: 12),
 
                                     const Text(
