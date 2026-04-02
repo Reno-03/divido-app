@@ -61,9 +61,10 @@ class MyApp extends StatelessWidget {
           // Dark background
           scaffoldBackgroundColor: const Color(0xFF171A3F),
           appBarTheme: const AppBarTheme(
-            backgroundColor: Color(0xFF171A3F),
+            backgroundColor: Color(0xFF0F1128),
             foregroundColor: Colors.white, // title text color
             elevation: 0,
+            scrolledUnderElevation: 0,
           ),
           floatingActionButtonTheme: const FloatingActionButtonThemeData(
             backgroundColor: Colors.white, // button background

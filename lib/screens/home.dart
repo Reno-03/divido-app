@@ -1,4 +1,5 @@
 import 'package:divido_app/screens/create_expense_modal.dart';
+import 'package:divido_app/screens/dashboard_page.dart';
 import 'package:divido_app/services/changelog_service.dart';
 import 'package:divido_app/widgets/changelog_dialog.dart';
 import 'package:flutter/material.dart';
@@ -22,7 +23,12 @@ class HomePage extends StatefulWidget {
 class HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [AllPage(), MinePage(), BalancePage()];
+  final List<Widget> _pages = const [
+    DashboardPage(),
+    AllPage(),
+    MinePage(),
+    BalancePage(),
+  ];
 
   late VoidCallback _groupListener;
 
@@ -157,8 +163,10 @@ class HomePageState extends State<HomePage> {
                       selectedGroup != null
                           ? selectedGroup['name'] as String
                           : _currentIndex == 0
-                          ? 'All Expenses'
+                          ? 'Dashboard'
                           : _currentIndex == 1
+                          ? 'All Expenses'
+                          : _currentIndex == 2
                           ? 'My Expenses'
                           : 'Balances',
                       style: const TextStyle(
@@ -367,7 +375,7 @@ class HomePageState extends State<HomePage> {
                 )
               : IndexedStack(index: _currentIndex, children: _pages),
 
-          floatingActionButton: hasGroups && _currentIndex == 1
+          floatingActionButton: hasGroups && _currentIndex == 2
               ? FloatingActionButton(
                   onPressed: _showCreateExpenseModal,
                   child: const Icon(Icons.add),
@@ -378,7 +386,19 @@ class HomePageState extends State<HomePage> {
               ? BottomNavigationBar(
                   currentIndex: _currentIndex,
                   onTap: (index) => setState(() => _currentIndex = index),
+
+                  backgroundColor: const Color(0xFF0F1128),
+
+                  selectedItemColor: Colors.white,
+                  unselectedItemColor: Colors.white.withValues(alpha: 0.4),
+
+                  type: BottomNavigationBarType.fixed,
+
                   items: const [
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.dashboard_rounded),
+                      label: 'Dashboard',
+                    ),
                     BottomNavigationBarItem(
                       icon: Icon(Icons.list),
                       label: 'All',
