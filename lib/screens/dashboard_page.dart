@@ -212,6 +212,8 @@ class _DashboardPageState extends State<DashboardPage> {
     final startOfThisWeek = now.subtract(const Duration(days: 7));
     final startOfLastWeek = now.subtract(const Duration(days: 14));
 
+    final topExpensesThisWeek = <Map<String, dynamic>>[];
+
     for (final expense in expenseProvider.expenses) {
       final total = (expense['total'] as num?)?.toDouble() ?? 0.0;
       totalGroupExpense += total;
@@ -230,12 +232,20 @@ class _DashboardPageState extends State<DashboardPage> {
         if (date.isAfter(startOfThisWeek)) {
           thisWeekGroup += total;
           thisWeekOwn += ownAmt;
+          if (ownAmt > 0) {
+            topExpensesThisWeek.add({
+              'expense': expense,
+              'ownAmt': ownAmt,
+            });
+          }
         } else if (date.isAfter(startOfLastWeek) && date.isBefore(startOfThisWeek)) {
           lastWeekGroup += total;
           lastWeekOwn += ownAmt;
         }
       }
     }
+    
+    topExpensesThisWeek.sort((a, b) => (b['ownAmt'] as double).compareTo(a['ownAmt'] as double));
 
     double groupPct = lastWeekGroup > 0 ? ((thisWeekGroup - lastWeekGroup) / lastWeekGroup) * 100 : (thisWeekGroup > 0 ? 100 : 0);
     double ownPct = lastWeekOwn > 0 ? ((thisWeekOwn - lastWeekOwn) / lastWeekOwn) * 100 : (thisWeekOwn > 0 ? 100 : 0);
@@ -492,6 +502,51 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ),
 
+                    const SizedBox(height: 32),
+
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3C3C63),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            offset: const Offset(0, 8),
+                            blurRadius: 16,
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Your top expenses since last 7 days',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          if (topExpensesThisWeek.isEmpty)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF171A3F),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Text('No expenses this week.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
+                            )
+                          else
+                            ...topExpensesThisWeek.take(3).toList().asMap().entries.map((e) => _buildTopExpenseTile(e.value, e.key + 1, currencyFormat)),
+                        ],
+                      ),
+                    ),
+
                     const SizedBox(height: 40),
                   ],
                 ],
@@ -735,6 +790,103 @@ class _DashboardPageState extends State<DashboardPage> {
               fontSize: 26, // striking size
               fontWeight: FontWeight.bold,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopExpenseTile(Map<String, dynamic> item, int index, NumberFormat format) {
+    final expense = item['expense'] as Map<String, dynamic>;
+    final ownAmt = item['ownAmt'] as double;
+    
+    final title = expense['title'] as String? ?? 'Untitled';
+    final total = (expense['total'] as num?)?.toDouble() ?? 0.0;
+    final profiles = expense['profiles'] as Map<String, dynamic>?;
+    final firstname = profiles?['firstname'] as String? ?? 'Unknown';
+    final lastname = profiles?['lastname'] as String? ?? '';
+    final name = '$firstname $lastname'.trim();
+    
+    final formattedOwnAmt = format.format(ownAmt).replaceAll(RegExp(r'\.00$'), ''); // strip trailing .00
+    final formattedTotal = format.format(total); // keep decimals for total
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF171A3F),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                '$index',
+                style: const TextStyle(
+                  color: Color(0xFF171A3F),
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Column(
+             crossAxisAlignment: CrossAxisAlignment.end,
+             mainAxisAlignment: MainAxisAlignment.center,
+             children: [
+               Text(
+                  'P $formattedOwnAmt',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'total: P $formattedTotal',
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                  ),
+                ),
+             ],
           ),
         ],
       ),
