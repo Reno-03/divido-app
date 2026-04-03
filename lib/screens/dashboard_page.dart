@@ -261,6 +261,15 @@ class _DashboardPageState extends State<DashboardPage> {
                 children: [
                   const SizedBox(height: 20),
 
+                  Center(
+                    child: Image.asset(
+                      'assets/divido-logo-animating.gif',
+                      height: 100,
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
                   Text(
                     funGreeting,
                     textAlign: TextAlign.left,
@@ -268,15 +277,6 @@ class _DashboardPageState extends State<DashboardPage> {
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  Center(
-                    child: Image.asset(
-                      'assets/divido-logo-animating.gif',
-                      height: 100,
                     ),
                   ),
 
