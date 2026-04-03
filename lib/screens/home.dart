@@ -383,47 +383,74 @@ class HomePageState extends State<HomePage> {
                 )
               : IndexedStack(index: _currentIndex, children: _pages),
 
-          floatingActionButton: hasGroups && _currentIndex == 2
-              ? FloatingActionButton(
-                  onPressed: _showCreateExpenseModal,
-                  child: const Icon(Icons.add),
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+          floatingActionButton: hasGroups
+              ? Container(
+                  margin: const EdgeInsets.only(top: 30),
+                  child: FloatingActionButton(
+                    onPressed: () {
+                      setState(() => _currentIndex = 2); // Switch to Mine Page
+                      _showCreateExpenseModal();
+                    },
+                    backgroundColor: const Color(0xFFFFFFFF), // highlight action color
+                    shape: const CircleBorder(),
+                    child: const Icon(Icons.add, color: Color(0xFF0F1128), size: 32),
+                  ),
                 )
               : null,
 
           bottomNavigationBar: hasGroups
-              ? BottomNavigationBar(
-                  currentIndex: _currentIndex,
-                  onTap: (index) => setState(() => _currentIndex = index),
-
-                  backgroundColor: const Color(0xFF0F1128),
-
-                  selectedItemColor: Colors.white,
-                  unselectedItemColor: Colors.white.withValues(alpha: 0.4),
-
-                  type: BottomNavigationBarType.fixed,
-
-                  items: const [
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.dashboard_rounded),
-                      label: 'Dashboard',
+              ? BottomAppBar(
+                  color: const Color(0xFF0F1128),
+                  shape: const CircularNotchedRectangle(),
+                  notchMargin: 8.0,
+                  clipBehavior: Clip.antiAlias,
+                  child: SizedBox(
+                    height: 60,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildNavItem(Icons.dashboard_rounded, 'Dashboard', 0),
+                        _buildNavItem(Icons.list, 'All', 1),
+                        const SizedBox(width: 48), // Spacing for the FAB notch
+                        _buildNavItem(Icons.person, 'Mine', 2),
+                        _buildNavItem(Icons.account_balance_wallet, 'Balance', 3),
+                      ],
                     ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.list),
-                      label: 'All',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.person),
-                      label: 'Mine',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.account_balance_wallet),
-                      label: 'Balance',
-                    ),
-                  ],
+                  ),
                 )
               : null,
         );
       },
+    );
+  }
+
+  Widget _buildNavItem(IconData icon, String label, int index) {
+    final isSelected = _currentIndex == index;
+    final color = isSelected ? Colors.white : Colors.white.withValues(alpha: 0.4);
+    
+    return InkWell(
+      onTap: () => setState(() => _currentIndex = index),
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
