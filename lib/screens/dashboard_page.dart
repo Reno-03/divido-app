@@ -276,7 +276,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   Center(
                     child: Image.asset(
                       'assets/divido-logo-animating.gif',
-                      width: 200,
+                      height: 100,
                     ),
                   ),
 
@@ -406,6 +406,81 @@ class _DashboardPageState extends State<DashboardPage> {
                               ),
                               child: const Text(
                                 'Settle Now',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3C3C63),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            offset: const Offset(0, 8),
+                            blurRadius: 16,
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Recent Expenses',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          if (expenseProvider.expenses.isEmpty)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF171A3F),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Text('No recent expenses.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
+                            )
+                          else
+                            ...expenseProvider.expenses.take(3).map((e) => _buildExpenseTile(e, currencyFormat)),
+
+                          const SizedBox(height: 16),
+
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: () {
+                                final parentState = context.findAncestorStateOfType<HomePageState>();
+                                if (parentState != null) {
+                                  parentState.switchTab(1); // Navigate to All Expenses tab
+                                }
+                              },
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFFEEEEEE),
+                                foregroundColor: const Color(0xFF171A3F),
+                                padding: const EdgeInsets.symmetric(vertical: 20),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Text(
+                                'View All Expenses',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w800,
@@ -599,6 +674,67 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpenseTile(Map<String, dynamic> expense, NumberFormat format) {
+    final title = expense['title'] as String? ?? 'Untitled';
+    final total = (expense['total'] as num?)?.toDouble() ?? 0.0;
+    final profiles = expense['profiles'] as Map<String, dynamic>?;
+    final firstname = profiles?['firstname'] as String? ?? 'Unknown';
+    final lastname = profiles?['lastname'] as String? ?? '';
+    final name = '$firstname $lastname'.trim();
+    
+    final formattedTotal = format.format(total).replaceAll(RegExp(r'\.00$'), ''); // strip trailing .00 to match mockup cleanly
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF171A3F),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18, // slightly larger, matching mockup title weight
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Text(
+            'P $formattedTotal',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 26, // striking size
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
