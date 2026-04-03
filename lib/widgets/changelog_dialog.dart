@@ -39,7 +39,7 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
               borderRadius: BorderRadius.circular(50),
             ),
             child: Text(
-              'v0.8.0-beta — Interactive Cards',
+              'v0.9.0-beta — Dashboards & Navigation',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.white,
@@ -51,15 +51,15 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
 
           // New features
           _section('🚀 New', [
-            'All expense cards in All Page are interactive; tap to view full details including description and created at',
-            'Added Description field to Expense Add and Edit Modal Sheets (multiline input)',
+            'Revamped Dashboard with live financial metrics, interactive balance summaries, recent & top expenses, and group members tracking',
+            'Brand new sleek docked Bottom Navigation Bar seamlessly integrating a quick "Add Expense" button',
           ]),
           const SizedBox(height: 10),
 
           // Optimizations
           _section('⚡ Optimized', [
-            'Followed iOS-feel vibe using Hero widget and animations',
-            'Description is shown immediately on Mine Page',
+            'Overhauled real-time net-balance calculations ensuring parity across the entire app',
+            'Pull-to-refresh completely enabled across the Dashboard module',
           ]),
           const SizedBox(height: 16),
 
