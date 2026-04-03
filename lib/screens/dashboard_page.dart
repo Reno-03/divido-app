@@ -741,6 +741,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final profiles = expense['profiles'] as Map<String, dynamic>?;
     final firstname = profiles?['firstname'] as String? ?? 'Unknown';
     final lastname = profiles?['lastname'] as String? ?? '';
+    final avatarUrl = profiles?['avatar_url'] as String?;
     final name = '$firstname $lastname'.trim();
     
     final formattedTotal = format.format(total).replaceAll(RegExp(r'\.00$'), ''); // strip trailing .00 to match mockup cleanly
@@ -770,14 +771,33 @@ class _DashboardPageState extends State<DashboardPage> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  name,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Container(
+                      width: 16,
+                      height: 16,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: avatarUrl != null && avatarUrl.isNotEmpty
+                          ? Image.network(avatarUrl, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.person, size: 10, color: Color(0xFF3C3C63)))
+                          : const Icon(Icons.person, size: 10, color: Color(0xFF3C3C63)),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -805,6 +825,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final profiles = expense['profiles'] as Map<String, dynamic>?;
     final firstname = profiles?['firstname'] as String? ?? 'Unknown';
     final lastname = profiles?['lastname'] as String? ?? '';
+    final avatarUrl = profiles?['avatar_url'] as String?;
     final name = '$firstname $lastname'.trim();
     
     final formattedOwnAmt = format.format(ownAmt).replaceAll(RegExp(r'\.00$'), ''); // strip trailing .00
@@ -854,14 +875,33 @@ class _DashboardPageState extends State<DashboardPage> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  name,
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 13,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Container(
+                      width: 16,
+                      height: 16,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: avatarUrl != null && avatarUrl.isNotEmpty
+                          ? Image.network(avatarUrl, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.person, size: 10, color: Color(0xFF3C3C63)))
+                          : const Icon(Icons.person, size: 10, color: Color(0xFF3C3C63)),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 13,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
