@@ -199,6 +199,17 @@ class _DashboardPageState extends State<DashboardPage> {
     final funGreeting = _getFunGreeting(firstName);
 
     final expenseProvider = Provider.of<ExpenseProvider>(context);
+    final groupProvider = Provider.of<GroupProvider>(context);
+
+    final groupMembers = List<Map<String, dynamic>>.from(groupProvider.members);
+    final selectedGroup = groupProvider.selectedGroup;
+    final createdById = selectedGroup?['created_by'];
+
+    groupMembers.sort((a, b) {
+      if (a['id'] == createdById) return -1;
+      if (b['id'] == createdById) return 1;
+      return 0;
+    });
 
     double totalGroupExpense = 0;
     double totalOwnExpense = 0;
@@ -328,7 +339,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       children: [
                         Expanded(
                           child: _buildCardTile(
-                            'Total owed to you',
+                            'Total owes to you',
                             Icons.arrow_downward,
                             '₱ ${currencyFormat.format(_totalOwedToYou)}',
                             null,
@@ -543,6 +554,43 @@ class _DashboardPageState extends State<DashboardPage> {
                             )
                           else
                             ...topExpensesThisWeek.take(3).toList().asMap().entries.map((e) => _buildTopExpenseTile(e.value, e.key + 1, currencyFormat)),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3C3C63),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            offset: const Offset(0, 8),
+                            blurRadius: 16,
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Members for ${groupProvider.selectedGroupName ?? "Group"}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          if (groupMembers.isEmpty)
+                             const Text('No members found.', style: TextStyle(color: Colors.white70))
+                          else
+                             ...groupMembers.map((m) => _buildMemberTile(m, m['id'] == createdById)),
                         ],
                       ),
                     ),
@@ -927,6 +975,82 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
              ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMemberTile(Map<String, dynamic> member, bool isCreator) {
+    final firstname = member['firstname'] as String? ?? 'Unknown';
+    final lastname = member['lastname'] as String? ?? '';
+    final name = '$firstname $lastname'.trim();
+    final avatarUrl = member['avatar_url'] as String?;
+    
+    final colorStr = member['color'] as String? ?? '#CCCCCC';
+    Color memberColor = Colors.grey;
+    if (colorStr.startsWith('#') && colorStr.length == 7) {
+      try {
+        memberColor = Color(int.parse(colorStr.substring(1), radix: 16) + 0xFF000000);
+      } catch (_) {}
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF171A3F),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: avatarUrl != null && avatarUrl.isNotEmpty
+                ? Image.network(avatarUrl, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.person, color: Color(0xFF3C3C63)))
+                : const Icon(Icons.person, color: Color(0xFF3C3C63)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (isCreator) ...[
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Group Creator',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          Container(
+            width: 24, // distinct large circle for color
+            height: 24,
+            decoration: BoxDecoration(
+              color: memberColor,
+              shape: BoxShape.circle,
+            ),
           ),
         ],
       ),
