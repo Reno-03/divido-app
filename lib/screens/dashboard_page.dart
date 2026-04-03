@@ -1,11 +1,152 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:divido_app/providers/expense_provider.dart';
+import 'package:divido_app/providers/group_provider.dart';
 
-class DashboardPage extends StatelessWidget {
+class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  final _supabase = Supabase.instance.client;
+
+  bool _isLoadingMetrics = true;
+
+  double _totalOwedToYou = 0;
+  double _totalYouOwe = 0;
+
+  double _thisWeekOwedToYou = 0;
+  double _lastWeekOwedToYou = 0;
+  double _thisWeekYouOwe = 0;
+  double _lastWeekYouOwe = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Re-fetch automatically if expenses change
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchMetrics();
+      Provider.of<ExpenseProvider>(context, listen: false).addListener(_onExpensesChanged);
+    });
+  }
+
+  @override
+  void dispose() {
+    Provider.of<ExpenseProvider>(context, listen: false).removeListener(_onExpensesChanged);
+    super.dispose();
+  }
+
+  void _onExpensesChanged() {
+    _fetchMetrics();
+  }
+
+  Future<void> _fetchMetrics() async {
+    if (!mounted) return;
+    
+    final currentUserId = CurrentUser.instance.id;
+    final groupProvider = Provider.of<GroupProvider>(context, listen: false);
+    final groupId = groupProvider.selectedGroupId;
+
+    if (currentUserId == null || groupId == null) {
+      if (mounted) setState(() => _isLoadingMetrics = false);
+      return;
+    }
+
+    final now = DateTime.now();
+    final startOfThisWeek = now.subtract(const Duration(days: 7));
+    final startOfLastWeek = now.subtract(const Duration(days: 14));
+
+    final ownerBreakdowns = await _supabase
+        .from('expense_breakdowns')
+        .select('amount, payer_id, expenses!inner(owner_id, created_at)')
+        .eq('expenses.owner_id', currentUserId)
+        .eq('expenses.group_id', groupId)
+        .neq('payer_id', currentUserId);
+
+    final payerBreakdowns = await _supabase
+        .from('expense_breakdowns')
+        .select('amount, payer_id, expenses!inner(owner_id, created_at)')
+        .eq('payer_id', currentUserId)
+        .eq('expenses.group_id', groupId)
+        .neq('expenses.owner_id', currentUserId);
+
+    final paymentsMade = await _supabase
+        .from('payments')
+        .select('amount, created_at, payee_id')
+        .eq('payer_id', currentUserId)
+        .eq('group_id', groupId);
+
+    final paymentsReceived = await _supabase
+        .from('payments')
+        .select('amount, created_at, payer_id')
+        .eq('payee_id', currentUserId)
+        .eq('group_id', groupId);
+
+    final Map<String, double> netByUser = {};
+    final Map<String, double> netByUserLastWeek = {};
+    final Map<String, double> netByUserTwoWeeksAgo = {};
+
+    void process(List<dynamic> list, String userKeyField, bool isTheyOweMe, bool isExpenseBreakdown) {
+      for (var row in list) {
+        final uid = isExpenseBreakdown 
+            ? (userKeyField == 'payer_id' ? row['payer_id'] as String : row['expenses']['owner_id'] as String)
+            : row[userKeyField] as String;
+            
+        final amount = (row['amount'] as num).toDouble();
+        final dateStr = isExpenseBreakdown ? row['expenses']['created_at'] : row['created_at'];
+        final date = DateTime.parse(dateStr).toLocal();
+
+        final val = isTheyOweMe ? amount : -amount;
+
+        netByUser[uid] = (netByUser[uid] ?? 0) + val;
+
+        if (date.isBefore(startOfThisWeek)) {
+          netByUserLastWeek[uid] = (netByUserLastWeek[uid] ?? 0) + val;
+        }
+        if (date.isBefore(startOfLastWeek)) {
+          netByUserTwoWeeksAgo[uid] = (netByUserTwoWeeksAgo[uid] ?? 0) + val;
+        }
+      }
+    }
+
+    process(ownerBreakdowns, 'payer_id', true, true);
+    process(payerBreakdowns, 'expenses.owner_id', false, true);
+    process(paymentsMade, 'payee_id', true, false);
+    process(paymentsReceived, 'payer_id', false, false);
+
+    double calcOwedToYou(Map<String, double> dict) => dict.values.where((v) => v > 0).fold(0.0, (a, b) => a + b);
+    double calcYouOwe(Map<String, double> dict) => dict.values.where((v) => v < 0).fold(0.0, (a, b) => a + b.abs());
+
+    double currOwedToYou = calcOwedToYou(netByUser);
+    double currYouOwe = calcYouOwe(netByUser);
+
+    double lastWkOwedToYou = calcOwedToYou(netByUserLastWeek);
+    double lastWkYouOwe = calcYouOwe(netByUserLastWeek);
+
+    double twoWksOwedToYou = calcOwedToYou(netByUserTwoWeeksAgo);
+    double twoWksYouOwe = calcYouOwe(netByUserTwoWeeksAgo);
+
+    if (mounted) {
+      setState(() {
+        _totalOwedToYou = currOwedToYou;
+        _totalYouOwe = currYouOwe;
+
+        _thisWeekOwedToYou = currOwedToYou - lastWkOwedToYou;
+        _lastWeekOwedToYou = lastWkOwedToYou - twoWksOwedToYou;
+
+        _thisWeekYouOwe = currYouOwe - lastWkYouOwe;
+        _lastWeekYouOwe = lastWkYouOwe - twoWksYouOwe;
+
+        _isLoadingMetrics = false;
+      });
+    }
+  }
 
   String _getFunGreeting(String name) {
     final hour = DateTime.now().hour;
@@ -66,15 +207,28 @@ class DashboardPage extends StatelessWidget {
 
     double groupPct = lastWeekGroup > 0 ? ((thisWeekGroup - lastWeekGroup) / lastWeekGroup) * 100 : (thisWeekGroup > 0 ? 100 : 0);
     double ownPct = lastWeekOwn > 0 ? ((thisWeekOwn - lastWeekOwn) / lastWeekOwn) * 100 : (thisWeekOwn > 0 ? 100 : 0);
+    
+    // Calculate tracked owed metrics
+    double owedToYouPct = _lastWeekOwedToYou > 0 ? ((_thisWeekOwedToYou - _lastWeekOwedToYou) / _lastWeekOwedToYou) * 100 : (_thisWeekOwedToYou > 0 ? 100 : 0);
+    double youOwePct = _lastWeekYouOwe > 0 ? ((_thisWeekYouOwe - _lastWeekYouOwe) / _lastWeekYouOwe) * 100 : (_thisWeekYouOwe > 0 ? 100 : 0);
 
     final currencyFormat = NumberFormat('#,##0.00', 'en_US');
 
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: SizedBox(
-          width: double.infinity,
-          child: Column(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          await _fetchMetrics();
+          if (mounted) {
+            await Provider.of<ExpenseProvider>(context, listen: false).refresh(null);
+          }
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
@@ -121,14 +275,59 @@ class DashboardPage extends StatelessWidget {
                   ),
                 ],
               ),
+
+              const SizedBox(height: 16),
+
+              if (_isLoadingMetrics)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: CircularProgressIndicator(color: Color(0xFF3C3C63)),
+                  ),
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildCardTile(
+                        'Total owed to you',
+                        Icons.arrow_downward,
+                        '₱ ${currencyFormat.format(_totalOwedToYou)}',
+                        null,
+                        iconBgColor: Colors.green.shade400,
+                        iconColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _buildCardTile(
+                        'Total you owe',
+                        Icons.arrow_upward,
+                        '₱ ${currencyFormat.format(_totalYouOwe)}',
+                        null,
+                        iconBgColor: Colors.red.shade400,
+                        iconColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
             ],
+          ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildCardTile(String title, IconData icon, String value, double pctValue) {
+  Widget _buildCardTile(
+    String title,
+    IconData icon,
+    String value,
+    double? pctValue, {
+    Color iconBgColor = Colors.white,
+    Color iconColor = const Color(0xFF3C3C63),
+  }) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -148,13 +347,13 @@ class DashboardPage extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: iconBgColor,
               shape: BoxShape.circle,
             ),
             child: Icon(
               icon,
-              color: const Color(0xFF3C3C63),
+              color: iconColor,
               size: 24,
             ),
           ),
@@ -183,36 +382,38 @@ class DashboardPage extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(
-                pctValue == 0
-                    ? Icons.trending_flat
-                    : (pctValue > 0 ? Icons.trending_up : Icons.trending_down),
-                color: pctValue == 0
-                    ? Colors.white70
-                    : (pctValue > 0 ? Colors.greenAccent : Colors.redAccent),
-                size: 16,
-              ),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
+          if (pctValue != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
                   pctValue == 0
-                      ? 'Same as last week'
-                      : '${pctValue.abs().toStringAsFixed(0)}% ${pctValue > 0 ? 'more' : 'less'} expense than last week',
-                  style: TextStyle(
-                    color: pctValue == 0
-                        ? Colors.white70
-                        : (pctValue > 0 ? Colors.greenAccent : Colors.redAccent),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                      ? Icons.trending_flat
+                      : (pctValue > 0 ? Icons.trending_up : Icons.trending_down),
+                  color: pctValue == 0
+                      ? Colors.white70
+                      : (pctValue > 0 ? Colors.greenAccent : Colors.redAccent),
+                  size: 16,
+                ),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    pctValue == 0
+                        ? 'Same as last week'
+                        : '${pctValue.abs().toStringAsFixed(0)}% ${pctValue > 0 ? 'more' : 'less'} than last week',
+                    style: TextStyle(
+                      color: pctValue == 0
+                          ? Colors.white70
+                          : (pctValue > 0 ? Colors.greenAccent : Colors.redAccent),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ],
       ),
     );
