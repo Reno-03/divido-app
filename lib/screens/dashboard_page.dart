@@ -29,16 +29,42 @@ class DashboardPage extends StatelessWidget {
     double totalGroupExpense = 0;
     double totalOwnExpense = 0;
 
-    for (final expense in expenseProvider.expenses) {
-      totalGroupExpense += (expense['total'] as num?)?.toDouble() ?? 0.0;
+    double thisWeekGroup = 0;
+    double lastWeekGroup = 0;
+    double thisWeekOwn = 0;
+    double lastWeekOwn = 0;
 
+    final now = DateTime.now();
+    final startOfThisWeek = now.subtract(const Duration(days: 7));
+    final startOfLastWeek = now.subtract(const Duration(days: 14));
+
+    for (final expense in expenseProvider.expenses) {
+      final total = (expense['total'] as num?)?.toDouble() ?? 0.0;
+      totalGroupExpense += total;
+
+      double ownAmt = 0;
       final breakdowns = expense['expense_breakdowns'] as List<dynamic>? ?? [];
       for (final b in breakdowns) {
         if (b['payer_id'] == currentUserId) {
-          totalOwnExpense += (b['amount'] as num?)?.toDouble() ?? 0.0;
+          ownAmt += (b['amount'] as num?)?.toDouble() ?? 0.0;
+        }
+      }
+      totalOwnExpense += ownAmt;
+
+      final date = expense['created_at_local'] as DateTime?;
+      if (date != null) {
+        if (date.isAfter(startOfThisWeek)) {
+          thisWeekGroup += total;
+          thisWeekOwn += ownAmt;
+        } else if (date.isAfter(startOfLastWeek) && date.isBefore(startOfThisWeek)) {
+          lastWeekGroup += total;
+          lastWeekOwn += ownAmt;
         }
       }
     }
+
+    double groupPct = lastWeekGroup > 0 ? ((thisWeekGroup - lastWeekGroup) / lastWeekGroup) * 100 : (thisWeekGroup > 0 ? 100 : 0);
+    double ownPct = lastWeekOwn > 0 ? ((thisWeekOwn - lastWeekOwn) / lastWeekOwn) * 100 : (thisWeekOwn > 0 ? 100 : 0);
 
     return Scaffold(
       body: Padding(
@@ -76,16 +102,18 @@ class DashboardPage extends StatelessWidget {
                   Expanded(
                     child: _buildCardTile(
                       'Total group expense',
-                      Icons.group_outlined,
+                      Icons.group,
                       '₱ ${totalGroupExpense.toStringAsFixed(2)}',
+                      groupPct,
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: _buildCardTile(
                       'Total own expense',
-                      Icons.person_outline,
+                      Icons.person,
                       '₱ ${totalOwnExpense.toStringAsFixed(2)}',
+                      ownPct,
                     ),
                   ),
                 ],
@@ -97,7 +125,7 @@ class DashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _buildCardTile(String title, IconData icon, String value) {
+  Widget _buildCardTile(String title, IconData icon, String value, double pctValue) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -144,6 +172,36 @@ class DashboardPage extends StatelessWidget {
               fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                pctValue == 0
+                    ? Icons.trending_flat
+                    : (pctValue > 0 ? Icons.trending_up : Icons.trending_down),
+                color: pctValue == 0
+                    ? Colors.white70
+                    : (pctValue > 0 ? Colors.greenAccent : Colors.redAccent),
+                size: 16,
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  pctValue == 0
+                      ? 'Same as last week'
+                      : '${pctValue.abs().toStringAsFixed(0)}% ${pctValue > 0 ? 'more' : 'less'} expense than last week',
+                  style: TextStyle(
+                    color: pctValue == 0
+                        ? Colors.white70
+                        : (pctValue > 0 ? Colors.greenAccent : Colors.redAccent),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
