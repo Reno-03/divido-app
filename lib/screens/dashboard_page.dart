@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:divido_app/providers/expense_provider.dart';
 
@@ -66,6 +67,8 @@ class DashboardPage extends StatelessWidget {
     double groupPct = lastWeekGroup > 0 ? ((thisWeekGroup - lastWeekGroup) / lastWeekGroup) * 100 : (thisWeekGroup > 0 ? 100 : 0);
     double ownPct = lastWeekOwn > 0 ? ((thisWeekOwn - lastWeekOwn) / lastWeekOwn) * 100 : (thisWeekOwn > 0 ? 100 : 0);
 
+    final currencyFormat = NumberFormat('#,##0.00', 'en_US');
+
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.all(20),
@@ -103,7 +106,7 @@ class DashboardPage extends StatelessWidget {
                     child: _buildCardTile(
                       'Total group expense',
                       Icons.group,
-                      '₱ ${totalGroupExpense.toStringAsFixed(2)}',
+                      '₱ ${currencyFormat.format(totalGroupExpense)}',
                       groupPct,
                     ),
                   ),
@@ -112,7 +115,7 @@ class DashboardPage extends StatelessWidget {
                     child: _buildCardTile(
                       'Total own expense',
                       Icons.person,
-                      '₱ ${totalOwnExpense.toStringAsFixed(2)}',
+                      '₱ ${currencyFormat.format(totalOwnExpense)}',
                       ownPct,
                     ),
                   ),
@@ -165,12 +168,19 @@ class DashboardPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
+
+          // use this to make the text scale down if it's too long
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              value,
+              maxLines: 1,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           const SizedBox(height: 8),
