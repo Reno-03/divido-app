@@ -23,6 +23,14 @@ class HomePage extends StatefulWidget {
 class HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
+  void switchTab(int index) {
+    if (mounted) {
+      setState(() {
+        _currentIndex = index;
+      });
+    }
+  }
+
   final List<Widget> _pages = const [
     DashboardPage(),
     AllPage(),

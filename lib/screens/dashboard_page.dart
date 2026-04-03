@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:divido_app/providers/expense_provider.dart';
 import 'package:divido_app/providers/group_provider.dart';
+import 'package:divido_app/screens/balance_page.dart';
+import 'package:divido_app/screens/home.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -25,6 +27,8 @@ class _DashboardPageState extends State<DashboardPage> {
   double _lastWeekOwedToYou = 0;
   double _thisWeekYouOwe = 0;
   double _lastWeekYouOwe = 0;
+
+  List<Map<String, dynamic>> _balanceSummaries = [];
 
   @override
   void initState() {
@@ -132,6 +136,32 @@ class _DashboardPageState extends State<DashboardPage> {
     double twoWksOwedToYou = calcOwedToYou(netByUserTwoWeeksAgo);
     double twoWksYouOwe = calcYouOwe(netByUserTwoWeeksAgo);
 
+    final userIds = netByUser.keys.toList();
+    List<Map<String, dynamic>> summaries = [];
+    if (userIds.isNotEmpty) {
+      final users = await _supabase
+          .from('profiles')
+          .select('id, firstname, lastname, color, avatar_url')
+          .filter('id', 'in', userIds);
+
+      final userMap = {for (var u in users) u['id'] as String: u};
+
+      for (var entry in netByUser.entries) {
+        final u = userMap[entry.key];
+        if (u != null) {
+          summaries.add({
+            'uid': entry.key,
+            'name': u['firstname'] != null ? '${u['firstname']} ${u['lastname'] ?? ''}'.trim() : 'Unknown',
+            'avatar_url': u['avatar_url'],
+            'color': u['color'],
+            'net': entry.value
+          });
+        }
+      }
+      
+      summaries.sort((a, b) => (b['net'] as double).abs().compareTo((a['net'] as double).abs()));
+    }
+
     if (mounted) {
       setState(() {
         _totalOwedToYou = currOwedToYou;
@@ -142,6 +172,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
         _thisWeekYouOwe = currYouOwe - lastWkYouOwe;
         _lastWeekYouOwe = lastWkYouOwe - twoWksYouOwe;
+
+        _balanceSummaries = summaries;
 
         _isLoadingMetrics = false;
       });
@@ -207,10 +239,6 @@ class _DashboardPageState extends State<DashboardPage> {
 
     double groupPct = lastWeekGroup > 0 ? ((thisWeekGroup - lastWeekGroup) / lastWeekGroup) * 100 : (thisWeekGroup > 0 ? 100 : 0);
     double ownPct = lastWeekOwn > 0 ? ((thisWeekOwn - lastWeekOwn) / lastWeekOwn) * 100 : (thisWeekOwn > 0 ? 100 : 0);
-    
-    // Calculate tracked owed metrics
-    double owedToYouPct = _lastWeekOwedToYou > 0 ? ((_thisWeekOwedToYou - _lastWeekOwedToYou) / _lastWeekOwedToYou) * 100 : (_thisWeekOwedToYou > 0 ? 100 : 0);
-    double youOwePct = _lastWeekYouOwe > 0 ? ((_thisWeekYouOwe - _lastWeekYouOwe) / _lastWeekYouOwe) * 100 : (_thisWeekYouOwe > 0 ? 100 : 0);
 
     final currencyFormat = NumberFormat('#,##0.00', 'en_US');
 
@@ -229,90 +257,170 @@ class _DashboardPageState extends State<DashboardPage> {
             child: SizedBox(
               width: double.infinity,
               child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-
-              Text(
-                funGreeting,
-                textAlign: TextAlign.left,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white.withValues(alpha: 0.9),
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-              Center(
-                child: Image.asset(
-                  'assets/divido-logo-animating.gif',
-                  width: 200,
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: _buildCardTile(
-                      'Total group expense',
-                      Icons.group,
-                      '₱ ${currencyFormat.format(totalGroupExpense)}',
-                      groupPct,
+                  const SizedBox(height: 20),
+
+                  Text(
+                    funGreeting,
+                    textAlign: TextAlign.left,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white.withValues(alpha: 0.9),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildCardTile(
-                      'Total own expense',
-                      Icons.person,
-                      '₱ ${currencyFormat.format(totalOwnExpense)}',
-                      ownPct,
+
+                  const SizedBox(height: 20),
+
+                  Center(
+                    child: Image.asset(
+                      'assets/divido-logo-animating.gif',
+                      width: 200,
                     ),
                   ),
+
+                  const SizedBox(height: 30),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildCardTile(
+                          'Total group expense',
+                          Icons.group,
+                          '₱ ${currencyFormat.format(totalGroupExpense)}',
+                          groupPct,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildCardTile(
+                          'Total own expense',
+                          Icons.person,
+                          '₱ ${currencyFormat.format(totalOwnExpense)}',
+                          ownPct,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  if (_isLoadingMetrics)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: CircularProgressIndicator(color: Color(0xFF3C3C63)),
+                      ),
+                    )
+                  else ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildCardTile(
+                            'Total owed to you',
+                            Icons.arrow_downward,
+                            '₱ ${currencyFormat.format(_totalOwedToYou)}',
+                            null,
+                            iconBgColor: Colors.green.shade400,
+                            iconColor: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildCardTile(
+                            'Total you owe',
+                            Icons.arrow_upward,
+                            '₱ ${currencyFormat.format(_totalYouOwe)}',
+                            null,
+                            iconBgColor: Colors.red.shade400,
+                            iconColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3C3C63),
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            offset: const Offset(0, 8),
+                            blurRadius: 16,
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Summary of Balances',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          if (_balanceSummaries.isEmpty)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF171A3F),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Text('No balances found.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
+                            )
+                          else
+                            ..._balanceSummaries.map((s) => _buildSummaryTile(s, currencyFormat)),
+
+                          const SizedBox(height: 16),
+
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: () {
+                                final parentState = context.findAncestorStateOfType<HomePageState>();
+                                if (parentState != null) {
+                                  parentState.switchTab(3); // Navigate to the Balance tab
+                                } else {
+                                  Navigator.push(context, MaterialPageRoute(builder: (context) => const BalancePage()));
+                                }
+                              },
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFFEEEEEE),
+                                foregroundColor: const Color(0xFF171A3F),
+                                padding: const EdgeInsets.symmetric(vertical: 20),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: const Text(
+                                'Settle Now',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 40),
+                  ],
                 ],
               ),
-
-              const SizedBox(height: 16),
-
-              if (_isLoadingMetrics)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: CircularProgressIndicator(color: Color(0xFF3C3C63)),
-                  ),
-                )
-              else
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildCardTile(
-                        'Total owed to you',
-                        Icons.arrow_downward,
-                        '₱ ${currencyFormat.format(_totalOwedToYou)}',
-                        null,
-                        iconBgColor: Colors.green.shade400,
-                        iconColor: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildCardTile(
-                        'Total you owe',
-                        Icons.arrow_upward,
-                        '₱ ${currencyFormat.format(_totalYouOwe)}',
-                        null,
-                        iconBgColor: Colors.red.shade400,
-                        iconColor: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-            ],
-          ),
             ),
           ),
         ),
@@ -414,6 +522,84 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryTile(Map<String, dynamic> summary, NumberFormat format) {
+    final net = summary['net'] as double;
+    final name = summary['name'] as String;
+    final avatarUrl = summary['avatar_url'] as String?;
+    
+    final bool isSettled = net.abs() < 0.01;
+    final bool theyOweMe = net > 0;
+    
+    final Color amountColor = isSettled 
+        ? Colors.white70 
+        : (theyOweMe ? Colors.greenAccent : Colors.redAccent);
+        
+    final String subtitle = isSettled 
+        ? 'settled' 
+        : (theyOweMe ? 'owes you' : 'you owe');
+
+    final String amountStr = isSettled ? '0.00' : format.format(net.abs());
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF171A3F),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: avatarUrl != null && avatarUrl.isNotEmpty
+                ? Image.network(avatarUrl, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.person, color: Color(0xFF3C3C63)))
+                : const Icon(Icons.person, color: Color(0xFF3C3C63)),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              name,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'P $amountStr',
+                style: TextStyle(
+                  color: amountColor,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: amountColor,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
