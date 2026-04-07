@@ -113,7 +113,8 @@ class _DashboardPageState extends State<DashboardPage> {
           thisWeekOwn += ownAmt;
           if (ownAmt > 0)
             topExpenses.add({'expense': expense, 'ownAmt': ownAmt});
-        } else if (date.isAfter(startOfLastWeek)) {
+        } else if (date.isAfter(startOfLastWeek) &&
+            date.isBefore(startOfThisWeek)) {
           lastWeekGroup += total;
           lastWeekOwn += ownAmt;
         }
@@ -323,52 +324,9 @@ class _DashboardPageState extends State<DashboardPage> {
       return 0;
     });
 
-    // double totalGroupExpense = 0;
-    // double totalOwnExpense = 0;
-
-    // double thisWeekGroup = 0;
-    // double lastWeekGroup = 0;
-    // double thisWeekOwn = 0;
-    // double lastWeekOwn = 0;
-
     final now = DateTime.now();
     final startOfThisWeek = now.subtract(const Duration(days: 7));
     final startOfLastWeek = now.subtract(const Duration(days: 14));
-
-    // final topExpensesThisWeek = <Map<String, dynamic>>[];
-
-    // for (final expense in expenseProvider.expenses) {
-    //   final total = (expense['total'] as num?)?.toDouble() ?? 0.0;
-    //   totalGroupExpense += total;
-
-    //   double ownAmt = 0;
-    //   final breakdowns = expense['expense_breakdowns'] as List<dynamic>? ?? [];
-    //   for (final b in breakdowns) {
-    //     if (b['payer_id'] == currentUserId) {
-    //       ownAmt += (b['amount'] as num?)?.toDouble() ?? 0.0;
-    //     }
-    //   }
-    //   totalOwnExpense += ownAmt;
-
-    //   final date = expense['created_at_local'] as DateTime?;
-    //   if (date != null) {
-    //     if (date.isAfter(startOfThisWeek)) {
-    //       thisWeekGroup += total;
-    //       thisWeekOwn += ownAmt;
-    //       if (ownAmt > 0) {
-    //         topExpensesThisWeek.add({'expense': expense, 'ownAmt': ownAmt});
-    //       }
-    //     } else if (date.isAfter(startOfLastWeek) &&
-    //         date.isBefore(startOfThisWeek)) {
-    //       lastWeekGroup += total;
-    //       lastWeekOwn += ownAmt;
-    //     }
-    //   }
-    // }
-
-    // _topExpensesThisWeek.sort(
-    //   (a, b) => (b['ownAmt'] as double).compareTo(a['ownAmt'] as double),
-    // );
 
     double groupPct = _lastWeekGroup > 0
         ? ((_thisWeekGroup - _lastWeekGroup) / _lastWeekGroup) * 100
