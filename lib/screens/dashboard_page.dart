@@ -28,6 +28,9 @@ class _DashboardPageState extends State<DashboardPage> {
   double _thisWeekYouOwe = 0;
   double _lastWeekYouOwe = 0;
 
+  double _thisWeekOwn = 0;
+  double _lastWeekOwn = 0;
+
   List<Map<String, dynamic>> _balanceSummaries = [];
 
   DateTime? _lastFetch;
@@ -62,8 +65,9 @@ class _DashboardPageState extends State<DashboardPage> {
 
   void _onExpensesChanged() {
     final now = DateTime.now();
-    if (_lastFetch != null && now.difference(_lastFetch!).inMilliseconds < 500) {
-      return ;
+    if (_lastFetch != null &&
+        now.difference(_lastFetch!).inMilliseconds < 500) {
+      return;
     }
     _lastFetch = now;
     final expenses = Provider.of<ExpenseProvider>(
@@ -125,6 +129,10 @@ class _DashboardPageState extends State<DashboardPage> {
       _totalOwnExpense = totalOwn;
       _thisWeekGroup = thisWeekGroup;
       _lastWeekGroup = lastWeekGroup;
+
+      _thisWeekOwn = thisWeekOwn;
+      _lastWeekOwn = lastWeekOwn;
+
       _topExpensesThisWeek = topExpenses;
     });
   }
@@ -315,59 +323,59 @@ class _DashboardPageState extends State<DashboardPage> {
       return 0;
     });
 
-    double totalGroupExpense = 0;
-    double totalOwnExpense = 0;
+    // double totalGroupExpense = 0;
+    // double totalOwnExpense = 0;
 
-    double thisWeekGroup = 0;
-    double lastWeekGroup = 0;
-    double thisWeekOwn = 0;
-    double lastWeekOwn = 0;
+    // double thisWeekGroup = 0;
+    // double lastWeekGroup = 0;
+    // double thisWeekOwn = 0;
+    // double lastWeekOwn = 0;
 
     final now = DateTime.now();
     final startOfThisWeek = now.subtract(const Duration(days: 7));
     final startOfLastWeek = now.subtract(const Duration(days: 14));
 
-    final topExpensesThisWeek = <Map<String, dynamic>>[];
+    // final topExpensesThisWeek = <Map<String, dynamic>>[];
 
-    for (final expense in expenseProvider.expenses) {
-      final total = (expense['total'] as num?)?.toDouble() ?? 0.0;
-      totalGroupExpense += total;
+    // for (final expense in expenseProvider.expenses) {
+    //   final total = (expense['total'] as num?)?.toDouble() ?? 0.0;
+    //   totalGroupExpense += total;
 
-      double ownAmt = 0;
-      final breakdowns = expense['expense_breakdowns'] as List<dynamic>? ?? [];
-      for (final b in breakdowns) {
-        if (b['payer_id'] == currentUserId) {
-          ownAmt += (b['amount'] as num?)?.toDouble() ?? 0.0;
-        }
-      }
-      totalOwnExpense += ownAmt;
+    //   double ownAmt = 0;
+    //   final breakdowns = expense['expense_breakdowns'] as List<dynamic>? ?? [];
+    //   for (final b in breakdowns) {
+    //     if (b['payer_id'] == currentUserId) {
+    //       ownAmt += (b['amount'] as num?)?.toDouble() ?? 0.0;
+    //     }
+    //   }
+    //   totalOwnExpense += ownAmt;
 
-      final date = expense['created_at_local'] as DateTime?;
-      if (date != null) {
-        if (date.isAfter(startOfThisWeek)) {
-          thisWeekGroup += total;
-          thisWeekOwn += ownAmt;
-          if (ownAmt > 0) {
-            topExpensesThisWeek.add({'expense': expense, 'ownAmt': ownAmt});
-          }
-        } else if (date.isAfter(startOfLastWeek) &&
-            date.isBefore(startOfThisWeek)) {
-          lastWeekGroup += total;
-          lastWeekOwn += ownAmt;
-        }
-      }
-    }
+    //   final date = expense['created_at_local'] as DateTime?;
+    //   if (date != null) {
+    //     if (date.isAfter(startOfThisWeek)) {
+    //       thisWeekGroup += total;
+    //       thisWeekOwn += ownAmt;
+    //       if (ownAmt > 0) {
+    //         topExpensesThisWeek.add({'expense': expense, 'ownAmt': ownAmt});
+    //       }
+    //     } else if (date.isAfter(startOfLastWeek) &&
+    //         date.isBefore(startOfThisWeek)) {
+    //       lastWeekGroup += total;
+    //       lastWeekOwn += ownAmt;
+    //     }
+    //   }
+    // }
 
-    topExpensesThisWeek.sort(
-      (a, b) => (b['ownAmt'] as double).compareTo(a['ownAmt'] as double),
-    );
+    // _topExpensesThisWeek.sort(
+    //   (a, b) => (b['ownAmt'] as double).compareTo(a['ownAmt'] as double),
+    // );
 
-    double groupPct = lastWeekGroup > 0
-        ? ((thisWeekGroup - lastWeekGroup) / lastWeekGroup) * 100
-        : (thisWeekGroup > 0 ? 100 : 0);
-    double ownPct = lastWeekOwn > 0
-        ? ((thisWeekOwn - lastWeekOwn) / lastWeekOwn) * 100
-        : (thisWeekOwn > 0 ? 100 : 0);
+    double groupPct = _lastWeekGroup > 0
+        ? ((_thisWeekGroup - _lastWeekGroup) / _lastWeekGroup) * 100
+        : (_thisWeekGroup > 0 ? 100 : 0);
+    double ownPct = _lastWeekOwn > 0
+        ? ((_thisWeekOwn - _lastWeekOwn) / _lastWeekOwn) * 100
+        : (_thisWeekOwn > 0 ? 100 : 0);
 
     final currencyFormat = NumberFormat('#,##0.00', 'en_US');
 
@@ -420,7 +428,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         child: _buildCardTile(
                           'Total group expense',
                           Icons.group,
-                          '₱ ${currencyFormat.format(totalGroupExpense)}',
+                          '₱ ${currencyFormat.format(_totalGroupExpense)}',
                           groupPct,
                         ),
                       ),
@@ -429,7 +437,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         child: _buildCardTile(
                           'Total own expense',
                           Icons.person,
-                          '₱ ${currencyFormat.format(totalOwnExpense)}',
+                          '₱ ${currencyFormat.format(_totalOwnExpense)}',
                           ownPct,
                         ),
                       ),
@@ -684,7 +692,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                           const SizedBox(height: 16),
 
-                          if (topExpensesThisWeek.isEmpty)
+                          if (_topExpensesThisWeek.isEmpty)
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.all(20),
@@ -699,7 +707,7 @@ class _DashboardPageState extends State<DashboardPage> {
                               ),
                             )
                           else
-                            ...topExpensesThisWeek
+                            ..._topExpensesThisWeek
                                 .take(3)
                                 .toList()
                                 .asMap()
