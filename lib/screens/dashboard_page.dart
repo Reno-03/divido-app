@@ -30,29 +30,42 @@ class _DashboardPageState extends State<DashboardPage> {
 
   List<Map<String, dynamic>> _balanceSummaries = [];
 
+  DateTime? _lastFetch;
+
   @override
   void initState() {
     super.initState();
     // Re-fetch automatically if expenses change
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchMetrics();
-      Provider.of<ExpenseProvider>(context, listen: false).addListener(_onExpensesChanged);
+      Provider.of<ExpenseProvider>(
+        context,
+        listen: false,
+      ).addListener(_onExpensesChanged);
     });
   }
 
   @override
   void dispose() {
-    Provider.of<ExpenseProvider>(context, listen: false).removeListener(_onExpensesChanged);
+    Provider.of<ExpenseProvider>(
+      context,
+      listen: false,
+    ).removeListener(_onExpensesChanged);
     super.dispose();
   }
 
   void _onExpensesChanged() {
+    final now = DateTime.now();
+    if (_lastFetch != null && now.difference(_lastFetch!).inMilliseconds < 500) {
+      return;
+    }
+    _lastFetch = now;
     _fetchMetrics();
   }
 
   Future<void> _fetchMetrics() async {
     if (!mounted) return;
-    
+
     final currentUserId = CurrentUser.instance.id;
     final groupProvider = Provider.of<GroupProvider>(context, listen: false);
     final groupId = groupProvider.selectedGroupId;
@@ -66,60 +79,34 @@ class _DashboardPageState extends State<DashboardPage> {
     final startOfThisWeek = now.subtract(const Duration(days: 7));
     final startOfLastWeek = now.subtract(const Duration(days: 14));
 
-    // final ownerBreakdowns = await _supabase
-    //     .from('expense_breakdowns')
-    //     .select('amount, payer_id, expenses!inner(owner_id, created_at)')
-    //     .eq('expenses.owner_id', currentUserId)
-    //     .eq('expenses.group_id', groupId)
-    //     .neq('payer_id', currentUserId);
-
-    // final payerBreakdowns = await _supabase
-    //     .from('expense_breakdowns')
-    //     .select('amount, payer_id, expenses!inner(owner_id, created_at)')
-    //     .eq('payer_id', currentUserId)
-    //     .eq('expenses.group_id', groupId)
-    //     .neq('expenses.owner_id', currentUserId);
-
-    // final paymentsMade = await _supabase
-    //     .from('payments')
-    //     .select('amount, created_at, payee_id')
-    //     .eq('payer_id', currentUserId)
-    //     .eq('group_id', groupId);
-
-    // final paymentsReceived = await _supabase
-    //     .from('payments')
-    //     .select('amount, created_at, payer_id')
-    //     .eq('payee_id', currentUserId)
-    //     .eq('group_id', groupId);
-
-    // NOTE: Improved performance by running all 4 queries in parallel instead of sequentially, 
+    // NOTE: Improved performance by running all 4 queries in parallel instead of sequentially,
     // and processing results in-memory to minimize database calls
     final results = await Future.wait([
       _supabase
-        .from('expense_breakdowns')
-        .select('amount, payer_id, expenses!inner(owner_id, created_at)')
-        .eq('expenses.owner_id', currentUserId)
-        .eq('expenses.group_id', groupId)
-        .neq('payer_id', currentUserId),
+          .from('expense_breakdowns')
+          .select('amount, payer_id, expenses!inner(owner_id, created_at)')
+          .eq('expenses.owner_id', currentUserId)
+          .eq('expenses.group_id', groupId)
+          .neq('payer_id', currentUserId),
 
       _supabase
-        .from('expense_breakdowns')
-        .select('amount, payer_id, expenses!inner(owner_id, created_at)')
-        .eq('payer_id', currentUserId)
-        .eq('expenses.group_id', groupId)
-        .neq('expenses.owner_id', currentUserId),
+          .from('expense_breakdowns')
+          .select('amount, payer_id, expenses!inner(owner_id, created_at)')
+          .eq('payer_id', currentUserId)
+          .eq('expenses.group_id', groupId)
+          .neq('expenses.owner_id', currentUserId),
 
       _supabase
-        .from('payments')
-        .select('amount, created_at, payee_id')
-        .eq('payer_id', currentUserId)
-        .eq('group_id', groupId),
+          .from('payments')
+          .select('amount, created_at, payee_id')
+          .eq('payer_id', currentUserId)
+          .eq('group_id', groupId),
 
       _supabase
-        .from('payments')
-        .select('amount, created_at, payer_id')
-        .eq('payee_id', currentUserId)
-        .eq('group_id', groupId),
+          .from('payments')
+          .select('amount, created_at, payer_id')
+          .eq('payee_id', currentUserId)
+          .eq('group_id', groupId),
     ]);
 
     final ownerBreakdowns = results[0];
@@ -131,14 +118,23 @@ class _DashboardPageState extends State<DashboardPage> {
     final Map<String, double> netByUserLastWeek = {};
     final Map<String, double> netByUserTwoWeeksAgo = {};
 
-    void process(List<dynamic> list, String userKeyField, bool isTheyOweMe, bool isExpenseBreakdown) {
+    void process(
+      List<dynamic> list,
+      String userKeyField,
+      bool isTheyOweMe,
+      bool isExpenseBreakdown,
+    ) {
       for (var row in list) {
-        final uid = isExpenseBreakdown 
-            ? (userKeyField == 'payer_id' ? row['payer_id'] as String : row['expenses']['owner_id'] as String)
+        final uid = isExpenseBreakdown
+            ? (userKeyField == 'payer_id'
+                  ? row['payer_id'] as String
+                  : row['expenses']['owner_id'] as String)
             : row[userKeyField] as String;
-            
+
         final amount = (row['amount'] as num).toDouble();
-        final dateStr = isExpenseBreakdown ? row['expenses']['created_at'] : row['created_at'];
+        final dateStr = isExpenseBreakdown
+            ? row['expenses']['created_at']
+            : row['created_at'];
         final date = DateTime.parse(dateStr).toLocal();
 
         final val = isTheyOweMe ? amount : -amount;
@@ -159,8 +155,10 @@ class _DashboardPageState extends State<DashboardPage> {
     process(paymentsMade, 'payee_id', true, false);
     process(paymentsReceived, 'payer_id', false, false);
 
-    double calcOwedToYou(Map<String, double> dict) => dict.values.where((v) => v > 0).fold(0.0, (a, b) => a + b);
-    double calcYouOwe(Map<String, double> dict) => dict.values.where((v) => v < 0).fold(0.0, (a, b) => a + b.abs());
+    double calcOwedToYou(Map<String, double> dict) =>
+        dict.values.where((v) => v > 0).fold(0.0, (a, b) => a + b);
+    double calcYouOwe(Map<String, double> dict) =>
+        dict.values.where((v) => v < 0).fold(0.0, (a, b) => a + b.abs());
 
     double currOwedToYou = calcOwedToYou(netByUser);
     double currYouOwe = calcYouOwe(netByUser);
@@ -186,15 +184,20 @@ class _DashboardPageState extends State<DashboardPage> {
         if (u != null) {
           summaries.add({
             'uid': entry.key,
-            'name': u['firstname'] != null ? '${u['firstname']} ${u['lastname'] ?? ''}'.trim() : 'Unknown',
+            'name': u['firstname'] != null
+                ? '${u['firstname']} ${u['lastname'] ?? ''}'.trim()
+                : 'Unknown',
             'avatar_url': u['avatar_url'],
             'color': u['color'],
-            'net': entry.value
+            'net': entry.value,
           });
         }
       }
-      
-      summaries.sort((a, b) => (b['net'] as double).abs().compareTo((a['net'] as double).abs()));
+
+      summaries.sort(
+        (a, b) =>
+            (b['net'] as double).abs().compareTo((a['net'] as double).abs()),
+      );
     }
 
     if (mounted) {
@@ -279,22 +282,26 @@ class _DashboardPageState extends State<DashboardPage> {
           thisWeekGroup += total;
           thisWeekOwn += ownAmt;
           if (ownAmt > 0) {
-            topExpensesThisWeek.add({
-              'expense': expense,
-              'ownAmt': ownAmt,
-            });
+            topExpensesThisWeek.add({'expense': expense, 'ownAmt': ownAmt});
           }
-        } else if (date.isAfter(startOfLastWeek) && date.isBefore(startOfThisWeek)) {
+        } else if (date.isAfter(startOfLastWeek) &&
+            date.isBefore(startOfThisWeek)) {
           lastWeekGroup += total;
           lastWeekOwn += ownAmt;
         }
       }
     }
-    
-    topExpensesThisWeek.sort((a, b) => (b['ownAmt'] as double).compareTo(a['ownAmt'] as double));
 
-    double groupPct = lastWeekGroup > 0 ? ((thisWeekGroup - lastWeekGroup) / lastWeekGroup) * 100 : (thisWeekGroup > 0 ? 100 : 0);
-    double ownPct = lastWeekOwn > 0 ? ((thisWeekOwn - lastWeekOwn) / lastWeekOwn) * 100 : (thisWeekOwn > 0 ? 100 : 0);
+    topExpensesThisWeek.sort(
+      (a, b) => (b['ownAmt'] as double).compareTo(a['ownAmt'] as double),
+    );
+
+    double groupPct = lastWeekGroup > 0
+        ? ((thisWeekGroup - lastWeekGroup) / lastWeekGroup) * 100
+        : (thisWeekGroup > 0 ? 100 : 0);
+    double ownPct = lastWeekOwn > 0
+        ? ((thisWeekOwn - lastWeekOwn) / lastWeekOwn) * 100
+        : (thisWeekOwn > 0 ? 100 : 0);
 
     final currencyFormat = NumberFormat('#,##0.00', 'en_US');
 
@@ -303,7 +310,10 @@ class _DashboardPageState extends State<DashboardPage> {
         onRefresh: () async {
           await _fetchMetrics();
           if (mounted) {
-            await Provider.of<ExpenseProvider>(context, listen: false).refresh(null);
+            await Provider.of<ExpenseProvider>(
+              context,
+              listen: false,
+            ).refresh(null);
           }
         },
         child: SingleChildScrollView(
@@ -366,7 +376,9 @@ class _DashboardPageState extends State<DashboardPage> {
                     const Center(
                       child: Padding(
                         padding: EdgeInsets.all(32.0),
-                        child: CircularProgressIndicator(color: Color(0xFF3C3C63)),
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF3C3C63),
+                        ),
                       ),
                     )
                   else ...[
@@ -433,10 +445,16 @@ class _DashboardPageState extends State<DashboardPage> {
                                 color: const Color(0xFF171A3F),
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: const Text('No balances found.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
+                              child: const Text(
+                                'No balances found.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.white70),
+                              ),
                             )
                           else
-                            ..._balanceSummaries.map((s) => _buildSummaryTile(s, currencyFormat)),
+                            ..._balanceSummaries.map(
+                              (s) => _buildSummaryTile(s, currencyFormat),
+                            ),
 
                           const SizedBox(height: 16),
 
@@ -444,17 +462,27 @@ class _DashboardPageState extends State<DashboardPage> {
                             width: double.infinity,
                             child: FilledButton(
                               onPressed: () {
-                                final parentState = context.findAncestorStateOfType<HomePageState>();
+                                final parentState = context
+                                    .findAncestorStateOfType<HomePageState>();
                                 if (parentState != null) {
-                                  parentState.switchTab(3); // Navigate to the Balance tab
+                                  parentState.switchTab(
+                                    3,
+                                  ); // Navigate to the Balance tab
                                 } else {
-                                  Navigator.push(context, MaterialPageRoute(builder: (context) => const BalancePage()));
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const BalancePage(),
+                                    ),
+                                  );
                                 }
                               },
                               style: FilledButton.styleFrom(
                                 backgroundColor: const Color(0xFFEEEEEE),
                                 foregroundColor: const Color(0xFF171A3F),
-                                padding: const EdgeInsets.symmetric(vertical: 20),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 20,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -510,10 +538,18 @@ class _DashboardPageState extends State<DashboardPage> {
                                 color: const Color(0xFF171A3F),
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: const Text('No recent expenses.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
+                              child: const Text(
+                                'No recent expenses.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.white70),
+                              ),
                             )
                           else
-                            ...expenseProvider.expenses.take(3).map((e) => _buildExpenseTile(e, currencyFormat)),
+                            ...expenseProvider.expenses
+                                .take(3)
+                                .map(
+                                  (e) => _buildExpenseTile(e, currencyFormat),
+                                ),
 
                           const SizedBox(height: 16),
 
@@ -521,15 +557,20 @@ class _DashboardPageState extends State<DashboardPage> {
                             width: double.infinity,
                             child: FilledButton(
                               onPressed: () {
-                                final parentState = context.findAncestorStateOfType<HomePageState>();
+                                final parentState = context
+                                    .findAncestorStateOfType<HomePageState>();
                                 if (parentState != null) {
-                                  parentState.switchTab(1); // Navigate to All Expenses tab
+                                  parentState.switchTab(
+                                    1,
+                                  ); // Navigate to All Expenses tab
                                 }
                               },
                               style: FilledButton.styleFrom(
                                 backgroundColor: const Color(0xFFEEEEEE),
                                 foregroundColor: const Color(0xFF171A3F),
-                                padding: const EdgeInsets.symmetric(vertical: 20),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 20,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -585,10 +626,25 @@ class _DashboardPageState extends State<DashboardPage> {
                                 color: const Color(0xFF171A3F),
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: const Text('No expenses this week.', textAlign: TextAlign.center, style: TextStyle(color: Colors.white70)),
+                              child: const Text(
+                                'No expenses this week.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.white70),
+                              ),
                             )
                           else
-                            ...topExpensesThisWeek.take(3).toList().asMap().entries.map((e) => _buildTopExpenseTile(e.value, e.key + 1, currencyFormat)),
+                            ...topExpensesThisWeek
+                                .take(3)
+                                .toList()
+                                .asMap()
+                                .entries
+                                .map(
+                                  (e) => _buildTopExpenseTile(
+                                    e.value,
+                                    e.key + 1,
+                                    currencyFormat,
+                                  ),
+                                ),
                         ],
                       ),
                     ),
@@ -623,9 +679,15 @@ class _DashboardPageState extends State<DashboardPage> {
                           const SizedBox(height: 16),
 
                           if (groupMembers.isEmpty)
-                             const Text('No members found.', style: TextStyle(color: Colors.white70))
+                            const Text(
+                              'No members found.',
+                              style: TextStyle(color: Colors.white70),
+                            )
                           else
-                             ...groupMembers.map((m) => _buildMemberTile(m, m['id'] == createdById)),
+                            ...groupMembers.map(
+                              (m) =>
+                                  _buildMemberTile(m, m['id'] == createdById),
+                            ),
                         ],
                       ),
                     ),
@@ -672,11 +734,7 @@ class _DashboardPageState extends State<DashboardPage> {
               color: iconBgColor,
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              color: iconColor,
-              size: 24,
-            ),
+            child: Icon(icon, color: iconColor, size: 24),
           ),
           const SizedBox(height: 16),
           Text(
@@ -711,7 +769,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 Icon(
                   pctValue == 0
                       ? Icons.trending_flat
-                      : (pctValue > 0 ? Icons.trending_up : Icons.trending_down),
+                      : (pctValue > 0
+                            ? Icons.trending_up
+                            : Icons.trending_down),
                   color: pctValue == 0
                       ? Colors.white70
                       : (pctValue > 0 ? Colors.greenAccent : Colors.redAccent),
@@ -726,7 +786,9 @@ class _DashboardPageState extends State<DashboardPage> {
                     style: TextStyle(
                       color: pctValue == 0
                           ? Colors.white70
-                          : (pctValue > 0 ? Colors.greenAccent : Colors.redAccent),
+                          : (pctValue > 0
+                                ? Colors.greenAccent
+                                : Colors.redAccent),
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
                     ),
@@ -744,16 +806,16 @@ class _DashboardPageState extends State<DashboardPage> {
     final net = summary['net'] as double;
     final name = summary['name'] as String;
     final avatarUrl = summary['avatar_url'] as String?;
-    
+
     final bool isSettled = net.abs() < 0.01;
     final bool theyOweMe = net > 0;
-    
-    final Color amountColor = isSettled 
-        ? Colors.white70 
+
+    final Color amountColor = isSettled
+        ? Colors.white70
         : (theyOweMe ? Colors.greenAccent : Colors.redAccent);
-        
-    final String subtitle = isSettled 
-        ? 'settled' 
+
+    final String subtitle = isSettled
+        ? 'settled'
         : (theyOweMe ? 'owes you' : 'you owe');
 
     final String amountStr = isSettled ? '0.00' : format.format(net.abs());
@@ -776,7 +838,12 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             clipBehavior: Clip.antiAlias,
             child: avatarUrl != null && avatarUrl.isNotEmpty
-                ? Image.network(avatarUrl, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.person, color: Color(0xFF3C3C63)))
+                ? Image.network(
+                    avatarUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.person, color: Color(0xFF3C3C63)),
+                  )
                 : const Icon(Icons.person, color: Color(0xFF3C3C63)),
           ),
           const SizedBox(width: 16),
@@ -806,10 +873,7 @@ class _DashboardPageState extends State<DashboardPage> {
               ),
               Text(
                 subtitle,
-                style: TextStyle(
-                  color: amountColor,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: amountColor, fontSize: 12),
               ),
             ],
           ),
@@ -826,8 +890,13 @@ class _DashboardPageState extends State<DashboardPage> {
     final lastname = profiles?['lastname'] as String? ?? '';
     final avatarUrl = profiles?['avatar_url'] as String?;
     final name = '$firstname $lastname'.trim();
-    
-    final formattedTotal = format.format(total).replaceAll(RegExp(r'\.00$'), ''); // strip trailing .00 to match mockup cleanly
+
+    final formattedTotal = format
+        .format(total)
+        .replaceAll(
+          RegExp(r'\.00$'),
+          '',
+        ); // strip trailing .00 to match mockup cleanly
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -847,7 +916,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   title,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 18, // slightly larger, matching mockup title weight
+                    fontSize:
+                        18, // slightly larger, matching mockup title weight
                     fontWeight: FontWeight.bold,
                   ),
                   maxLines: 1,
@@ -865,8 +935,20 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: avatarUrl != null && avatarUrl.isNotEmpty
-                          ? Image.network(avatarUrl, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.person, size: 10, color: Color(0xFF3C3C63)))
-                          : const Icon(Icons.person, size: 10, color: Color(0xFF3C3C63)),
+                          ? Image.network(
+                              avatarUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.person,
+                                size: 10,
+                                color: Color(0xFF3C3C63),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.person,
+                              size: 10,
+                              color: Color(0xFF3C3C63),
+                            ),
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -899,10 +981,14 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildTopExpenseTile(Map<String, dynamic> item, int index, NumberFormat format) {
+  Widget _buildTopExpenseTile(
+    Map<String, dynamic> item,
+    int index,
+    NumberFormat format,
+  ) {
     final expense = item['expense'] as Map<String, dynamic>;
     final ownAmt = item['ownAmt'] as double;
-    
+
     final title = expense['title'] as String? ?? 'Untitled';
     final total = (expense['total'] as num?)?.toDouble() ?? 0.0;
     final profiles = expense['profiles'] as Map<String, dynamic>?;
@@ -910,8 +996,10 @@ class _DashboardPageState extends State<DashboardPage> {
     final lastname = profiles?['lastname'] as String? ?? '';
     final avatarUrl = profiles?['avatar_url'] as String?;
     final name = '$firstname $lastname'.trim();
-    
-    final formattedOwnAmt = format.format(ownAmt).replaceAll(RegExp(r'\.00$'), ''); // strip trailing .00
+
+    final formattedOwnAmt = format
+        .format(ownAmt)
+        .replaceAll(RegExp(r'\.00$'), ''); // strip trailing .00
     final formattedTotal = format.format(total); // keep decimals for total
 
     return Container(
@@ -969,8 +1057,20 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                       clipBehavior: Clip.antiAlias,
                       child: avatarUrl != null && avatarUrl.isNotEmpty
-                          ? Image.network(avatarUrl, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.person, size: 10, color: Color(0xFF3C3C63)))
-                          : const Icon(Icons.person, size: 10, color: Color(0xFF3C3C63)),
+                          ? Image.network(
+                              avatarUrl,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                Icons.person,
+                                size: 10,
+                                color: Color(0xFF3C3C63),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.person,
+                              size: 10,
+                              color: Color(0xFF3C3C63),
+                            ),
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -991,25 +1091,22 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           const SizedBox(width: 16),
           Column(
-             crossAxisAlignment: CrossAxisAlignment.end,
-             mainAxisAlignment: MainAxisAlignment.center,
-             children: [
-               Text(
-                  'P $formattedOwnAmt',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                  ),
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'P $formattedOwnAmt',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
                 ),
-                Text(
-                  'total: P $formattedTotal',
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12,
-                  ),
-                ),
-             ],
+              ),
+              Text(
+                'total: P $formattedTotal',
+                style: const TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ],
           ),
         ],
       ),
@@ -1021,12 +1118,14 @@ class _DashboardPageState extends State<DashboardPage> {
     final lastname = member['lastname'] as String? ?? '';
     final name = '$firstname $lastname'.trim();
     final avatarUrl = member['avatar_url'] as String?;
-    
+
     final colorStr = member['color'] as String? ?? '#CCCCCC';
     Color memberColor = Colors.grey;
     if (colorStr.startsWith('#') && colorStr.length == 7) {
       try {
-        memberColor = Color(int.parse(colorStr.substring(1), radix: 16) + 0xFF000000);
+        memberColor = Color(
+          int.parse(colorStr.substring(1), radix: 16) + 0xFF000000,
+        );
       } catch (_) {}
     }
 
@@ -1048,7 +1147,12 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
             clipBehavior: Clip.antiAlias,
             child: avatarUrl != null && avatarUrl.isNotEmpty
-                ? Image.network(avatarUrl, fit: BoxFit.cover, errorBuilder: (_,__,___) => const Icon(Icons.person, color: Color(0xFF3C3C63)))
+                ? Image.network(
+                    avatarUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.person, color: Color(0xFF3C3C63)),
+                  )
                 : const Icon(Icons.person, color: Color(0xFF3C3C63)),
           ),
           const SizedBox(width: 16),
@@ -1069,10 +1173,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   const SizedBox(height: 4),
                   const Text(
                     'Group Creator',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
                   ),
                 ],
               ],
