@@ -66,31 +66,66 @@ class _DashboardPageState extends State<DashboardPage> {
     final startOfThisWeek = now.subtract(const Duration(days: 7));
     final startOfLastWeek = now.subtract(const Duration(days: 14));
 
-    final ownerBreakdowns = await _supabase
+    // final ownerBreakdowns = await _supabase
+    //     .from('expense_breakdowns')
+    //     .select('amount, payer_id, expenses!inner(owner_id, created_at)')
+    //     .eq('expenses.owner_id', currentUserId)
+    //     .eq('expenses.group_id', groupId)
+    //     .neq('payer_id', currentUserId);
+
+    // final payerBreakdowns = await _supabase
+    //     .from('expense_breakdowns')
+    //     .select('amount, payer_id, expenses!inner(owner_id, created_at)')
+    //     .eq('payer_id', currentUserId)
+    //     .eq('expenses.group_id', groupId)
+    //     .neq('expenses.owner_id', currentUserId);
+
+    // final paymentsMade = await _supabase
+    //     .from('payments')
+    //     .select('amount, created_at, payee_id')
+    //     .eq('payer_id', currentUserId)
+    //     .eq('group_id', groupId);
+
+    // final paymentsReceived = await _supabase
+    //     .from('payments')
+    //     .select('amount, created_at, payer_id')
+    //     .eq('payee_id', currentUserId)
+    //     .eq('group_id', groupId);
+
+    // NOTE: Improved performance by running all 4 queries in parallel instead of sequentially, 
+    // and processing results in-memory to minimize database calls
+    final results = await Future.wait([
+      _supabase
         .from('expense_breakdowns')
         .select('amount, payer_id, expenses!inner(owner_id, created_at)')
         .eq('expenses.owner_id', currentUserId)
         .eq('expenses.group_id', groupId)
-        .neq('payer_id', currentUserId);
+        .neq('payer_id', currentUserId),
 
-    final payerBreakdowns = await _supabase
+      _supabase
         .from('expense_breakdowns')
         .select('amount, payer_id, expenses!inner(owner_id, created_at)')
         .eq('payer_id', currentUserId)
         .eq('expenses.group_id', groupId)
-        .neq('expenses.owner_id', currentUserId);
+        .neq('expenses.owner_id', currentUserId),
 
-    final paymentsMade = await _supabase
+      _supabase
         .from('payments')
         .select('amount, created_at, payee_id')
         .eq('payer_id', currentUserId)
-        .eq('group_id', groupId);
+        .eq('group_id', groupId),
 
-    final paymentsReceived = await _supabase
+      _supabase
         .from('payments')
         .select('amount, created_at, payer_id')
         .eq('payee_id', currentUserId)
-        .eq('group_id', groupId);
+        .eq('group_id', groupId),
+    ]);
+
+    final ownerBreakdowns = results[0];
+    final payerBreakdowns = results[1];
+    final paymentsMade = results[2];
+    final paymentsReceived = results[3];
 
     final Map<String, double> netByUser = {};
     final Map<String, double> netByUserLastWeek = {};
