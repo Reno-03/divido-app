@@ -32,6 +32,12 @@ class _DashboardPageState extends State<DashboardPage> {
 
   DateTime? _lastFetch;
 
+  double _totalGroupExpense = 0;
+  double _totalOwnExpense = 0;
+  double _thisWeekGroup = 0;
+  double _lastWeekGroup = 0;
+  List<Map<String, dynamic>> _topExpensesThisWeek = [];
+
   @override
   void initState() {
     super.initState();
@@ -57,10 +63,70 @@ class _DashboardPageState extends State<DashboardPage> {
   void _onExpensesChanged() {
     final now = DateTime.now();
     if (_lastFetch != null && now.difference(_lastFetch!).inMilliseconds < 500) {
-      return;
+      return ;
     }
     _lastFetch = now;
+    final expenses = Provider.of<ExpenseProvider>(
+      context,
+      listen: false,
+    ).expenses;
+    _computeExpenseMetrics(expenses);
     _fetchMetrics();
+  }
+
+  void _computeExpenseMetrics(List<Map<String, dynamic>> expenses) {
+    double totalGroup = 0;
+    double totalOwn = 0;
+    double thisWeekGroup = 0;
+    double lastWeekGroup = 0;
+    double thisWeekOwn = 0;
+    double lastWeekOwn = 0;
+    final topExpenses = <Map<String, dynamic>>[];
+
+    final now = DateTime.now();
+    final startOfThisWeek = now.subtract(const Duration(days: 7));
+    final startOfLastWeek = now.subtract(const Duration(days: 14));
+    final currentUserId = CurrentUser.instance.id;
+
+    for (final expense in expenses) {
+      final total = (expense['total'] as num?)?.toDouble() ?? 0.0;
+      totalGroup += total;
+
+      double ownAmt = 0;
+      final breakdowns = expense['expense_breakdowns'] as List<dynamic>? ?? [];
+      for (final b in breakdowns) {
+        if (b['payer_id'] == currentUserId) {
+          ownAmt += (b['amount'] as num?)?.toDouble() ?? 0.0;
+        }
+      }
+      totalOwn += ownAmt;
+
+      final createdAt = expense['created_at'] as String?;
+      if (createdAt != null) {
+        final date = DateTime.parse(createdAt + 'Z').toLocal();
+        if (date.isAfter(startOfThisWeek)) {
+          thisWeekGroup += total;
+          thisWeekOwn += ownAmt;
+          if (ownAmt > 0)
+            topExpenses.add({'expense': expense, 'ownAmt': ownAmt});
+        } else if (date.isAfter(startOfLastWeek)) {
+          lastWeekGroup += total;
+          lastWeekOwn += ownAmt;
+        }
+      }
+    }
+
+    topExpenses.sort(
+      (a, b) => (b['ownAmt'] as double).compareTo(a['ownAmt'] as double),
+    );
+
+    setState(() {
+      _totalGroupExpense = totalGroup;
+      _totalOwnExpense = totalOwn;
+      _thisWeekGroup = thisWeekGroup;
+      _lastWeekGroup = lastWeekGroup;
+      _topExpensesThisWeek = topExpenses;
+    });
   }
 
   Future<void> _fetchMetrics() async {
