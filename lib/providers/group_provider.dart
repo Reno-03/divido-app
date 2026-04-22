@@ -68,8 +68,19 @@ class GroupProvider extends ChangeNotifier {
       });
 
       // auto-select first group if none selected
-      if (_selectedGroup == null && _groups.isNotEmpty) {
-        await selectGroup(_groups.first['id'] as String);
+      final currentSelectedId = _selectedGroup?['id'];
+
+      if (_groups.isEmpty) {
+        _selectedGroup = null;
+        _members = [];
+      } else {
+        // if selected group was deleted OR null → auto select first
+        final stillExists = _groups.any((g) => g['id'] == currentSelectedId);
+
+        if (currentSelectedId == null || !stillExists) {
+          _selectedGroup = _groups.first;
+          await _fetchMembers(_groups.first['id']);
+        }
       }
     } catch (e) {
       debugPrint('fetchGroups error: $e');
