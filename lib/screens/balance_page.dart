@@ -111,7 +111,7 @@ class _BalancePageState extends State<BalancePage>
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$targetName has been nudged! 🔔')),
+        SnackBar(content: Text('$targetName has been nudged! 🔔'), behavior: SnackBarBehavior.floating,),
       );
       setState(() {
         _balanceFuture = _fetchNetBalances();
