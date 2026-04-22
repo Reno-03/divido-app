@@ -19,6 +19,28 @@ class GroupProvider extends ChangeNotifier {
   String? get selectedGroupId => _selectedGroup?['id'] as String?;
   String? get selectedGroupName => _selectedGroup?['name'] as String?;
 
+  List<Map<String, dynamic>> groupMembers = [];
+
+  Future<void> fetchGroupMembers(String groupId) async {
+    final data = await Supabase.instance.client
+        .from('group_members')
+        .select('user_id, profiles(*)')
+        .eq('group_id', groupId);
+
+    groupMembers = data.map((e) {
+      final user = e['profiles'];
+
+      return {
+        'id': user['id'], // IMPORTANT
+        'name': '${user['firstname'] ?? ''} ${user['lastname'] ?? ''}'.trim(),
+        'avatar_url': user['avatar_url'],
+        'color': user['color'],
+      };
+    }).toList();
+
+    notifyListeners();
+  }
+
   // ── fetch all groups the current user belongs to ──────────────
   Future<void> fetchGroups() async {
     _isLoading = true;
@@ -30,7 +52,7 @@ class GroupProvider extends ChangeNotifier {
       final response = await _supabase
           .from('group_members')
           .select(
-            'group_id, groups(id, name, description, invite_code, created_by, created_at)',
+            'group_id, groups(id, name, description, invite_code, created_by, created_at, avatar_url)',
           )
           .eq('user_id', userId);
 
