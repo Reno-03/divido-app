@@ -214,8 +214,22 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 
     final isMember = members.any((m) => m['id'] == currentUserId);
 
+    final creatorId = widget.group['created_by'];
+
+    final sortedMembers = [...members];
+    sortedMembers.sort((a, b) {
+      if (a['id'] == creatorId) return -1;
+      if (b['id'] == creatorId) return 1;
+      return 0;
+    });
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Group Info', style: TextStyle(fontWeight: FontWeight.bold))),
+      appBar: AppBar(
+        title: const Text(
+          'Group Info',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -351,13 +365,39 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Members',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Members',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+
+                      const SizedBox(height: 4),
+
+                      Builder(
+                        builder: (_) {
+                          final creator = members.firstWhere(
+                            (m) => m['id'] == widget.group['created_by'],
+                            orElse: () => {},
+                          );
+
+                          if (creator.isEmpty) return const SizedBox();
+
+                          return Text(
+                            'Created by ${creator['name']}',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.6),
+                              fontSize: 13,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
 
                   const SizedBox(height: 16),
@@ -377,7 +417,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                       ),
                     )
                   else
-                    ...members.map((m) => _memberTile(m)),
+                    ...sortedMembers.map((m) => _memberTile(m)),
                 ],
               ),
             ),
@@ -522,6 +562,8 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     final avatarUrl = m['avatar_url'];
 
     final rawColor = m['color'] ?? '#888888';
+
+    final isCreator = m['id'] == widget.group['created_by'];
     final color = Color(
       int.parse('FF${rawColor.replaceAll('#', '')}', radix: 16),
     );
@@ -551,15 +593,29 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           const SizedBox(width: 16),
 
           Expanded(
-            child: Text(
-              m['name'],
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  m['name'],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                if (isCreator) ...[
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Group Creator',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ],
             ),
           ),
-
+          
           Container(
             width: 20,
             height: 20,
