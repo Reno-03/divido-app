@@ -567,6 +567,8 @@ class _GroupsPageState extends State<GroupsPage> {
                     final isSelected =
                         groupProvider.selectedGroupId == group['id'];
 
+                    final avatarUrl = group['avatar_url'] as String?;
+
                     return GestureDetector(
                       onTap: () {
                         groupProvider.selectGroup(group['id'] as String);
@@ -598,12 +600,30 @@ class _GroupsPageState extends State<GroupsPage> {
                                     ? Colors.blue.withValues(alpha: 0.2)
                                     : Colors.white.withValues(alpha: 0.08),
                               ),
-                              child: Icon(
-                                Icons.group_outlined,
-                                size: 22,
-                                color: isSelected
-                                    ? Colors.blue.shade300
-                                    : Colors.white.withValues(alpha: 0.4),
+                              child: ClipOval(
+                                child: avatarUrl != null && avatarUrl.isNotEmpty
+                                    ? Image.network(
+                                        '$avatarUrl?v=${DateTime.now().millisecondsSinceEpoch}', // 🔥 cache bust
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Icon(
+                                          Icons.group,
+                                          size: 22,
+                                          color: isSelected
+                                              ? Colors.blue.shade300
+                                              : Colors.white.withValues(
+                                                  alpha: 0.4,
+                                                ),
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.group,
+                                        size: 22,
+                                        color: isSelected
+                                            ? Colors.blue.shade300
+                                            : Colors.white.withValues(
+                                                alpha: 0.4,
+                                              ),
+                                      ),
                               ),
                             ),
                             const SizedBox(width: 14),
