@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:divido_app/providers/expense_provider.dart';
@@ -35,8 +36,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
   DateTime? _lastFetch;
 
-  double _totalGroupExpense = 0;
-  double _totalOwnExpense = 0;
+  double? _totalGroupExpense;
+  double? _totalOwnExpense;
   double _thisWeekGroup = 0;
   double _lastWeekGroup = 0;
   List<Map<String, dynamic>> _topExpensesThisWeek = [];
@@ -386,8 +387,9 @@ class _DashboardPageState extends State<DashboardPage> {
                         child: _buildCardTile(
                           'Total group expense',
                           Icons.group,
-                          '₱ ${currencyFormat.format(_totalGroupExpense)}',
+                          '₱ ${currencyFormat.format(_totalGroupExpense ?? 0)}',
                           groupPct,
+                          isLoading: _isLoadingMetrics || _totalGroupExpense == null,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -395,8 +397,9 @@ class _DashboardPageState extends State<DashboardPage> {
                         child: _buildCardTile(
                           'Total own expense',
                           Icons.person,
-                          '₱ ${currencyFormat.format(_totalOwnExpense)}',
+                          '₱ ${currencyFormat.format(_totalOwnExpense ?? 0)}',
                           ownPct,
+                          isLoading: _isLoadingMetrics || _totalGroupExpense == null,
                         ),
                       ),
                     ],
@@ -404,16 +407,32 @@ class _DashboardPageState extends State<DashboardPage> {
 
                   const SizedBox(height: 16),
 
-                  if (_isLoadingMetrics)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(32.0),
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF3C3C63),
-                        ),
-                      ),
-                    )
-                  else ...[
+                  if (_isLoadingMetrics) ...[
+                    Row(
+                      children: [
+                        Expanded(child: _buildShimmerCard()),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildShimmerCard()),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(child: _buildShimmerCard()),
+                        const SizedBox(width: 16),
+                        Expanded(child: _buildShimmerCard()),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Summary shimmer
+                    ...List.generate(3, (_) => _buildShimmerTile()),
+
+                    const SizedBox(height: 24),
+
+                    // Expenses shimmer
+                    ...List.generate(3, (_) => _buildShimmerTile()),
+                  ] else ...[
                     Row(
                       children: [
                         Expanded(
@@ -742,6 +761,7 @@ class _DashboardPageState extends State<DashboardPage> {
     double? pctValue, {
     Color iconBgColor = Colors.white,
     Color iconColor = const Color(0xFF3C3C63),
+    bool isLoading = false,
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -757,80 +777,109 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: iconBgColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-
-          // use this to make the text scale down if it's too long
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              maxLines: 1,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          if (pctValue != null) ...[
-            const SizedBox(height: 8),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  pctValue == 0
-                      ? Icons.trending_flat
-                      : (pctValue > 0
-                            ? Icons.trending_up
-                            : Icons.trending_down),
-                  color: pctValue == 0
-                      ? Colors.white70
-                      : (pctValue > 0 ? Colors.greenAccent : Colors.redAccent),
-                  size: 16,
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    pctValue == 0
-                        ? 'Same as last week'
-                        : '${pctValue.abs().toStringAsFixed(0)}% ${pctValue > 0 ? 'more' : 'less'} than last week',
-                    style: TextStyle(
-                      color: pctValue == 0
-                          ? Colors.white70
-                          : (pctValue > 0
-                                ? Colors.greenAccent
-                                : Colors.redAccent),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
+      child: isLoading
+          ? Shimmer.fromColors(
+              baseColor: Colors.grey.shade700,
+              highlightColor: Colors.grey.shade500,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  Container(width: 100, height: 12, color: Colors.white),
+                  const SizedBox(height: 8),
+                  Container(width: 80, height: 20, color: Colors.white),
+                ],
+              ),
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: iconBgColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(icon, color: iconColor, size: 24),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+
+                    // use this to make the text scale down if it's too long
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (pctValue != null) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            pctValue == 0
+                                ? Icons.trending_flat
+                                : (pctValue > 0
+                                      ? Icons.trending_up
+                                      : Icons.trending_down),
+                            color: pctValue == 0
+                                ? Colors.white70
+                                : (pctValue > 0
+                                      ? Colors.greenAccent
+                                      : Colors.redAccent),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              pctValue == 0
+                                  ? 'Same as last week'
+                                  : '${pctValue.abs().toStringAsFixed(0)}% ${pctValue > 0 ? 'more' : 'less'} than last week',
+                              style: TextStyle(
+                                color: pctValue == 0
+                                    ? Colors.white70
+                                    : (pctValue > 0
+                                          ? Colors.greenAccent
+                                          : Colors.redAccent),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
-          ],
-        ],
-      ),
     );
   }
 
@@ -1221,6 +1270,68 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF3C3C63),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Shimmer.fromColors(
+        baseColor: Colors.grey.shade700,
+        highlightColor: Colors.grey.shade500,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(width: 100, height: 12, color: Colors.white),
+            const SizedBox(height: 8),
+            Container(width: 80, height: 20, color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerTile() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF171A3F),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Shimmer.fromColors(
+        baseColor: Colors.grey.shade700,
+        highlightColor: Colors.grey.shade500,
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(child: Container(height: 12, color: Colors.white)),
+            const SizedBox(width: 16),
+            Container(width: 40, height: 12, color: Colors.white),
+          ],
+        ),
       ),
     );
   }
