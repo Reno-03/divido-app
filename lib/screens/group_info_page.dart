@@ -102,6 +102,8 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           .update({'avatar_url': rawUrl})
           .eq('id', groupId);
 
+      await Provider.of<GroupProvider>(context, listen: false).fetchGroups();
+      
       setState(() {
         widget.group['avatar_url'] = rawUrl;
         _avatarUrl = '$rawUrl?v=${DateTime.now().millisecondsSinceEpoch}';
@@ -152,6 +154,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
+      backgroundColor: const Color(0xFF171A3F),
       builder: (_) => Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -615,7 +618,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
               ],
             ),
           ),
-          
+
           Container(
             width: 20,
             height: 20,
