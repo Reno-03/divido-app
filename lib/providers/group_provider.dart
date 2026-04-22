@@ -192,6 +192,26 @@ class GroupProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> removeMember({
+    required String groupId,
+    required String userId,
+  }) async {
+    await _supabase
+        .from('group_members')
+        .delete()
+        .eq('group_id', groupId)
+        .eq('user_id', userId);
+
+    await fetchGroupMembers(groupId);
+
+    // If you removed current selected member view, refresh selected group members
+    if (_selectedGroup?['id'] == groupId) {
+      await selectGroup(groupId);
+    }
+
+    notifyListeners();
+  }
+
   // ── clear (on logout) ─────────────────────────────────────────
   void clear() {
     _groups = [];
