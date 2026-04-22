@@ -346,6 +346,7 @@ class _GroupsPageState extends State<GroupsPage> {
       context: context,
       useSafeArea: true,
       showDragHandle: true,
+      backgroundColor: const Color(0xFF171A3F),
       barrierColor: Colors.black.withValues(alpha: 0.85),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
