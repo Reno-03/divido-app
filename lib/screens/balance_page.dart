@@ -1445,74 +1445,55 @@ class _BalancePageState extends State<BalancePage>
                                     MainAxisAlignment.spaceBetween,
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
-                                    children: [
-                                      // Name + label
-                                      Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            children: [
-                                              () {
-                                                final avatarUrl =
-                                                    entry['avatar_url']
-                                                        as String?;
-                                                return Container(
-                                                  width: 34,
-                                                  height: 34,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    gradient: LinearGradient(
-                                                      begin: Alignment.topLeft,
-                                                      end:
-                                                          Alignment.bottomRight,
-                                                      colors: [
-                                                        userColor,
-                                                        userColor.withValues(
-                                                          alpha: 0.7,
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  clipBehavior: Clip.antiAlias,
-                                                  child:
-                                                      avatarUrl != null &&
-                                                          avatarUrl.isNotEmpty
-                                                      ? Image.network(
-                                                          avatarUrl,
-                                                          fit: BoxFit.cover,
-                                                          errorBuilder: (_, _, _) => Center(
-                                                            child: Text(
-                                                              _getInitials(
-                                                                entry['name']
-                                                                    as String,
-                                                                entry['lastname']
-                                                                    as String,
-                                                              ),
-                                                              style: const TextStyle(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                                color: Colors
-                                                                    .white,
-                                                              ),
-                                                            ),
+                                  Expanded(
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: [
+                                        // Name + label
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                () {
+                                                  final avatarUrl =
+                                                      entry['avatar_url']
+                                                          as String?;
+                                                  return Container(
+                                                    width: 34,
+                                                    height: 34,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      gradient: LinearGradient(
+                                                        begin: Alignment.topLeft,
+                                                        end:
+                                                            Alignment.bottomRight,
+                                                        colors: [
+                                                          userColor,
+                                                          userColor.withValues(
+                                                            alpha: 0.7,
                                                           ),
-                                                        )
-                                                      : Center(
-                                                          child: Text(
-                                                            _getInitials(
-                                                              entry['name']
-                                                                  as String,
-                                                              entry['lastname']
-                                                                  as String,
-                                                            ),
-                                                            style:
-                                                                const TextStyle(
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    clipBehavior: Clip.antiAlias,
+                                                    child:
+                                                        avatarUrl != null &&
+                                                            avatarUrl.isNotEmpty
+                                                        ? Image.network(
+                                                            avatarUrl,
+                                                            fit: BoxFit.cover,
+                                                            errorBuilder: (_, _, _) => Center(
+                                                              child: Text(
+                                                                _getInitials(
+                                                                  entry['name']
+                                                                      as String,
+                                                                  entry['lastname']
+                                                                      as String,
+                                                                ),
+                                                                style: const TextStyle(
                                                                   fontSize: 12,
                                                                   fontWeight:
                                                                       FontWeight
@@ -1520,72 +1501,93 @@ class _BalancePageState extends State<BalancePage>
                                                                   color: Colors
                                                                       .white,
                                                                 ),
+                                                              ),
+                                                            ),
+                                                          )
+                                                        : Center(
+                                                            child: Text(
+                                                              _getInitials(
+                                                                entry['name']
+                                                                    as String,
+                                                                entry['lastname']
+                                                                    as String,
+                                                              ),
+                                                              style:
+                                                                  const TextStyle(
+                                                                    fontSize: 12,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                    color: Colors
+                                                                        .white,
+                                                                  ),
+                                                            ),
                                                           ),
-                                                        ),
-                                                );
-                                              }(),
-                                              const SizedBox(width: 12),
-                                              Text(
-                                                entry['name'] as String,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 20,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-
-                                          const SizedBox(height: 12),
-
-                                          // GCash pill + number + copy icon
-                                          Row(
-                                            children: [
-                                              _gcashIndicator(
-                                                isReady:
-                                                    entry['is_gcash_ready']
-                                                        as bool,
-                                                contactNumber:
-                                                    entry['contact_number']
-                                                        as String,
-                                              ),
-
-                                              if ((entry['contact_number']
-                                                      as String)
-                                                  .isNotEmpty) ...[
-                                                const SizedBox(width: 8),
+                                                  );
+                                                }(),
+                                                const SizedBox(width: 12),
                                                 Text(
-                                                  entry['contact_number']
-                                                      as String,
-                                                  style: TextStyle(
-                                                    fontSize: 13,
-                                                    color: Colors.white
-                                                        .withValues(alpha: 0.7),
-                                                    fontWeight: FontWeight.w500,
+                                                  entry['name'] as String,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 20,
                                                   ),
                                                 ),
-                                                const SizedBox(width: 4),
-                                                _CopyContactButton(
+                                              ],
+                                            ),
+                                    
+                                            const SizedBox(height: 12),
+                                    
+                                            // GCash pill + number + copy icon
+                                            Row(
+                                              children: [
+                                                _gcashIndicator(
+                                                  isReady:
+                                                      entry['is_gcash_ready']
+                                                          as bool,
                                                   contactNumber:
                                                       entry['contact_number']
                                                           as String,
                                                 ),
-                                              ] else ...[
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  'No contact number',
-                                                  style: TextStyle(
-                                                    fontSize: 13,
-                                                    color: Colors.white
-                                                        .withValues(alpha: 0.3),
-                                                    fontStyle: FontStyle.italic,
+                                    
+                                                if ((entry['contact_number']
+                                                        as String)
+                                                    .isNotEmpty) ...[
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    entry['contact_number']
+                                                        as String,
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.white
+                                                          .withValues(alpha: 0.7),
+                                                      fontWeight: FontWeight.w500,
+                                                    ),
                                                   ),
-                                                ),
+                                                  const SizedBox(width: 4),
+                                                  _CopyContactButton(
+                                                    contactNumber:
+                                                        entry['contact_number']
+                                                            as String,
+                                                  ),
+                                                ] else ...[
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    'No contact number',
+                                                    style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: Colors.white
+                                                          .withValues(alpha: 0.3),
+                                                      fontStyle: FontStyle.italic,
+                                                    ),
+                                                  ),
+                                                ],
                                               ],
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                   // Amount
                                   Column(
