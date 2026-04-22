@@ -215,6 +215,8 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 
     final currentUserId = Supabase.instance.client.auth.currentUser!.id;
 
+    final isCreator = currentUserId == widget.group['created_by'];
+
     final isMember = members.any((m) => m['id'] == currentUserId);
 
     final creatorId = widget.group['created_by'];
@@ -427,6 +429,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 
             const SizedBox(height: 16),
 
+            if (isCreator)
             Container(
               margin: const EdgeInsets.only(top: 24),
               padding: const EdgeInsets.all(16),
@@ -626,7 +629,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                       context,
                       listen: false,
                     ).fetchGroups();
-                    
+
                     if (ctx.mounted) Navigator.pop(ctx);
                     if (context.mounted) Navigator.pop(context); // exit page
 
