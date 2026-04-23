@@ -24,11 +24,6 @@ class _DashboardPageState extends State<DashboardPage> {
   double _totalOwedToYou = 0;
   double _totalYouOwe = 0;
 
-  double _thisWeekOwedToYou = 0;
-  double _lastWeekOwedToYou = 0;
-  double _thisWeekYouOwe = 0;
-  double _lastWeekYouOwe = 0;
-
   double _thisWeekOwn = 0;
   double _lastWeekOwn = 0;
 
@@ -239,12 +234,6 @@ class _DashboardPageState extends State<DashboardPage> {
     double currOwedToYou = calcOwedToYou(netByUser);
     double currYouOwe = calcYouOwe(netByUser);
 
-    double lastWkOwedToYou = calcOwedToYou(netByUserLastWeek);
-    double lastWkYouOwe = calcYouOwe(netByUserLastWeek);
-
-    double twoWksOwedToYou = calcOwedToYou(netByUserTwoWeeksAgo);
-    double twoWksYouOwe = calcYouOwe(netByUserTwoWeeksAgo);
-
     final userIds = netByUser.keys.toList();
     List<Map<String, dynamic>> summaries = [];
     if (userIds.isNotEmpty) {
@@ -281,12 +270,6 @@ class _DashboardPageState extends State<DashboardPage> {
         _totalOwedToYou = currOwedToYou;
         _totalYouOwe = currYouOwe;
 
-        _thisWeekOwedToYou = currOwedToYou - lastWkOwedToYou;
-        _lastWeekOwedToYou = lastWkOwedToYou - twoWksOwedToYou;
-
-        _thisWeekYouOwe = currYouOwe - lastWkYouOwe;
-        _lastWeekYouOwe = lastWkYouOwe - twoWksYouOwe;
-
         _balanceSummaries = summaries;
 
         _isLoadingMetrics = false;
@@ -309,7 +292,6 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   Widget build(BuildContext context) {
     final firstName = CurrentUser.instance.username ?? 'there';
-    final currentUserId = CurrentUser.instance.id;
     final funGreeting = _getFunGreeting(firstName);
 
     final expenseProvider = Provider.of<ExpenseProvider>(context);
@@ -324,10 +306,6 @@ class _DashboardPageState extends State<DashboardPage> {
       if (b['id'] == createdById) return 1;
       return 0;
     });
-
-    final now = DateTime.now();
-    final startOfThisWeek = now.subtract(const Duration(days: 7));
-    final startOfLastWeek = now.subtract(const Duration(days: 14));
 
     double groupPct = _lastWeekGroup > 0
         ? ((_thisWeekGroup - _lastWeekGroup) / _lastWeekGroup) * 100

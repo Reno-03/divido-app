@@ -52,22 +52,22 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
     }
   }
 
-  Future<void> _fetchGroup() async {
-    final groupId = widget.group['id'];
+  // Future<void> _fetchGroup() async {
+  //   final groupId = widget.group['id'];
 
-    final data = await Supabase.instance.client
-        .from('groups')
-        .select()
-        .eq('id', groupId)
-        .single();
+  //   final data = await Supabase.instance.client
+  //       .from('groups')
+  //       .select()
+  //       .eq('id', groupId)
+  //       .single();
 
-    setState(() {
-      widget.group['avatar_url'] = data['avatar_url'];
-      _avatarUrl = data['avatar_url'] != null
-          ? '${data['avatar_url']}?v=${DateTime.now().millisecondsSinceEpoch}'
-          : null;
-    });
-  }
+  //   setState(() {
+  //     widget.group['avatar_url'] = data['avatar_url'];
+  //     _avatarUrl = data['avatar_url'] != null
+  //         ? '${data['avatar_url']}?v=${DateTime.now().millisecondsSinceEpoch}'
+  //         : null;
+  //   });
+  // }
 
   // =========================
   // 📸 IMAGE UPLOAD
@@ -95,7 +95,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           .from('avatars')
           .getPublicUrl(path);
 
-      final url = '$rawUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+      // final url = '$rawUrl?t=${DateTime.now().millisecondsSinceEpoch}';
 
       await Supabase.instance.client
           .from('groups')
@@ -194,19 +194,19 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
   // =========================
   // 💾 SAVE
   // =========================
-  Future<void> _save() async {
-    await Supabase.instance.client
-        .from('groups')
-        .update({
-          'name': nameController.text.trim(),
-          'description': descController.text.trim(),
-        })
-        .eq('id', widget.group['id']);
+  // Future<void> _save() async {
+  //   await Supabase.instance.client
+  //       .from('groups')
+  //       .update({
+  //         'name': nameController.text.trim(),
+  //         'description': descController.text.trim(),
+  //       })
+  //       .eq('id', widget.group['id']);
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Group updated')));
-  }
+  //   ScaffoldMessenger.of(
+  //     context,
+  //   ).showSnackBar(const SnackBar(content: Text('Group updated')));
+  // }
 
   @override
   Widget build(BuildContext context) {
