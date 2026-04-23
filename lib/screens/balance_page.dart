@@ -1,5 +1,7 @@
 import 'package:divido_app/providers/expense_provider.dart';
 import 'package:divido_app/providers/group_provider.dart';
+import 'package:divido_app/providers/status_provider.dart';
+import 'package:divido_app/screens/status_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -111,7 +113,10 @@ class _BalancePageState extends State<BalancePage>
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$targetName has been nudged! 🔔'), behavior: SnackBarBehavior.floating,),
+        SnackBar(
+          content: Text('$targetName has been nudged! 🔔'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       setState(() {
         _balanceFuture = _fetchNetBalances();
@@ -512,7 +517,10 @@ class _BalancePageState extends State<BalancePage>
                                     ? null
                                     : noteController.text,
                                 'method': paymentMethod,
-                                'group_id': Provider.of<GroupProvider>(context, listen: false).selectedGroupId,
+                                'group_id': Provider.of<GroupProvider>(
+                                  context,
+                                  listen: false,
+                                ).selectedGroupId,
                               });
 
                               if (ctx.mounted) Navigator.pop(ctx);
@@ -612,7 +620,7 @@ class _BalancePageState extends State<BalancePage>
     required Color targetColor,
   }) async {
     final myId = _currentUser.id!;
-    final groupProvider = Provider.of<GroupProvider>(context, listen: false); 
+    final groupProvider = Provider.of<GroupProvider>(context, listen: false);
 
     final payments = await supabase
         .from('payments')
@@ -1150,9 +1158,260 @@ class _BalancePageState extends State<BalancePage>
     );
   }
 
+  void _showStatusEditor() {
+    final controller = TextEditingController(
+      text: CurrentUser.instance.status ?? '',
+    );
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      backgroundColor: const Color(0xFF171A3F),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        bool isSaving = false;
+
+        void setSaving(bool v) {
+          setState(() => isSaving = v);
+        }
+
+        Future<void> save() async {
+          if (isSaving) return;
+          setSaving(true);
+
+          final value = controller.text.trim();
+
+          try {
+            await Supabase.instance.client
+                .from('profiles')
+                .update({'status': value.isEmpty ? null : value})
+                .eq('id', CurrentUser.instance.id!);
+
+            CurrentUser.instance.status = value.isEmpty ? null : value;
+
+            context.read<StatusProvider>().setStatus(
+              value.isEmpty ? null : value,
+            );
+
+            if (ctx.mounted) Navigator.pop(ctx);
+            setState(() {});
+          } finally {
+            setSaving(false);
+          }
+        }
+
+        Future<void> clear() async {
+          if (isSaving) return;
+          isSaving = true;
+
+          try {
+            await Supabase.instance.client
+                .from('profiles')
+                .update({'status': null})
+                .eq('id', CurrentUser.instance.id!);
+
+            CurrentUser.instance.status = null;
+
+            context.read<StatusProvider>().setStatus(null);
+
+            if (ctx.mounted) Navigator.pop(ctx);
+            // setState(() {});
+          } finally {
+            isSaving = false;
+          }
+        }
+
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                0,
+                20,
+                MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // drag handle (MATCH YOUR DESIGN)
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 12),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+
+                    // header (MATCH CREATE EXPENSE STYLE)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Set Status',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(ctx),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.grey.withValues(alpha: 0.2),
+                            ),
+                            child: const Icon(Icons.close, size: 16),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // input (MATCH STYLE)
+                    TextField(
+                      controller: controller,
+                      maxLength: 60,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'What’s on your mind?',
+                        hintStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.4),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.04),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Colors.blue,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Quick suggestions (optional but powerful UX)
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        StatusChip(
+                          text: "💸 Pay me via GCash",
+                          controller: controller,
+                        ),
+                        StatusChip(
+                          text: "💵 Pay me via Cash only",
+                          controller: controller,
+                        ),
+                        StatusChip(
+                          text: "🍻 I’ll treat next round",
+                          controller: controller,
+                        ),
+                        StatusChip(text: "💤 Offline", controller: controller),
+                        StatusChip(
+                          text: "🚫 Not enough money!",
+                          controller: controller,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // buttons (MATCH YOUR PRIMARY CTA STYLE)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: isSaving ? null : clear,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'Clear',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: GestureDetector(
+                            onTap: isSaving ? null : save,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Center(
+                                child: isSaving
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Color(0xFF171A3F),
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Save Status',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF171A3F),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _statusBubble(String? status) {
     return GestureDetector(
-      onTap: _showStatusDialog,
+      onTap: _showStatusEditor,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
@@ -1173,7 +1432,7 @@ class _BalancePageState extends State<BalancePage>
               child: Text(
                 status != null && status.isNotEmpty
                     ? status
-                    : 'Tap to set a status...',
+                    : 'Wanna share something? Add a note!',
                 style: TextStyle(
                   fontSize: 13,
                   color: status != null && status.isNotEmpty
@@ -1313,7 +1572,11 @@ class _BalancePageState extends State<BalancePage>
                     );
                   }(),
                   const SizedBox(width: 8),
-                  Flexible(child: _statusBubble(CurrentUser.instance.status)),
+                  Flexible(
+                    child: _statusBubble(
+                      context.watch<StatusProvider>().status,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -2046,6 +2309,90 @@ class _BalancePageState extends State<BalancePage>
           ],
         );
       },
+    );
+  }
+
+  Widget _dashboardStatusBubble(String? status) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.edit_note_outlined,
+            size: 16,
+            color: Colors.white.withValues(alpha: 0.4),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              status?.isNotEmpty == true
+                  ? status!
+                  : 'Wanna share something? Add a note!',
+              style: TextStyle(
+                fontSize: 13,
+                color: status?.isNotEmpty == true
+                    ? Colors.white.withValues(alpha: 0.85)
+                    : Colors.white.withValues(alpha: 0.35),
+                fontStyle: status?.isNotEmpty == true
+                    ? FontStyle.normal
+                    : FontStyle.italic,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAvatar() {
+    final avatarUrl = CurrentUser.instance.avatarUrl;
+    final bgColor = Color(
+      int.parse(
+        'FF${(CurrentUser.instance.color ?? '#6366F1').replaceAll('#', '')}',
+        radix: 16,
+      ),
+    );
+
+    final initials =
+        '${CurrentUser.instance.firstname?[0].toUpperCase() ?? ''}'
+        '${CurrentUser.instance.lastname?[0].toUpperCase() ?? ''}';
+
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: bgColor),
+      clipBehavior: Clip.antiAlias,
+      child: avatarUrl != null && avatarUrl.isNotEmpty
+          ? Image.network(
+              avatarUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => Center(
+                child: Text(
+                  initials,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            )
+          : Center(
+              child: Text(
+                initials,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
     );
   }
 }

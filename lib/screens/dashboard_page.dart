@@ -1,3 +1,4 @@
+import 'package:divido_app/providers/status_provider.dart';
 import 'package:divido_app/screens/status_chip.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -307,9 +308,13 @@ class _DashboardPageState extends State<DashboardPage> {
       builder: (ctx) {
         bool isSaving = false;
 
+        void setSaving(bool v) {
+          setState(() => isSaving = v);
+        }
+
         Future<void> save() async {
           if (isSaving) return;
-          isSaving = true;
+          setSaving(true);
 
           final value = controller.text.trim();
 
@@ -321,10 +326,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
             CurrentUser.instance.status = value.isEmpty ? null : value;
 
+            context.read<StatusProvider>().setStatus(
+              value.isEmpty ? null : value,
+            );
+
             if (ctx.mounted) Navigator.pop(ctx);
-            setState(() {});
+            // setState(() {});
           } finally {
-            isSaving = false;
+            setSaving(false);
           }
         }
 
@@ -339,6 +348,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 .eq('id', CurrentUser.instance.id!);
 
             CurrentUser.instance.status = null;
+
+            context.read<StatusProvider>().setStatus(null);
 
             if (ctx.mounted) Navigator.pop(ctx);
             setState(() {});
@@ -615,7 +626,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: _dashboardStatusBubble(
-                              CurrentUser.instance.status,
+                              context.watch<StatusProvider>().status,
                             ),
                           ),
                         ],
@@ -1643,7 +1654,9 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              status?.isNotEmpty == true ? status! : 'Wanna share something? Add a note!',
+              status?.isNotEmpty == true
+                  ? status!
+                  : 'Wanna share something? Add a note!',
               style: TextStyle(
                 fontSize: 13,
                 color: status?.isNotEmpty == true

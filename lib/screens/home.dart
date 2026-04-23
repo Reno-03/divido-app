@@ -1,3 +1,4 @@
+import 'package:divido_app/providers/status_provider.dart';
 import 'package:divido_app/screens/create_expense_modal.dart';
 import 'package:divido_app/screens/dashboard_page.dart';
 import 'package:divido_app/services/changelog_service.dart';
@@ -43,6 +44,9 @@ class HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
+
+    final statusProvider = context.read<StatusProvider>();
+statusProvider.setStatus(CurrentUser.instance.status);
 
     Future.microtask(() async {
       final session = Supabase.instance.client.auth.currentSession;
