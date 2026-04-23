@@ -367,7 +367,8 @@ class _DashboardPageState extends State<DashboardPage> {
                           Icons.group,
                           '₱ ${currencyFormat.format(_totalGroupExpense ?? 0)}',
                           groupPct,
-                          isLoading: _isLoadingMetrics || _totalGroupExpense == null,
+                          isLoading:
+                              _isLoadingMetrics || _totalGroupExpense == null,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -377,7 +378,8 @@ class _DashboardPageState extends State<DashboardPage> {
                           Icons.person,
                           '₱ ${currencyFormat.format(_totalOwnExpense ?? 0)}',
                           ownPct,
-                          isLoading: _isLoadingMetrics || _totalGroupExpense == null,
+                          isLoading:
+                              _isLoadingMetrics || _totalGroupExpense == null,
                         ),
                       ),
                     ],
@@ -421,6 +423,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             null,
                             iconBgColor: Colors.green.shade400,
                             iconColor: Colors.white,
+                            amountValue: _totalOwedToYou,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -432,6 +435,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             null,
                             iconBgColor: Colors.red.shade400,
                             iconColor: Colors.white,
+                            amountValue: _totalYouOwe,
                           ),
                         ),
                       ],
@@ -740,11 +744,18 @@ class _DashboardPageState extends State<DashboardPage> {
     Color iconBgColor = Colors.white,
     Color iconColor = const Color(0xFF3C3C63),
     bool isLoading = false,
+    final double? amountValue,
   }) {
+    final bool isZero = amountValue == null || amountValue.abs() < 0.01;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF3C3C63),
+        color: isZero
+            ? const Color(0xFF3C3C63)
+            : (title.contains('Total you owe')
+                  ? Colors.red.withValues(alpha: 0.25)
+                  : Colors.green.withValues(alpha: 0.25)),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
