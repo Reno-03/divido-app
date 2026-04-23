@@ -39,7 +39,7 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
               borderRadius: BorderRadius.circular(50),
             ),
             child: Text(
-              'v0.9.0-beta — Dashboards & Navigation',
+              'v0.10.0-beta — Customizable Groups & Notes 🚀',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.white,
@@ -50,16 +50,29 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
           const SizedBox(height: 14),
 
           // New features
-          _section('🚀 New', [
-            'Revamped Dashboard with live financial metrics, interactive balance summaries, recent & top expenses, and group members tracking',
-            'Brand new sleek docked Bottom Navigation Bar seamlessly integrating a quick "Add Expense" button',
+          _section('🆕 New', [
+            'Group Info Page: shows group photo, name, description, and all members (avatar, name, position, user color)',
+            'Group members with edit access can update group name, description, and photo',
+            'Danger Zone for group creators: delete group or remove members using "sudo remove" commands',
+            'Dashboard note card tile showing note status or prompt to add a note',
           ]),
+
           const SizedBox(height: 10),
 
           // Optimizations
           _section('⚡ Optimized', [
-            'Overhauled real-time net-balance calculations ensuring parity across the entire app',
-            'Pull-to-refresh completely enabled across the Dashboard module',
+            'Plus icon repositioned above snackbar/toast during nudges',
+            'Fixed balance profile cards layout for small-width devices',
+            'Group photo now properly loads from Supabase',
+            'Group members sorted and group creator highlighted',
+            'Group photo updates now reflect instantly on Groups page',
+            'Group deletion now updates Groups page automatically',
+            'Danger Zone only visible to group creator',
+            'Added confirmation dialog for kicking members',
+            'Back button on home page no longer logs out',
+            'Improved UX for Total Owes / You Owe dashboard cards with clearer labels and colors',
+            'Fixed sync issues for note status between Dashboard and Balance pages',
+            'Improved bottom sheet modal for editing note status',
           ]),
           const SizedBox(height: 16),
 
