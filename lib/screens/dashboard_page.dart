@@ -424,6 +424,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             iconBgColor: Colors.green.shade400,
                             iconColor: Colors.white,
                             amountValue: _totalOwedToYou,
+                            isOweCard: false,
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -436,6 +437,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             iconBgColor: Colors.red.shade400,
                             iconColor: Colors.white,
                             amountValue: _totalYouOwe,
+                            isOweCard: true,
                           ),
                         ),
                       ],
@@ -745,8 +747,25 @@ class _DashboardPageState extends State<DashboardPage> {
     Color iconColor = const Color(0xFF3C3C63),
     bool isLoading = false,
     final double? amountValue,
+    bool? isOweCard,
   }) {
     final bool isZero = amountValue == null || amountValue.abs() < 0.01;
+
+    String? statusText;
+    Color statusColor = Colors.white70;
+
+    if (isOweCard != null) {
+      if (isZero) {
+        statusText = 'All settled. Good job!';
+        statusColor = Colors.white54;
+      } else if (isOweCard) {
+        statusText = 'You need to settle';
+        statusColor = Colors.redAccent;
+      } else {
+        statusText = 'Nudge them to settle';
+        statusColor = Colors.greenAccent;
+      }
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -827,6 +846,20 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                       ),
                     ),
+
+                    const SizedBox(height: 6),
+
+                    if (statusText != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        statusText,
+                        style: TextStyle(
+                          color: statusColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                     if (pctValue != null) ...[
                       const SizedBox(height: 8),
                       Row(
