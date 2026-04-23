@@ -39,7 +39,7 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
               borderRadius: BorderRadius.circular(50),
             ),
             child: Text(
-              'v0.10.0-beta — Customizable Groups & Notes 🚀',
+              'v0.10.0-beta — Custom Groups & Notes 🚀',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.white,
@@ -51,28 +51,21 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
 
           // New features
           _section('🆕 New', [
-            'Group Info Page: shows group photo, name, description, and all members (avatar, name, position, user color)',
-            'Group members with edit access can update group name, description, and photo',
-            'Danger Zone for group creators: delete group or remove members using "sudo remove" commands',
-            'Dashboard note card tile showing note status or prompt to add a note',
+            'Group Info Page (photo, members, roles)',
+            'Editable group details for members',
+            'Creator-only Danger Zone (delete/remove members)',
+            'Dashboard note status card',
           ]),
 
           const SizedBox(height: 10),
 
-          // Optimizations
-          _section('⚡ Optimized', [
-            'Plus icon repositioned above snackbar/toast during nudges',
-            'Fixed balance profile cards layout for small-width devices',
-            'Group photo now properly loads from Supabase',
-            'Group members sorted and group creator highlighted',
-            'Group photo updates now reflect instantly on Groups page',
-            'Group deletion now updates Groups page automatically',
-            'Danger Zone only visible to group creator',
-            'Added confirmation dialog for kicking members',
-            'Back button on home page no longer logs out',
-            'Improved UX for Total Owes / You Owe dashboard cards with clearer labels and colors',
-            'Fixed sync issues for note status between Dashboard and Balance pages',
-            'Improved bottom sheet modal for editing note status',
+          _section('⚡ Improvements', [
+            'Better group photo & member syncing',
+            'Fixed dashboard/balance note sync issues',
+            'Improved UX on dashboards & cards',
+            'Mobile layout fixes + snackbar positioning',
+            'Safer group actions with confirmations',
+            'Home back button no longer logs out',
           ]),
           const SizedBox(height: 16),
 
