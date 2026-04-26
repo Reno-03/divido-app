@@ -21,6 +21,11 @@ class GroupProvider extends ChangeNotifier {
 
   List<Map<String, dynamic>> groupMembers = [];
 
+  int _groupAvatarVersion = 0;
+  int get groupAvatarVersion => _groupAvatarVersion;
+
+  String? _lastAvatarUrl;
+
   Future<void> fetchGroupMembers(String groupId) async {
     final data = await Supabase.instance.client
         .from('group_members')
@@ -60,26 +65,36 @@ class GroupProvider extends ChangeNotifier {
           .map((e) => e['groups'] as Map<String, dynamic>)
           .toList();
 
-      // sort by created_at ascending (oldest first)
       _groups.sort((a, b) {
         final aDate = DateTime.parse(a['created_at'] as String);
         final bDate = DateTime.parse(b['created_at'] as String);
-        return aDate.compareTo(bDate); // oldest first
+        return aDate.compareTo(bDate);
       });
 
-      // auto-select first group if none selected
       final currentSelectedId = _selectedGroup?['id'];
 
       if (_groups.isEmpty) {
         _selectedGroup = null;
         _members = [];
       } else {
-        // if selected group was deleted OR null → auto select first
         final stillExists = _groups.any((g) => g['id'] == currentSelectedId);
 
         if (currentSelectedId == null || !stillExists) {
           _selectedGroup = _groups.first;
           await _fetchMembers(_groups.first['id']);
+        } else {
+          // refresh selected group data (e.g. avatar_url may have changed)
+          final refreshed = _groups.firstWhere(
+            (g) => g['id'] == currentSelectedId,
+          );
+          final newAvatarUrl = refreshed['avatar_url'] as String?;
+
+          if (newAvatarUrl != _lastAvatarUrl) {
+            _lastAvatarUrl = newAvatarUrl;
+            _groupAvatarVersion++;
+          }
+
+          _selectedGroup = refreshed;
         }
       }
     } catch (e) {

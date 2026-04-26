@@ -204,7 +204,7 @@ class HomePageState extends State<HomePage> {
                           clipBehavior: Clip.antiAlias,
                           child: avatarUrl != null && avatarUrl.isNotEmpty
                               ? Image.network(
-                                   '$avatarUrl?v=${DateTime.now().millisecondsSinceEpoch}',
+                                   '$avatarUrl?v=${groupProvider.groupAvatarVersion}',
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, _, _) => const Icon(
                                     Icons.group,
