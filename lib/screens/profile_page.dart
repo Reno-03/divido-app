@@ -7,6 +7,8 @@ import 'package:divido_app/services/current_user.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:divido_app/providers/status_provider.dart';
+import 'package:divido_app/screens/status_chip.dart';
 import 'package:web/web.dart' as web;
 import 'dart:js_interop';
 
@@ -283,156 +285,252 @@ class _ProfilePageState extends State<ProfilePage> {
     final controller = TextEditingController(
       text: CurrentUser.instance.status ?? '',
     );
-    bool isSaving = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      showDragHandle: true,
       barrierColor: Colors.black.withValues(alpha: 0.85),
+      backgroundColor: const Color(0xFF171A3F),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            0,
-            20,
-            MediaQuery.of(ctx).viewInsets.bottom + 20,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Set Status',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(ctx),
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.grey.withValues(alpha: 0.2),
-                      ),
-                      child: const Icon(Icons.close, size: 16),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
+      builder: (ctx) {
+        bool isSaving = false;
 
-              TextField(
-                controller: controller,
-                autofocus: true,
-                maxLength: 50,
-                decoration: InputDecoration(
-                  hintText: 'e.g. Pay me via GCash 😄',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.2),
+        void setSaving(bool v) {
+          setState(() => isSaving = v);
+        }
+
+        Future<void> save() async {
+          if (isSaving) return;
+          setSaving(true);
+          final statusProvider = context.read<StatusProvider>();
+
+          final value = controller.text.trim();
+
+          try {
+            await Supabase.instance.client
+                .from('profiles')
+                .update({'status': value.isEmpty ? null : value})
+                .eq('id', CurrentUser.instance.id!);
+
+            CurrentUser.instance.status = value.isEmpty ? null : value;
+
+            statusProvider.setStatus(
+              value.isEmpty ? null : value,
+            );
+
+            if (ctx.mounted) Navigator.pop(ctx);
+            setState(() {});
+          } finally {
+            setSaving(false);
+          }
+        }
+
+        Future<void> clear() async {
+          if (isSaving) return;
+          isSaving = true;
+          final statusProvider = context.read<StatusProvider>();
+
+          try {
+            await Supabase.instance.client
+                .from('profiles')
+                .update({'status': null})
+                .eq('id', CurrentUser.instance.id!);
+
+            CurrentUser.instance.status = null;
+
+            statusProvider.setStatus(null);
+
+            if (ctx.mounted) Navigator.pop(ctx);
+            setState(() {});
+          } finally {
+            isSaving = false;
+          }
+        }
+
+        return StatefulBuilder(
+          builder: (ctx, setState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                0,
+                20,
+                MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // drag handle (MATCH YOUR DESIGN)
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 12),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
                     ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Colors.blue,
-                      width: 1.5,
+
+                    // header (MATCH CREATE EXPENSE STYLE)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Set Status',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(ctx),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.grey.withValues(alpha: 0.2),
+                            ),
+                            child: const Icon(Icons.close, size: 16),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
+
+                    const SizedBox(height: 20),
+
+                    // input (MATCH STYLE)
+                    TextField(
+                      controller: controller,
+                      maxLength: 60,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'What’s on your mind?',
+                        hintStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.4),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.04),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Colors.blue,
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Quick suggestions (optional but powerful UX)
+                    Wrap(
+                      spacing: 8,
+                      children: [
+                        StatusChip(
+                          text: "💸 Pay me via GCash",
+                          controller: controller,
+                        ),
+                        StatusChip(
+                          text: "💵 Pay me via Cash only",
+                          controller: controller,
+                        ),
+                        StatusChip(
+                          text: "🍻 I’ll treat next round",
+                          controller: controller,
+                        ),
+                        StatusChip(text: "💤 Offline", controller: controller),
+                        StatusChip(
+                          text: "🚫 Not enough money!",
+                          controller: controller,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // buttons (MATCH YOUR PRIMARY CTA STYLE)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: isSaving ? null : clear,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.transparent,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'Clear',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: GestureDetector(
+                            onTap: isSaving ? null : save,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Center(
+                                child: isSaving
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Color(0xFF171A3F),
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Save Status',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF171A3F),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-
-              Row(
-                children: [
-                  // Clear button
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: isSaving
-                          ? null
-                          : () async {
-                              setModalState(() => isSaving = true);
-                              await Supabase.instance.client
-                                  .from('profiles')
-                                  .update({'status': null})
-                                  .eq('id', CurrentUser.instance.id!);
-                              CurrentUser.instance.status = null;
-                              if (ctx.mounted) Navigator.pop(ctx);
-                              setState(() {});
-                            },
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text('Clear'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Save button
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton(
-                      onPressed: isSaving
-                          ? null
-                          : () async {
-                              setModalState(() => isSaving = true);
-                              final newStatus = controller.text.trim();
-                              await Supabase.instance.client
-                                  .from('profiles')
-                                  .update({
-                                    'status': newStatus.isEmpty
-                                        ? null
-                                        : newStatus,
-                                  })
-                                  .eq('id', CurrentUser.instance.id!);
-                              CurrentUser.instance.status = newStatus.isEmpty
-                                  ? null
-                                  : newStatus;
-                              if (ctx.mounted) Navigator.pop(ctx);
-                              setState(() {});
-                            },
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: isSaving
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Save',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-            ],
-          ),
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
