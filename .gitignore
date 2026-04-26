@@ -47,4 +47,5 @@ app.*.map.json
 
 supabase_password.txt
 /assets/.env
+/web/assets/.env
 .vercel
