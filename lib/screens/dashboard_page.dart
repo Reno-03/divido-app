@@ -112,12 +112,13 @@ class _DashboardPageState extends State<DashboardPage> {
 
       final createdAt = expense['created_at'] as String?;
       if (createdAt != null) {
-        final date = DateTime.parse(createdAt + 'Z').toLocal();
+        final date = DateTime.parse('${createdAt}Z').toLocal();
         if (date.isAfter(startOfThisWeek)) {
           thisWeekGroup += total;
           thisWeekOwn += ownAmt;
-          if (ownAmt > 0)
+          if (ownAmt > 0) {
             topExpenses.add({'expense': expense, 'ownAmt': ownAmt});
+          }
         } else if (date.isAfter(startOfLastWeek) &&
             date.isBefore(startOfThisWeek)) {
           lastWeekGroup += total;
@@ -1244,7 +1245,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ? Image.network(
                     avatarUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
+                    errorBuilder: (_, _, _) =>
                         const Icon(Icons.person, color: Color(0xFF3C3C63)),
                   )
                 : const Icon(Icons.person, color: Color(0xFF3C3C63)),
@@ -1341,7 +1342,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           ? Image.network(
                               avatarUrl,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(
+                              errorBuilder: (_, _, _) => const Icon(
                                 Icons.person,
                                 size: 10,
                                 color: Color(0xFF3C3C63),
@@ -1463,7 +1464,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           ? Image.network(
                               avatarUrl,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(
+                              errorBuilder: (_, _, _) => const Icon(
                                 Icons.person,
                                 size: 10,
                                 color: Color(0xFF3C3C63),
@@ -1553,7 +1554,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ? Image.network(
                     avatarUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
+                    errorBuilder: (_, _, _) =>
                         const Icon(Icons.person, color: Color(0xFF3C3C63)),
                   )
                 : const Icon(Icons.person, color: Color(0xFF3C3C63)),

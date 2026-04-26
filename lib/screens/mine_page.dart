@@ -223,7 +223,7 @@ class _MinePageState extends State<MinePage> {
         child: ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: 5,
-          itemBuilder: (_, __) {
+          itemBuilder: (_, _) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

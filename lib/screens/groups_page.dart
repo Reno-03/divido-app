@@ -606,7 +606,7 @@ class _GroupsPageState extends State<GroupsPage> {
                                     ? Image.network(
                                         '$avatarUrl?v=${DateTime.now().millisecondsSinceEpoch}', // 🔥 cache bust
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Icon(
+                                        errorBuilder: (_, _, _) => Icon(
                                           Icons.group,
                                           size: 22,
                                           color: isSelected
