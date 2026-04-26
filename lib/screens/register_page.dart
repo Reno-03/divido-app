@@ -2,6 +2,7 @@ import 'package:divido_app/constants/color_options.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:divido_app/widgets/terms_dialog.dart';
 
 Color _selectedColor = const Color(0xFF6366F1);
 
@@ -24,6 +25,7 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
+  bool _acceptedTerms = false;
   String? _errorMessage;
 
   final _supabase = Supabase.instance.client;
@@ -283,11 +285,50 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
               const SizedBox(height: 24),
 
+              // Terms and Conditions Checkbox
+              Row(
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Checkbox(
+                      value: _acceptedTerms,
+                      onChanged: (val) => setState(() => _acceptedTerms = val ?? false),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      side: const BorderSide(color: Colors.white70),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => const TermsDialog(),
+                        );
+                      },
+                      child: const Text(
+                        'I accept the Terms & Conditions and Privacy Policy',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
               // Register button
               SizedBox(
+                height: 60,
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _isLoading ? null : _register,
+                  onPressed: (_isLoading || !_acceptedTerms) ? null : _register,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: const Color(0xFF171A3F),
