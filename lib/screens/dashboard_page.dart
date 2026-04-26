@@ -38,6 +38,7 @@ class _DashboardPageState extends State<DashboardPage> {
   double _thisWeekGroup = 0;
   double _lastWeekGroup = 0;
   List<Map<String, dynamic>> _topExpensesThisWeek = [];
+  int _metricsRequestId = 0;
 
   @override
   void initState() {
@@ -62,16 +63,22 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   void _onExpensesChanged() {
+    final expenseProvider = Provider.of<ExpenseProvider>(
+      context,
+      listen: false,
+    );
+
+    // While a new group is loading, expenses are intentionally cleared.
+    // Skip recomputing here to avoid flashing/persisting zeros.
+    if (expenseProvider.isLoading) return;
+
     final now = DateTime.now();
     if (_lastFetch != null &&
         now.difference(_lastFetch!).inMilliseconds < 500) {
       return;
     }
     _lastFetch = now;
-    final expenses = Provider.of<ExpenseProvider>(
-      context,
-      listen: false,
-    ).expenses;
+    final expenses = expenseProvider.expenses;
     _computeExpenseMetrics(expenses);
     _fetchMetrics();
   }
@@ -142,9 +149,18 @@ class _DashboardPageState extends State<DashboardPage> {
     final currentUserId = CurrentUser.instance.id;
     final groupProvider = Provider.of<GroupProvider>(context, listen: false);
     final groupId = groupProvider.selectedGroupId;
+    final requestId = ++_metricsRequestId;
+    setState(() => _isLoadingMetrics = true);
 
     if (currentUserId == null || groupId == null) {
-      if (mounted) setState(() => _isLoadingMetrics = false);
+      if (mounted && requestId == _metricsRequestId) {
+        setState(() {
+          _isLoadingMetrics = false;
+          _totalOwedToYou = 0;
+          _totalYouOwe = 0;
+          _balanceSummaries = [];
+        });
+      }
       return;
     }
 
@@ -186,6 +202,14 @@ class _DashboardPageState extends State<DashboardPage> {
     final payerBreakdowns = results[1];
     final paymentsMade = results[2];
     final paymentsReceived = results[3];
+
+    // If user switched groups while this request was in-flight, ignore it.
+    if (!mounted ||
+        requestId != _metricsRequestId ||
+        Provider.of<GroupProvider>(context, listen: false).selectedGroupId !=
+            groupId) {
+      return;
+    }
 
     final Map<String, double> netByUser = {};
     final Map<String, double> netByUserLastWeek = {};
@@ -572,7 +596,6 @@ class _DashboardPageState extends State<DashboardPage> {
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () async {
-          await _fetchMetrics();
           if (mounted) {
             await Provider.of<ExpenseProvider>(
               context,

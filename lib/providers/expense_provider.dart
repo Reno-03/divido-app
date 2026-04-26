@@ -12,15 +12,24 @@ class ExpenseProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   String? _currentGroupId;
+  int _fetchRequestId = 0;
 
   Future<void> fetchExpenses(String groupId) async {
+    final requestId = ++_fetchRequestId;
+    final groupChanged = _currentGroupId != groupId;
+
     _isLoading = true;
     _currentGroupId = groupId;
+    if (groupChanged) {
+      // Prevent stale items from previous group while the new group loads.
+      _expenses = [];
+    }
     notifyListeners();
 
-    final response = await supabase
-        .from('expenses')
-        .select('''
+    try {
+      final response = await supabase
+          .from('expenses')
+          .select('''
         *,
         profiles (id, firstname, lastname, color, avatar_url),
         expense_breakdowns (
@@ -29,31 +38,38 @@ class ExpenseProvider extends ChangeNotifier {
           profiles (id, firstname, lastname, color, avatar_url)
         )
       ''')
-        .eq('group_id', groupId) // filter by group
-        .order('created_at', ascending: false);
+          .eq('group_id', groupId) // filter by group
+          .order('created_at', ascending: false);
 
-    _expenses = List<Map<String, dynamic>>.from(response).map((expense) {
-      final e = Map<String, dynamic>.from(expense);
+      // Ignore stale responses from older requests/group selections.
+      if (requestId != _fetchRequestId || _currentGroupId != groupId) return;
 
-      // Parse date ONCE
-      final createdAt = DateTime.parse(e['created_at'] + 'Z').toLocal();
+      _expenses = List<Map<String, dynamic>>.from(response).map((expense) {
+        final e = Map<String, dynamic>.from(expense);
 
-      // Precompute searchable fields
-      e['search_title'] = (e['title'] as String? ?? '').toLowerCase();
+        // Parse date ONCE
+        final createdAt = DateTime.parse(e['created_at'] + 'Z').toLocal();
 
-      e['search_date_str'] = DateFormat(
-        'MMMM d, yyyy',
-      ).format(createdAt).toLowerCase();
+        // Precompute searchable fields
+        e['search_title'] = (e['title'] as String? ?? '').toLowerCase();
 
-      e['search_date_key'] = DateFormat('yyyy-MM-dd').format(createdAt);
+        e['search_date_str'] = DateFormat(
+          'MMMM d, yyyy',
+        ).format(createdAt).toLowerCase();
 
-      // Store parsed DateTime 
-      e['created_at_local'] = createdAt;
+        e['search_date_key'] = DateFormat('yyyy-MM-dd').format(createdAt);
 
-      return e;
-    }).toList();
-    _isLoading = false;
-    notifyListeners();
+        // Store parsed DateTime
+        e['created_at_local'] = createdAt;
+
+        return e;
+      }).toList();
+    } finally {
+      if (requestId == _fetchRequestId) {
+        _isLoading = false;
+        notifyListeners();
+      }
+    }
   }
 
   Future<void> refresh(String? groupId) async {
