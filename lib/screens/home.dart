@@ -179,7 +179,7 @@ class HomePageState extends State<HomePage> {
       builder: (context, groupProvider, _) {
         final selectedGroup = groupProvider.selectedGroup;
         final hasGroups = groupProvider.groups.isNotEmpty;
-        
+
         return PopScope(
           canPop: false,
           child: Scaffold(
@@ -189,6 +189,38 @@ class HomePageState extends State<HomePage> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    // group avatar
+                    if (selectedGroup != null) ...[
+                      () {
+                        final avatarUrl =
+                            selectedGroup['avatar_url'] as String?;
+                        return Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: avatarUrl != null && avatarUrl.isNotEmpty
+                              ? Image.network(
+                                  avatarUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => const Icon(
+                                    Icons.group,
+                                    size: 16,
+                                    color: Colors.white54,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.group,
+                                  size: 16,
+                                  color: Colors.white54,
+                                ),
+                        );
+                      }(),
+                      const SizedBox(width: 8),
+                    ],
                     Flexible(
                       child: Text(
                         selectedGroup != null
@@ -231,12 +263,12 @@ class HomePageState extends State<HomePage> {
                   onPressed: () {
                     final expenseProvider = context.read<ExpenseProvider>();
                     Navigator.pushNamed(context, '/groups').then((_) {
-                        // refresh expenses when coming back from groups
-                        final gid = groupProvider.selectedGroupId;
-                        if (gid != null) {
-                          expenseProvider.fetchExpenses(gid);
-                        }
-                      });
+                      // refresh expenses when coming back from groups
+                      final gid = groupProvider.selectedGroupId;
+                      if (gid != null) {
+                        expenseProvider.fetchExpenses(gid);
+                      }
+                    });
                   },
                 ),
               ],
