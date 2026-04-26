@@ -2,7 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ChangelogService {
   // bump this version string every time you have new changes to show
-  static const String _currentVersion = 'v0.10.0-beta';
+  static const String _currentVersion = 'v1.0.0';
   static const String _key = 'changelog_seen_version';
 
   static Future<bool> shouldShow() async {
