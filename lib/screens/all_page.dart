@@ -434,29 +434,87 @@ class _AllPageState extends State<AllPage> {
 
           // empty states
           if (allExpenses.isEmpty)
-            const Expanded(child: Center(child: Text('No expenses found')))
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  final groupId = Provider.of<GroupProvider>(
+                    context,
+                    listen: false,
+                  ).selectedGroupId;
+                  if (groupId != null) await expenseProvider.refresh(groupId);
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Container(
+                    height: MediaQuery.of(context).size.height * 0.5,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.receipt_long_outlined,
+                          size: 64,
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No expenses yet',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Create an expense to see it here',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white.withValues(alpha: 0.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            )
           else if (expenses.isEmpty && (_searchQuery.isNotEmpty || _isFiltered))
             Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.search_off,
-                      size: 48,
-                      color: Colors.white.withValues(alpha: 0.2),
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  final groupId = Provider.of<GroupProvider>(
+                    context,
+                    listen: false,
+                  ).selectedGroupId;
+                  if (groupId != null) await expenseProvider.refresh(groupId);
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Container(
+                    height: MediaQuery.of(context).size.height * 0.5,
+                    alignment: Alignment.center,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.search_off,
+                          size: 64,
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _searchQuery.isNotEmpty
+                              ? 'No results for "$_searchQuery"'
+                              : 'No expenses match the selected filters',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.35),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _searchQuery.isNotEmpty
-                          ? 'No results for "$_searchQuery"'
-                          : 'No expenses match the selected filters',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.35),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             )

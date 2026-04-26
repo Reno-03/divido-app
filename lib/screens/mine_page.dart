@@ -289,7 +289,55 @@ class _MinePageState extends State<MinePage> {
         .toList();
 
     if (myExpenses.isEmpty) {
-      return const Center(child: Text('No expenses found'));
+      return Column(
+        children: [
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                final groupId = Provider.of<GroupProvider>(
+                  context,
+                  listen: false,
+                ).selectedGroupId;
+                if (groupId != null) await expenseProvider.refresh(groupId);
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Container(
+                  height: MediaQuery.of(context).size.height * 0.5,
+                  alignment: Alignment.center,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.receipt_long_outlined,
+                        size: 64,
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No expenses yet',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Create an expense to see it here',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.white.withValues(alpha: 0.3),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
     }
 
     final Map<String, List<Map<String, dynamic>>> grouped = {};

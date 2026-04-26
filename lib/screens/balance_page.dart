@@ -1464,9 +1464,44 @@ class _BalancePageState extends State<BalancePage>
                     _balanceFuture = _fetchNetBalances();
                   });
                 },
-                child: ListView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
+                child: balances.isEmpty
+                    ? SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Container(
+                          height: MediaQuery.of(context).size.height * 0.5,
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.account_balance_wallet_outlined,
+                                size: 64,
+                                color: Colors.white.withValues(alpha: 0.2),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No balances yet',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white.withValues(alpha: 0.4),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Add expenses to start tracking balances',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white.withValues(alpha: 0.3),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : ListView.builder(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(16),
                   itemCount: balances.length,
                   itemBuilder: (context, index) {
                     final entry = balances[index];
