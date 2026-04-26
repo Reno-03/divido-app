@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -48,24 +49,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       _avatarUrl = '$url?v=${DateTime.now().millisecondsSinceEpoch}';
     }
   }
-
-  // Future<void> _fetchGroup() async {
-  //   final groupId = widget.group['id'];
-
-  //   final data = await Supabase.instance.client
-  //       .from('groups')
-  //       .select()
-  //       .eq('id', groupId)
-  //       .single();
-
-  //   setState(() {
-  //     widget.group['avatar_url'] = data['avatar_url'];
-  //     _avatarUrl = data['avatar_url'] != null
-  //         ? '${data['avatar_url']}?v=${DateTime.now().millisecondsSinceEpoch}'
-  //         : null;
-  //   });
-  // }
-
+  
   // =========================
   // 📸 IMAGE UPLOAD
   // =========================
@@ -367,6 +351,50 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                     widget.group['description'],
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                ],
+
+                if (isMember && widget.group['invite_code'] != null) ...[
+                  const SizedBox(height: 16),
+                  GestureDetector(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: widget.group['invite_code']));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Invite code copied to clipboard'),
+                          behavior: SnackBarBehavior.floating,
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.copy,
+                            size: 14,
+                            color: Colors.white.withValues(alpha: 0.7),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Invite Code: ${widget.group['invite_code']}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ],
