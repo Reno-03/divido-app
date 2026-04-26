@@ -673,7 +673,7 @@ class _CreateExpenseModalState extends State<CreateExpenseModal> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.white.withOpacity(0.1),
+                        color: Colors.white.withValues(alpha: 0.1),
                         blurRadius: 8,
                       ),
                     ],
