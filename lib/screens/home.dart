@@ -143,6 +143,18 @@ class HomePageState extends State<HomePage> {
   }
 
   void _showCreateExpenseModal() {
+    final groupProvider = context.read<GroupProvider>();
+
+    if (groupProvider.members.length <= 1) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Invite someone to the group to create an expense.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
