@@ -618,6 +618,7 @@ class _BalancePageState extends State<BalancePage>
     required String targetLastname,
     required double net,
     required Color targetColor,
+    String? targetAvatarUrl,
   }) async {
     final myId = _currentUser.id!;
     final groupProvider = Provider.of<GroupProvider>(context, listen: false);
@@ -676,14 +677,32 @@ class _BalancePageState extends State<BalancePage>
                       ),
                     ),
                     alignment: Alignment.center,
-                    child: Text(
-                      _getInitials(targetName, targetLastname),
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: targetAvatarUrl != null && targetAvatarUrl.isNotEmpty
+                        ? Image.network(
+                            targetAvatarUrl,
+                            fit: BoxFit.cover,
+                            width: 42,
+                            height: 42,
+                            errorBuilder: (_, _, _) => Center(
+                              child: Text(
+                                _getInitials(targetName, targetLastname),
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          )
+                        : Text(
+                            _getInitials(targetName, targetLastname),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 12),
                   // Title + subtitle
@@ -1802,6 +1821,7 @@ class _BalancePageState extends State<BalancePage>
                                             entry['lastname'] as String,
                                         net: net,
                                         targetColor: userColor,
+                                        targetAvatarUrl: entry['avatar_url'] as String?,
                                       ),
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(
@@ -1952,6 +1972,7 @@ class _BalancePageState extends State<BalancePage>
                                             entry['lastname'] as String,
                                         net: net,
                                         targetColor: userColor,
+                                        targetAvatarUrl: entry['avatar_url'] as String?,
                                       ),
                                       child: Container(
                                         padding: const EdgeInsets.symmetric(
@@ -2007,6 +2028,7 @@ class _BalancePageState extends State<BalancePage>
                                   targetLastname: entry['lastname'] as String,
                                   net: net,
                                   targetColor: userColor,
+                                  targetAvatarUrl: entry['avatar_url'] as String?,
                                 ),
                                 child: Container(
                                   width: double.infinity,
