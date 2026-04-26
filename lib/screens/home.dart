@@ -395,6 +395,7 @@ statusProvider.setStatus(CurrentUser.instance.status);
                 ? Container(
                     margin: const EdgeInsets.only(top: 30),
                     child: FloatingActionButton(
+                      heroTag: 'home_create_expense_fab',
                       onPressed: () {
                         setState(
                           () => _currentIndex = 2,

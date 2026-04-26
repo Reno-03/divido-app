@@ -839,6 +839,7 @@ class _AllPageState extends State<AllPage> {
         clipBehavior: Clip.none,
         children: [
           FloatingActionButton(
+            heroTag: 'all_page_filter_fab',
             onPressed: () => _openFilterDialog(currentUserId),
             child: const Icon(Icons.filter_list),
           ),
