@@ -29,8 +29,8 @@ class _GroupsPageState extends State<GroupsPage> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      showDragHandle: true,
       barrierColor: Colors.black.withValues(alpha: 0.85),
+      backgroundColor: const Color(0xFF171A3F),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -46,6 +46,18 @@ class _GroupsPageState extends State<GroupsPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // drag handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -198,8 +210,8 @@ class _GroupsPageState extends State<GroupsPage> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      showDragHandle: true,
       barrierColor: Colors.black.withValues(alpha: 0.85),
+      backgroundColor: const Color(0xFF171A3F),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -215,6 +227,18 @@ class _GroupsPageState extends State<GroupsPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // drag handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -342,8 +366,8 @@ class _GroupsPageState extends State<GroupsPage> {
     final code = group['invite_code'] as String;
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       useSafeArea: true,
-      showDragHandle: true,
       backgroundColor: const Color(0xFF171A3F),
       barrierColor: Colors.black.withValues(alpha: 0.85),
       shape: const RoundedRectangleBorder(
@@ -354,6 +378,18 @@ class _GroupsPageState extends State<GroupsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // drag handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

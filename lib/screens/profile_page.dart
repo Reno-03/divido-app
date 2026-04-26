@@ -41,8 +41,8 @@ class _ProfilePageState extends State<ProfilePage> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      showDragHandle: true,
       barrierColor: Colors.black.withValues(alpha: 0.85),
+      backgroundColor: const Color(0xFF171A3F),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -52,19 +52,34 @@ class _ProfilePageState extends State<ProfilePage> {
             20,
             0,
             20,
-            MediaQuery.of(ctx).viewInsets.bottom +
-                20, // 👈 moves form above keyboard
+            MediaQuery.of(ctx).viewInsets.bottom + 24,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // drag handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
                     'Edit Profile',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   GestureDetector(
                     onTap: () => Navigator.pop(ctx),
@@ -189,6 +204,8 @@ class _ProfilePageState extends State<ProfilePage> {
                         },
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 20),
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,  
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -637,24 +654,47 @@ class _ProfilePageState extends State<ProfilePage> {
 
     showModalBottomSheet(
       context: context,
-      showDragHandle: true,
-      barrierColor: Colors.black.withValues(alpha: 0.85),
+      isScrollControlled: true,
       useSafeArea: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      backgroundColor: const Color(0xFF171A3F),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+        padding: EdgeInsets.fromLTRB(
+          20,
+          0,
+          20,
+          MediaQuery.of(ctx).viewInsets.bottom + 24,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // drag handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
             // header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   'Profile Photo',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 GestureDetector(
                   onTap: () => Navigator.pop(ctx),

@@ -54,43 +54,64 @@ class _MinePageState extends State<MinePage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      useSafeArea: true,
       barrierColor: Colors.black.withValues(alpha: 0.85),
-      builder: (context) => Container(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      backgroundColor: const Color(0xFF171A3F),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          0,
+          20,
+          MediaQuery.of(context).viewInsets.bottom + 24,
         ),
-        child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: const Color(0xFF171A3F),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Drag handle
-              Container(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
                 width: 40,
                 height: 4,
-                margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-
-              // Title
-              const Text(
-                'Delete Expense',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+            ),
+            // Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Delete Expense',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey.withValues(alpha: 0.2),
+                    ),
+                    child: const Icon(Icons.close, size: 16),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+            
 
               // Confirmation message with expense title
               RichText(
@@ -181,8 +202,7 @@ class _MinePageState extends State<MinePage> {
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   void _showEditExpenseModal({
@@ -198,6 +218,7 @@ class _MinePageState extends State<MinePage> {
       isScrollControlled: true,
       useSafeArea: true,
       barrierColor: Colors.black.withValues(alpha: 0.85),
+      backgroundColor: const Color(0xFF171A3F),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),

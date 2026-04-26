@@ -154,16 +154,55 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 
     showModalBottomSheet(
       context: context,
-      showDragHandle: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
       backgroundColor: const Color(0xFF171A3F),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Group Photo',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // drag handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Group Photo',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey.withValues(alpha: 0.2),
+                    ),
+                    child: const Icon(Icons.close, size: 16),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 20),
             GestureDetector(
@@ -191,23 +230,6 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       ),
     );
   }
-
-  // =========================
-  // 💾 SAVE
-  // =========================
-  // Future<void> _save() async {
-  //   await Supabase.instance.client
-  //       .from('groups')
-  //       .update({
-  //         'name': nameController.text.trim(),
-  //         'description': descController.text.trim(),
-  //       })
-  //       .eq('id', widget.group['id']);
-
-  //   ScaffoldMessenger.of(
-  //     context,
-  //   ).showSnackBar(const SnackBar(content: Text('Group updated')));
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -597,15 +619,23 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      showDragHandle: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
       backgroundColor: const Color(0xFF171A3F),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (ctx) {
         final members = provider.groupMembers
             .where((m) => m['id'] != widget.group['created_by'])
             .toList();
 
         return Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            0,
+            20,
+            MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
           child: members.isEmpty
               ? const Text(
                   "No removable members",
@@ -613,13 +643,44 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                 )
               : Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Remove Member',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                    // drag handle
+                    Center(
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 12),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
                       ),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Remove Member',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pop(ctx),
+                          child: Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.grey.withValues(alpha: 0.2),
+                            ),
+                            child: const Icon(Icons.close, size: 16),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
 
@@ -701,8 +762,8 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      showDragHandle: true,
       barrierColor: Colors.black.withValues(alpha: 0.85),
+      backgroundColor: const Color(0xFF171A3F),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -717,13 +778,29 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // drag handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
             // HEADER
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
                   'Delete Group',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 GestureDetector(
                   onTap: () => Navigator.pop(ctx),
@@ -835,7 +912,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      showDragHandle: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
       backgroundColor: const Color(0xFF171A3F),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -848,22 +925,47 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           MediaQuery.of(ctx).viewInsets.bottom + 24,
         ),
         child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: kCardColor,
-            borderRadius: BorderRadius.circular(16),
-          ),
+          // we can remove the inner card decoration since the bottom sheet is styled already
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Edit Group',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              // drag handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Edit Group',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey.withValues(alpha: 0.2),
+                      ),
+                      child: const Icon(Icons.close, size: 16),
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 16),

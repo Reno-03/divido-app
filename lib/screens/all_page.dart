@@ -83,20 +83,21 @@ class _AllPageState extends State<AllPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      backgroundColor: const Color(0xFF171A3F),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) {
         return StatefulBuilder(
           builder: (context, setStateSB) {
-            return Container(
+            return Padding(
               padding: EdgeInsets.fromLTRB(
                 20,
                 12,
                 20,
                 MediaQuery.of(context).viewInsets.bottom + 24,
-              ),
-              decoration: const BoxDecoration(
-                color: Color(0xFF171A3F),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

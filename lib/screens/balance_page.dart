@@ -637,13 +637,10 @@ class _BalancePageState extends State<BalancePage>
     showModalBottomSheet(
       context: context,
       // add more dim to the background
-      barrierColor: Colors.black.withValues(
-        alpha: 0.85,
-      ), // 0.0 = transparent, 1.0 = full black
-      showDragHandle: true, // adds a nice little handle at the top of the sheet
-      isScrollControlled:
-          true, // allow the sheet to take up more vertical space when needed
-      useSafeArea: true, // avoid system UI overlaps
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      backgroundColor: const Color(0xFF171A3F),
+      isScrollControlled: true,
+      useSafeArea: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -657,6 +654,18 @@ class _BalancePageState extends State<BalancePage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // drag handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
               // Header row with title and X button
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
