@@ -141,6 +141,7 @@ class _MinePageState extends State<MinePage> {
                   Expanded(
                     child: FilledButton(
                       onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
                         Navigator.pop(context);
                         try {
                           await supabase
@@ -150,7 +151,7 @@ class _MinePageState extends State<MinePage> {
                           await provider.refresh(null);
                         } catch (e) {
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            messenger.showSnackBar(
                               const SnackBar(
                                 content: Text('Failed to delete expense.'),
                               ),

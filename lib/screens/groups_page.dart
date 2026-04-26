@@ -134,14 +134,13 @@ class _GroupsPageState extends State<GroupsPage> {
                   onPressed: isSaving
                       ? null
                       : () async {
+                          final messenger = ScaffoldMessenger.of(context);
+                          final groupProvider = context.read<GroupProvider>();
                           final name = nameController.text.trim();
                           if (name.isEmpty) return;
                           setModalState(() => isSaving = true);
                           try {
-                            await Provider.of<GroupProvider>(
-                              context,
-                              listen: false,
-                            ).createGroup(
+                            await groupProvider.createGroup(
                               name,
                               description: descController.text.trim().isEmpty
                                   ? null
@@ -149,11 +148,10 @@ class _GroupsPageState extends State<GroupsPage> {
                             );
                             if (ctx.mounted) Navigator.pop(ctx);
                           } catch (e) {
-                            if (ctx.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Error: $e')),
-                              );
-                            }
+                            if (!mounted) return;
+                            messenger.showSnackBar(
+                              SnackBar(content: Text('Error: $e')),
+                            );
                           } finally {
                             setModalState(() => isSaving = false);
                           }
@@ -416,13 +414,13 @@ class _GroupsPageState extends State<GroupsPage> {
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
                   await Clipboard.setData(ClipboardData(text: code));
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Invite code copied!')),
-                    );
-                    Navigator.pop(ctx);
-                  }
+                  if (!mounted) return;
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Invite code copied!')),
+                  );
+                  if (ctx.mounted) Navigator.pop(ctx);
                 },
                 icon: const Icon(Icons.copy, size: 18),
                 label: const Text(

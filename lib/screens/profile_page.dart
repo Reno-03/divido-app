@@ -147,6 +147,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   onPressed: isSaving
                       ? null
                       : () async {
+                          final expenseProvider = context.read<ExpenseProvider>();
                           setModalState(() => isSaving = true);
 
                           await Supabase.instance.client
@@ -180,10 +181,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           if (ctx.mounted) Navigator.pop(ctx);
 
                           // refresh expenses so owner name updates in AllPage
-                          Provider.of<ExpenseProvider>(
-                            context,
-                            listen: false,
-                          ).refresh(null);
+                          expenseProvider.refresh(null);
 
                           setState(() {}); // refresh ProfilePage
                         },
@@ -1022,12 +1020,15 @@ class _ProfilePageState extends State<ProfilePage> {
               width: double.infinity,
               child: FilledButton.icon(
                 onPressed: () async {
+                  final groupProvider = Provider.of<GroupProvider>(
+                    context,
+                    listen: false,
+                  );
                   await Supabase.instance.client.auth.signOut();
                   CurrentUser.instance.clear();
-                  Provider.of<GroupProvider>(context, listen: false).clear();
-                  if (context.mounted) {
-                    Navigator.pushReplacementNamed(context, '/login');
-                  }
+                  groupProvider.clear();
+                  if (!context.mounted) return;
+                  Navigator.pushReplacementNamed(context, '/login');
                 },
                 icon: const Icon(Icons.logout, color: Colors.white, size: 20),
                 label: const Text(

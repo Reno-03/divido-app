@@ -46,21 +46,19 @@ class HomePageState extends State<HomePage> {
     super.initState();
 
     final statusProvider = context.read<StatusProvider>();
-statusProvider.setStatus(CurrentUser.instance.status);
+    statusProvider.setStatus(CurrentUser.instance.status);
+    final groupProvider = context.read<GroupProvider>();
+    final expenseProvider = context.read<ExpenseProvider>();
 
     Future.microtask(() async {
+      if (!mounted) return;
       final session = Supabase.instance.client.auth.currentSession;
 
       if (session == null || CurrentUser.instance.id == null) {
+        if (!context.mounted) return;
         Navigator.pushReplacementNamed(context, '/login');
         return;
       }
-
-      final groupProvider = Provider.of<GroupProvider>(context, listen: false);
-      final expenseProvider = Provider.of<ExpenseProvider>(
-        context,
-        listen: false,
-      );
 
       // store listener so we can remove it on dispose
       _groupListener = () {
@@ -106,6 +104,7 @@ statusProvider.setStatus(CurrentUser.instance.status);
     String description,
   ) async {
     final supabase = Supabase.instance.client;
+    final expenseProvider = context.read<ExpenseProvider>();
     final currentUserId = CurrentUser.instance.id;
     final groupId = Provider.of<GroupProvider>(
       context,
@@ -140,7 +139,7 @@ statusProvider.setStatus(CurrentUser.instance.status);
       });
     }
 
-    await Provider.of<ExpenseProvider>(context, listen: false).refresh(groupId);
+    await expenseProvider.refresh(groupId);
   }
 
   void _showCreateExpenseModal() {
@@ -211,17 +210,16 @@ statusProvider.setStatus(CurrentUser.instance.status);
                 // groups button
                 IconButton(
                   icon: const Icon(Icons.group_outlined),
-                  onPressed: () =>
-                      Navigator.pushNamed(context, '/groups').then((_) {
+                  onPressed: () {
+                    final expenseProvider = context.read<ExpenseProvider>();
+                    Navigator.pushNamed(context, '/groups').then((_) {
                         // refresh expenses when coming back from groups
                         final gid = groupProvider.selectedGroupId;
                         if (gid != null) {
-                          Provider.of<ExpenseProvider>(
-                            context,
-                            listen: false,
-                          ).fetchExpenses(gid);
+                          expenseProvider.fetchExpenses(gid);
                         }
-                      }),
+                      });
+                  },
                 ),
               ],
             ),

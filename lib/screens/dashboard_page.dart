@@ -340,6 +340,7 @@ class _DashboardPageState extends State<DashboardPage> {
         Future<void> save() async {
           if (isSaving) return;
           setSaving(true);
+          final statusProvider = context.read<StatusProvider>();
 
           final value = controller.text.trim();
 
@@ -351,7 +352,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
             CurrentUser.instance.status = value.isEmpty ? null : value;
 
-            context.read<StatusProvider>().setStatus(
+            statusProvider.setStatus(
               value.isEmpty ? null : value,
             );
 
@@ -365,6 +366,7 @@ class _DashboardPageState extends State<DashboardPage> {
         Future<void> clear() async {
           if (isSaving) return;
           isSaving = true;
+          final statusProvider = context.read<StatusProvider>();
 
           try {
             await Supabase.instance.client
@@ -374,7 +376,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
             CurrentUser.instance.status = null;
 
-            context.read<StatusProvider>().setStatus(null);
+            statusProvider.setStatus(null);
 
             if (ctx.mounted) Navigator.pop(ctx);
             setState(() {});

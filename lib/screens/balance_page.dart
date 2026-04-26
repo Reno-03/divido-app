@@ -1029,6 +1029,7 @@ class _BalancePageState extends State<BalancePage>
         Future<void> save() async {
           if (isSaving) return;
           setSaving(true);
+          final statusProvider = context.read<StatusProvider>();
 
           final value = controller.text.trim();
 
@@ -1040,7 +1041,7 @@ class _BalancePageState extends State<BalancePage>
 
             CurrentUser.instance.status = value.isEmpty ? null : value;
 
-            context.read<StatusProvider>().setStatus(
+            statusProvider.setStatus(
               value.isEmpty ? null : value,
             );
 
@@ -1054,6 +1055,7 @@ class _BalancePageState extends State<BalancePage>
         Future<void> clear() async {
           if (isSaving) return;
           isSaving = true;
+          final statusProvider = context.read<StatusProvider>();
 
           try {
             await Supabase.instance.client
@@ -1063,7 +1065,7 @@ class _BalancePageState extends State<BalancePage>
 
             CurrentUser.instance.status = null;
 
-            context.read<StatusProvider>().setStatus(null);
+            statusProvider.setStatus(null);
 
             if (ctx.mounted) Navigator.pop(ctx);
             // setState(() {});

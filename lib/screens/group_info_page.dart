@@ -37,11 +37,9 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       text: widget.group['description'] ?? '',
     );
 
-    Future.microtask(() {
-      Provider.of<GroupProvider>(
-        context,
-        listen: false,
-      ).fetchGroupMembers(widget.group['id']);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<GroupProvider>().fetchGroupMembers(widget.group['id']);
     });
 
     final url = widget.group['avatar_url'];
@@ -73,6 +71,8 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
   // =========================
   Future<void> _uploadBytes(Uint8List bytes, String? mimeType) async {
     setState(() => _isUploading = true);
+    final groupProvider = context.read<GroupProvider>();
+    final messenger = ScaffoldMessenger.of(context);
 
     try {
       final groupId = widget.group['id'];
@@ -101,22 +101,24 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
           .update({'avatar_url': rawUrl})
           .eq('id', groupId);
 
-      await Provider.of<GroupProvider>(context, listen: false).fetchGroups();
+      await groupProvider.fetchGroups();
 
+      if (!mounted) return;
       setState(() {
         widget.group['avatar_url'] = rawUrl;
         _avatarUrl = '$rawUrl?v=${DateTime.now().millisecondsSinceEpoch}';
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Group photo updated')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Group photo updated')),
+      );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('Upload failed: $e')));
     } finally {
-      setState(() => _isUploading = false);
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
     }
   }
 
@@ -669,15 +671,17 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                           );
 
                           if (confirmed != true) return;
+                          if (!mounted) return;
+                          final messenger = ScaffoldMessenger.of(context);
 
                           await provider.removeMember(
                             groupId: groupId,
                             userId: m['id'],
                           );
 
-                          if (ctx.mounted) Navigator.pop(ctx);
-
-                          ScaffoldMessenger.of(context).showSnackBar(
+                        if (!mounted) return;
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        messenger.showSnackBar(
                             SnackBar(content: Text('${m['name']} removed')),
                           );
                         },
@@ -767,6 +771,8 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
               width: double.infinity,
               child: FilledButton(
                 onPressed: () async {
+                  final groupProvider = context.read<GroupProvider>();
+                  final messenger = ScaffoldMessenger.of(context);
                   final input = controller.text.trim();
                   final expected = "sudo remove ${widget.group['name']}";
 
@@ -783,19 +789,18 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                         .delete()
                         .eq('id', widget.group['id']);
 
-                    await Provider.of<GroupProvider>(
-                      context,
-                      listen: false,
-                    ).fetchGroups();
+                    await groupProvider.fetchGroups();
 
+                    if (!mounted) return;
                     if (ctx.mounted) Navigator.pop(ctx);
                     if (context.mounted) Navigator.pop(context); // exit page
 
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       const SnackBar(content: Text('Group deleted')),
                     );
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (!mounted) return;
+                    messenger.showSnackBar(
                       SnackBar(content: Text('Delete failed: $e')),
                     );
                   }
@@ -876,6 +881,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () async {
+                    final messenger = ScaffoldMessenger.of(context);
                     await Supabase.instance.client
                         .from('groups')
                         .update({
@@ -889,9 +895,10 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                       widget.group['description'] = descCtrl.text.trim();
                     });
 
+                    if (!mounted) return;
                     if (ctx.mounted) Navigator.pop(ctx);
 
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       const SnackBar(content: Text('Group updated')),
                     );
                   },
@@ -1019,6 +1026,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
 
   Future<void> _removeAvatar() async {
     setState(() => _isUploading = true);
+    final messenger = ScaffoldMessenger.of(context);
 
     try {
       final groupId = widget.group['id'];
@@ -1033,15 +1041,16 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
         widget.group['avatar_url'] = null;
       });
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Group photo removed')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Group photo removed')),
+      );
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to remove: $e')));
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text('Failed to remove: $e')));
     } finally {
-      setState(() => _isUploading = false);
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
     }
   }
 }
