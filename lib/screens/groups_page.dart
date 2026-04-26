@@ -2,6 +2,8 @@ import 'package:divido_app/screens/group_info_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:divido_app/services/current_user.dart';
 import '../providers/group_provider.dart';
 
 class GroupsPage extends StatefulWidget {
@@ -12,12 +14,98 @@ class GroupsPage extends StatefulWidget {
 }
 
 class _GroupsPageState extends State<GroupsPage> {
+  final _supabase = Supabase.instance.client;
+
+  // groupId -> net balance (positive = owed to you, negative = you owe)
+  Map<String, double> _groupBalances = {};
+  bool _isLoadingBalances = false;
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<GroupProvider>(context, listen: false).fetchGroups();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await Provider.of<GroupProvider>(context, listen: false).fetchGroups();
+      _fetchAllGroupBalances();
     });
+  }
+
+  Future<void> _fetchAllGroupBalances() async {
+    if (!mounted) return;
+    final groups = Provider.of<GroupProvider>(context, listen: false).groups;
+    if (groups.isEmpty) return;
+
+    final currentUserId = CurrentUser.instance.id;
+    if (currentUserId == null) return;
+
+    setState(() => _isLoadingBalances = true);
+
+    final groupIds = groups.map((g) => g['id'] as String).toList();
+
+    // Run all 4 queries in parallel across all groups at once
+    final results = await Future.wait([
+      // Breakdowns on expenses YOU own — others owe you
+      _supabase
+          .from('expense_breakdowns')
+          .select('amount, expenses!inner(owner_id, group_id)')
+          .eq('expenses.owner_id', currentUserId)
+          .neq('payer_id', currentUserId)
+          .filter('expenses.group_id', 'in', groupIds),
+
+      // Breakdowns where YOU are the payer — you owe the expense owner
+      _supabase
+          .from('expense_breakdowns')
+          .select('amount, expenses!inner(owner_id, group_id)')
+          .eq('payer_id', currentUserId)
+          .neq('expenses.owner_id', currentUserId)
+          .filter('expenses.group_id', 'in', groupIds),
+
+      // Payments YOU made to others (reduces what you owe)
+      _supabase
+          .from('payments')
+          .select('amount, group_id')
+          .eq('payer_id', currentUserId)
+          .filter('group_id', 'in', groupIds),
+
+      // Payments others made TO YOU (reduces what they owe)
+      _supabase
+          .from('payments')
+          .select('amount, group_id')
+          .eq('payee_id', currentUserId)
+          .filter('group_id', 'in', groupIds),
+    ]);
+
+    final Map<String, double> balances = {for (var id in groupIds) id: 0.0};
+
+    // Others owe you → positive
+    for (final row in results[0] as List) {
+      final gid = row['expenses']['group_id'] as String;
+      balances[gid] = (balances[gid] ?? 0) + (row['amount'] as num).toDouble();
+    }
+
+    // You owe others → negative
+    for (final row in results[1] as List) {
+      final gid = row['expenses']['group_id'] as String;
+      balances[gid] = (balances[gid] ?? 0) - (row['amount'] as num).toDouble();
+    }
+
+    // Payments you made → you owed less, so positive adjustment
+    for (final row in results[2] as List) {
+      final gid = row['group_id'] as String;
+      balances[gid] = (balances[gid] ?? 0) + (row['amount'] as num).toDouble();
+    }
+
+    // Payments received → they owed less, so negative adjustment
+    for (final row in results[3] as List) {
+      final gid = row['group_id'] as String;
+      balances[gid] = (balances[gid] ?? 0) - (row['amount'] as num).toDouble();
+    }
+
+    if (mounted) {
+      setState(() {
+        _groupBalances = balances;
+        _isLoadingBalances = false;
+      });
+    }
   }
 
   void _showCreateGroupSheet() {
@@ -46,7 +134,6 @@ class _GroupsPageState extends State<GroupsPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // drag handle
               Center(
                 child: Container(
                   margin: const EdgeInsets.symmetric(vertical: 12),
@@ -80,8 +167,6 @@ class _GroupsPageState extends State<GroupsPage> {
                 ],
               ),
               const SizedBox(height: 20),
-
-              // name field
               TextField(
                 controller: nameController,
                 autofocus: true,
@@ -99,10 +184,7 @@ class _GroupsPageState extends State<GroupsPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Colors.blue,
-                      width: 1.5,
-                    ),
+                    borderSide: const BorderSide(color: Colors.blue, width: 1.5),
                   ),
                   labelStyle: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
@@ -110,8 +192,6 @@ class _GroupsPageState extends State<GroupsPage> {
                 ),
               ),
               const SizedBox(height: 14),
-
-              // description field
               TextField(
                 controller: descController,
                 decoration: InputDecoration(
@@ -128,10 +208,7 @@ class _GroupsPageState extends State<GroupsPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Colors.blue,
-                      width: 1.5,
-                    ),
+                    borderSide: const BorderSide(color: Colors.blue, width: 1.5),
                   ),
                   labelStyle: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
@@ -139,7 +216,6 @@ class _GroupsPageState extends State<GroupsPage> {
                 ),
               ),
               const SizedBox(height: 24),
-
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -159,6 +235,7 @@ class _GroupsPageState extends State<GroupsPage> {
                                   : descController.text.trim(),
                             );
                             if (ctx.mounted) Navigator.pop(ctx);
+                            _fetchAllGroupBalances();
                           } catch (e) {
                             if (!mounted) return;
                             messenger.showSnackBar(
@@ -227,7 +304,6 @@ class _GroupsPageState extends State<GroupsPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // drag handle
               Center(
                 child: Container(
                   margin: const EdgeInsets.symmetric(vertical: 12),
@@ -261,7 +337,6 @@ class _GroupsPageState extends State<GroupsPage> {
                 ],
               ),
               const SizedBox(height: 20),
-
               TextField(
                 controller: codeController,
                 autofocus: true,
@@ -281,17 +356,13 @@ class _GroupsPageState extends State<GroupsPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Colors.blue,
-                      width: 1.5,
-                    ),
+                    borderSide: const BorderSide(color: Colors.blue, width: 1.5),
                   ),
                   labelStyle: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
                   ),
                 ),
               ),
-
               if (errorMessage != null) ...[
                 const SizedBox(height: 10),
                 Text(
@@ -299,9 +370,7 @@ class _GroupsPageState extends State<GroupsPage> {
                   style: const TextStyle(color: Colors.redAccent, fontSize: 13),
                 ),
               ],
-
               const SizedBox(height: 24),
-
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
@@ -314,12 +383,10 @@ class _GroupsPageState extends State<GroupsPage> {
                             isJoining = true;
                             errorMessage = null;
                           });
-
                           final error = await Provider.of<GroupProvider>(
                             context,
                             listen: false,
                           ).joinGroup(code);
-
                           if (error != null) {
                             setModalState(() {
                               errorMessage = error;
@@ -327,6 +394,7 @@ class _GroupsPageState extends State<GroupsPage> {
                             });
                           } else {
                             if (ctx.mounted) Navigator.pop(ctx);
+                            _fetchAllGroupBalances();
                           }
                         },
                   style: FilledButton.styleFrom(
@@ -378,7 +446,6 @@ class _GroupsPageState extends State<GroupsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // drag handle
             Center(
               child: Container(
                 margin: const EdgeInsets.symmetric(vertical: 12),
@@ -412,8 +479,6 @@ class _GroupsPageState extends State<GroupsPage> {
               ],
             ),
             const SizedBox(height: 24),
-
-            // code display
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 24),
@@ -444,8 +509,6 @@ class _GroupsPageState extends State<GroupsPage> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // copy button
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
@@ -502,6 +565,62 @@ class _GroupsPageState extends State<GroupsPage> {
             },
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Leave', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// The balance pill shown under the group name
+  Widget _buildBalancePill(String groupId) {
+    if (_isLoadingBalances) {
+      return Container(
+        margin: const EdgeInsets.only(top: 6),
+        width: 80,
+        height: 18,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+        ),
+      );
+    }
+
+    final net = _groupBalances[groupId] ?? 0.0;
+    if (net.abs() < 0.01) return const SizedBox.shrink(); // fully settled
+
+    final bool youOwe = net < 0;
+    final color = youOwe ? Colors.redAccent : Colors.greenAccent;
+    final bgColor = youOwe
+        ? Colors.red.withValues(alpha: 0.15)
+        : Colors.green.withValues(alpha: 0.15);
+    final label = youOwe
+        ? 'You owe ₱${net.abs().toStringAsFixed(2)}'
+        : '₱${net.toStringAsFixed(2)} owed to you';
+
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
@@ -594,184 +713,192 @@ class _GroupsPageState extends State<GroupsPage> {
                     ],
                   ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: groups.length,
-                  itemBuilder: (context, index) {
-                    final group = groups[index];
-                    final isSelected =
-                        groupProvider.selectedGroupId == group['id'];
+              : RefreshIndicator(
+                  onRefresh: () async {
+                    await Provider.of<GroupProvider>(
+                      context,
+                      listen: false,
+                    ).fetchGroups();
+                    await _fetchAllGroupBalances();
+                  },
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: groups.length,
+                    itemBuilder: (context, index) {
+                      final group = groups[index];
+                      final groupId = group['id'] as String;
+                      final isSelected =
+                          groupProvider.selectedGroupId == groupId;
+                      final avatarUrl = group['avatar_url'] as String?;
 
-                    final avatarUrl = group['avatar_url'] as String?;
-
-                    return GestureDetector(
-                      onTap: () {
-                        groupProvider.selectGroup(group['id'] as String);
-                        Navigator.pop(context);
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? Colors.blue.withValues(alpha: 0.1)
-                              : Colors.white.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
+                      return GestureDetector(
+                        onTap: () {
+                          groupProvider.selectGroup(groupId);
+                          Navigator.pop(context);
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
                             color: isSelected
-                                ? Colors.blue.withValues(alpha: 0.4)
-                                : Colors.white.withValues(alpha: 0.1),
+                                ? Colors.blue.withValues(alpha: 0.1)
+                                : Colors.white.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isSelected
+                                  ? Colors.blue.withValues(alpha: 0.4)
+                                  : Colors.white.withValues(alpha: 0.1),
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            // group icon
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isSelected
-                                    ? Colors.blue.withValues(alpha: 0.2)
-                                    : Colors.white.withValues(alpha: 0.08),
-                              ),
-                              child: ClipOval(
-                                child: avatarUrl != null && avatarUrl.isNotEmpty
-                                    ? Image.network(
-                                        '$avatarUrl?v=${DateTime.now().millisecondsSinceEpoch}', // 🔥 cache bust
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, _, _) => Icon(
+                          child: Row(
+                            children: [
+                              // group avatar
+                              Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isSelected
+                                      ? Colors.blue.withValues(alpha: 0.2)
+                                      : Colors.white.withValues(alpha: 0.08),
+                                ),
+                                child: ClipOval(
+                                  child: avatarUrl != null &&
+                                          avatarUrl.isNotEmpty
+                                      ? Image.network(
+                                          '$avatarUrl?v=${DateTime.now().millisecondsSinceEpoch}',
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, _, _) => Icon(
+                                            Icons.group,
+                                            size: 22,
+                                            color: isSelected
+                                                ? Colors.blue.shade300
+                                                : Colors.white
+                                                    .withValues(alpha: 0.4),
+                                          ),
+                                        )
+                                      : Icon(
                                           Icons.group,
                                           size: 22,
                                           color: isSelected
                                               ? Colors.blue.shade300
-                                              : Colors.white.withValues(
-                                                  alpha: 0.4,
-                                                ),
+                                              : Colors.white
+                                                  .withValues(alpha: 0.4),
                                         ),
-                                      )
-                                    : Icon(
-                                        Icons.group,
-                                        size: 22,
-                                        color: isSelected
-                                            ? Colors.blue.shade300
-                                            : Colors.white.withValues(
-                                                alpha: 0.4,
-                                              ),
-                                      ),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 14),
+                              const SizedBox(width: 14),
 
-                            // name + description
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              // name + description + balance pill
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      group['name'] as String,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    if (group['description'] != null &&
+                                        (group['description'] as String)
+                                            .isNotEmpty) ...[
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        group['description'] as String,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.white
+                                              .withValues(alpha: 0.4),
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                    // ← balance pill lives here
+                                    _buildBalancePill(groupId),
+                                  ],
+                                ),
+                              ),
+
+                              // action buttons
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    group['name'] as String,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                                  GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              GroupInfoPage(group: group),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.08,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.info_outline,
+                                        size: 16,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                  if (group['description'] != null &&
-                                      (group['description'] as String)
-                                          .isNotEmpty) ...[
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      group['description'] as String,
-                                      style: TextStyle(
-                                        fontSize: 13,
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () => _showInviteCode(group),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
                                         color: Colors.white.withValues(
-                                          alpha: 0.4,
+                                          alpha: 0.08,
                                         ),
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      child: Icon(
+                                        Icons.share_outlined,
+                                        size: 16,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                      ),
                                     ),
-                                  ],
+                                  ),
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () => _confirmLeaveGroup(group),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.red.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.logout,
+                                        size: 16,
+                                        color: Colors.red.shade400,
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
-                            ),
-
-                            // actions
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) =>
-                                            GroupInfoPage(group: group),
-                                      ),
-                                    );
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.white.withValues(
-                                        alpha: 0.08,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      Icons.info_outline,
-                                      size: 16,
-                                      color: Colors.white.withValues(
-                                        alpha: 0.5,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-
-                                // invite code button
-                                GestureDetector(
-                                  onTap: () => _showInviteCode(group),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.white.withValues(
-                                        alpha: 0.08,
-                                      ),
-                                    ),
-                                    child: Icon(
-                                      Icons.share_outlined,
-                                      size: 16,
-                                      color: Colors.white.withValues(
-                                        alpha: 0.5,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                // leave button
-                                GestureDetector(
-                                  onTap: () => _confirmLeaveGroup(group),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(8),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: Colors.red.withValues(alpha: 0.1),
-                                    ),
-                                    child: Icon(
-                                      Icons.logout,
-                                      size: 16,
-                                      color: Colors.red.shade400,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
           bottomNavigationBar: groups.isEmpty
               ? null
