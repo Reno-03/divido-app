@@ -1499,726 +1499,731 @@ class _BalancePageState extends State<BalancePage>
                           ),
                         ),
                       )
-                    : ListView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.all(16),
-                  itemCount: balances.length,
-                  itemBuilder: (context, index) {
-                    final entry = balances[index];
-                    final double net = entry['net'] as double;
-                    final rawColor = entry['color'] as String? ?? '#6366F1';
-                    final userColor = Color(
-                      int.parse('FF${rawColor.replaceAll('#', '')}', radix: 16),
-                    );
-                    // final bool isZero = net == 0;
-                    final bool isZero = net.abs() < 0.01;
-                    final bool isPositive = net > 0;
-
-                    final bool isNudged = entry['is_nudged'] as bool;
-                    final int nudgedCountReceived =
-                        entry['nudged_count_received'] as int;
-
-                    final int nudgeCount = entry['nudge_count'] as int;
-                    final String lastNudgedAt =
-                        entry['last_nudged_at'] as String;
-
-                    int nudgeCooldownHoursLeft = 0;
-
-                    // Check cooldown
-                    bool isNudgeOnCooldown = false;
-                    if (lastNudgedAt.isNotEmpty) {
-                      final last = DateTime.parse(lastNudgedAt).toLocal();
-                      final diff = DateTime.now().difference(last);
-                      isNudgeOnCooldown = diff.inHours < 12;
-                      nudgeCooldownHoursLeft = (12 - diff.inHours).clamp(1, 12);
-                    }
-
-                    final bool isNudgeDisabled =
-                        isNudgeOnCooldown || nudgeCount >= 3;
-
-                    final Color balanceColor = isZero
-                        ? Colors.grey
-                        : isPositive
-                        ? Colors.green
-                        : Colors.red;
-
-                    // 👇 wrap only if nudged
-                    Widget cardWidget = Card(
-                      child: Opacity(
-                        opacity: isZero ? 0.45 : 1.0,
-                        child: Column(
-                          children: [
-                            // Status strip
-                            if ((entry['status'] as String).isNotEmpty)
-                              Container(
-                                width: double.infinity,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 15,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.2),
-                                  borderRadius: const BorderRadius.only(
-                                    topLeft: Radius.circular(12),
-                                    topRight: Radius.circular(12),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.chat_bubble_outline,
-                                      size: 13,
-                                      color: Colors.white.withValues(
-                                        alpha: 0.8,
+                    : Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 720),
+                        child: ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.all(16),
+                                          itemCount: balances.length,
+                                          itemBuilder: (context, index) {
+                        final entry = balances[index];
+                        final double net = entry['net'] as double;
+                        final rawColor = entry['color'] as String? ?? '#6366F1';
+                        final userColor = Color(
+                          int.parse('FF${rawColor.replaceAll('#', '')}', radix: 16),
+                        );
+                        // final bool isZero = net == 0;
+                        final bool isZero = net.abs() < 0.01;
+                        final bool isPositive = net > 0;
+                        
+                        final bool isNudged = entry['is_nudged'] as bool;
+                        final int nudgedCountReceived =
+                            entry['nudged_count_received'] as int;
+                        
+                        final int nudgeCount = entry['nudge_count'] as int;
+                        final String lastNudgedAt =
+                            entry['last_nudged_at'] as String;
+                        
+                        int nudgeCooldownHoursLeft = 0;
+                        
+                        // Check cooldown
+                        bool isNudgeOnCooldown = false;
+                        if (lastNudgedAt.isNotEmpty) {
+                          final last = DateTime.parse(lastNudgedAt).toLocal();
+                          final diff = DateTime.now().difference(last);
+                          isNudgeOnCooldown = diff.inHours < 12;
+                          nudgeCooldownHoursLeft = (12 - diff.inHours).clamp(1, 12);
+                        }
+                        
+                        final bool isNudgeDisabled =
+                            isNudgeOnCooldown || nudgeCount >= 3;
+                        
+                        final Color balanceColor = isZero
+                            ? Colors.grey
+                            : isPositive
+                            ? Colors.green
+                            : Colors.red;
+                        
+                        // 👇 wrap only if nudged
+                        Widget cardWidget = Card(
+                          child: Opacity(
+                            opacity: isZero ? 0.45 : 1.0,
+                            child: Column(
+                              children: [
+                                // Status strip
+                                if ((entry['status'] as String).isNotEmpty)
+                                  Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 15,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(12),
+                                        topRight: Radius.circular(12),
                                       ),
                                     ),
-                                    const SizedBox(width: 6),
-                                    Expanded(
-                                      child: Text(
-                                        entry['status'] as String,
-                                        style: TextStyle(
-                                          fontSize: 13,
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.chat_bubble_outline,
+                                          size: 13,
                                           color: Colors.white.withValues(
                                             alpha: 0.8,
                                           ),
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                            // Triangle pointer pointing down-left toward avatar
-                            if ((entry['status'] as String).isNotEmpty)
-                              Row(
-                                children: [
-                                  SizedBox(width: 30),
-                                  ClipPath(
-                                    clipper: _TriangleClipper(),
-                                    child: Container(
-                                      width: 12,
-                                      height: 8,
-                                      color: Colors.white.withValues(
-                                        alpha: 0.2,
-                                      ),
+                                        const SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            entry['status'] as String,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.white.withValues(
+                                                alpha: 0.8,
+                                              ),
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
-                              ),
-
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                20,
-                                10,
-                                20,
-                                20,
-                              ),
-                              child: Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
+                        
+                                // Triangle pointer pointing down-left toward avatar
+                                if ((entry['status'] as String).isNotEmpty)
                                   Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.center,
                                     children: [
-                                      // Name + label
-                                      Column(
+                                      SizedBox(width: 30),
+                                      ClipPath(
+                                        clipper: _TriangleClipper(),
+                                        child: Container(
+                                          width: 12,
+                                          height: 8,
+                                          color: Colors.white.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                        
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    20,
+                                    10,
+                                    20,
+                                    20,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Row(
                                         crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                            CrossAxisAlignment.center,
                                         children: [
-                                          Row(
+                                          // Name + label
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
                                             children: [
-                                              () {
-                                                final avatarUrl =
-                                                    entry['avatar_url']
-                                                        as String?;
-                                                return Container(
-                                                  width: 34,
-                                                  height: 34,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    gradient: LinearGradient(
-                                                      begin: Alignment.topLeft,
-                                                      end:
-                                                          Alignment.bottomRight,
-                                                      colors: [
-                                                        userColor,
-                                                        userColor.withValues(
-                                                          alpha: 0.7,
+                                              Row(
+                                                children: [
+                                                  () {
+                                                    final avatarUrl =
+                                                        entry['avatar_url']
+                                                            as String?;
+                                                    return Container(
+                                                      width: 34,
+                                                      height: 34,
+                                                      decoration: BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        gradient: LinearGradient(
+                                                          begin: Alignment.topLeft,
+                                                          end:
+                                                              Alignment.bottomRight,
+                                                          colors: [
+                                                            userColor,
+                                                            userColor.withValues(
+                                                              alpha: 0.7,
+                                                            ),
+                                                          ],
                                                         ),
-                                                      ],
+                                                      ),
+                                                      clipBehavior: Clip.antiAlias,
+                                                      child:
+                                                          avatarUrl != null &&
+                                                              avatarUrl.isNotEmpty
+                                                          ? Image.network(
+                                                              avatarUrl,
+                                                              fit: BoxFit.cover,
+                                                              errorBuilder: (_, _, _) => Center(
+                                                                child: Text(
+                                                                  _getInitials(
+                                                                    entry['name']
+                                                                        as String,
+                                                                    entry['lastname']
+                                                                        as String,
+                                                                  ),
+                                                                  style: const TextStyle(
+                                                                    fontSize: 12,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                    color: Colors
+                                                                        .white,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            )
+                                                          : Center(
+                                                              child: Text(
+                                                                _getInitials(
+                                                                  entry['name']
+                                                                      as String,
+                                                                  entry['lastname']
+                                                                      as String,
+                                                                ),
+                                                                style:
+                                                                    const TextStyle(
+                                                                      fontSize: 12,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                      color: Colors
+                                                                          .white,
+                                                                    ),
+                                                              ),
+                                                            ),
+                                                    );
+                                                  }(),
+                                                  const SizedBox(width: 12),
+                                                  Text(
+                                                    entry['name'] as String,
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 20,
                                                     ),
                                                   ),
-                                                  clipBehavior: Clip.antiAlias,
-                                                  child:
-                                                      avatarUrl != null &&
-                                                          avatarUrl.isNotEmpty
-                                                      ? Image.network(
-                                                          avatarUrl,
-                                                          fit: BoxFit.cover,
-                                                          errorBuilder: (_, _, _) => Center(
-                                                            child: Text(
-                                                              _getInitials(
-                                                                entry['name']
-                                                                    as String,
-                                                                entry['lastname']
-                                                                    as String,
-                                                              ),
-                                                              style: const TextStyle(
-                                                                fontSize: 12,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                                color: Colors
-                                                                    .white,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        )
-                                                      : Center(
-                                                          child: Text(
-                                                            _getInitials(
-                                                              entry['name']
-                                                                  as String,
-                                                              entry['lastname']
-                                                                  as String,
-                                                            ),
-                                                            style:
-                                                                const TextStyle(
-                                                                  fontSize: 12,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .bold,
-                                                                  color: Colors
-                                                                      .white,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                );
-                                              }(),
-                                              const SizedBox(width: 12),
-                                              Text(
-                                                entry['name'] as String,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 20,
-                                                ),
+                                                ],
+                                              ),
+                        
+                                              const SizedBox(height: 12),
+                        
+                                              // GCash pill + number + copy icon
+                                              Row(
+                                                children: [
+                                                  _gcashIndicator(
+                                                    isReady:
+                                                        entry['is_gcash_ready']
+                                                            as bool,
+                                                    contactNumber:
+                                                        entry['contact_number']
+                                                            as String,
+                                                  ),
+                        
+                                                  if ((entry['contact_number']
+                                                          as String)
+                                                      .isNotEmpty) ...[
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      entry['contact_number']
+                                                          as String,
+                                                      style: TextStyle(
+                                                        fontSize: 13,
+                                                        color: Colors.white
+                                                            .withValues(alpha: 0.7),
+                                                        fontWeight: FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    _CopyContactButton(
+                                                      contactNumber:
+                                                          entry['contact_number']
+                                                              as String,
+                                                    ),
+                                                  ] else ...[
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      'No contact number',
+                                                      style: TextStyle(
+                                                        fontSize: 13,
+                                                        color: Colors.white
+                                                            .withValues(alpha: 0.3),
+                                                        fontStyle: FontStyle.italic,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
                                               ),
                                             ],
                                           ),
-
-                                          const SizedBox(height: 12),
-
-                                          // GCash pill + number + copy icon
-                                          Row(
-                                            children: [
-                                              _gcashIndicator(
-                                                isReady:
-                                                    entry['is_gcash_ready']
-                                                        as bool,
-                                                contactNumber:
-                                                    entry['contact_number']
-                                                        as String,
+                                        ],
+                                      ),
+                                      // Amount
+                                      Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            '₱ ${net.abs().toStringAsFixed(2)}',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 33,
+                                              color: balanceColor,
+                                            ),
+                                          ),
+                        
+                                          Text(
+                                            isZero
+                                                ? 'settled'
+                                                : isPositive
+                                                ? 'owes you'
+                                                : 'you owe',
+                                            style: TextStyle(
+                                              color: balanceColor.withValues(
+                                                alpha: 0.75,
                                               ),
-
-                                              if ((entry['contact_number']
-                                                      as String)
-                                                  .isNotEmpty) ...[
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  entry['contact_number']
-                                                      as String,
-                                                  style: TextStyle(
-                                                    fontSize: 13,
-                                                    color: Colors.white
-                                                        .withValues(alpha: 0.7),
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                _CopyContactButton(
-                                                  contactNumber:
-                                                      entry['contact_number']
-                                                          as String,
-                                                ),
-                                              ] else ...[
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  'No contact number',
-                                                  style: TextStyle(
-                                                    fontSize: 13,
-                                                    color: Colors.white
-                                                        .withValues(alpha: 0.3),
-                                                    fontStyle: FontStyle.italic,
-                                                  ),
-                                                ),
-                                              ],
-                                            ],
+                                              fontSize: 13,
+                                            ),
                                           ),
                                         ],
                                       ),
                                     ],
                                   ),
-                                  // Amount
-                                  Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                ),
+                        
+                                // You owe them — Pay + Activity
+                                if (!isZero && !isPositive)
+                                  Row(
                                     children: [
-                                      Text(
-                                        '₱ ${net.abs().toStringAsFixed(2)}',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 33,
-                                          color: balanceColor,
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () => _showPaymentDialog(
+                                            targetUserId:
+                                                entry['user_id'] as String,
+                                            targetName: entry['name'] as String,
+                                            isSettle: false,
+                                            suggestedAmount: net.abs(),
+                                          ),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 14,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red.withValues(
+                                                alpha: 0.15,
+                                              ),
+                                              borderRadius: const BorderRadius.only(
+                                                bottomLeft: Radius.circular(12),
+                                              ),
+                                              border: Border(
+                                                top: BorderSide(
+                                                  color: Colors.red.withValues(
+                                                    alpha: 0.25,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.payments_outlined,
+                                                  size: 22,
+                                                  color: Colors.red.shade400,
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  'Pay',
+                                                  style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.red.shade400,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         ),
                                       ),
-
-                                      Text(
-                                        isZero
-                                            ? 'settled'
-                                            : isPositive
-                                            ? 'owes you'
-                                            : 'you owe',
-                                        style: TextStyle(
-                                          color: balanceColor.withValues(
-                                            alpha: 0.75,
+                                      Container(
+                                        width: 1,
+                                        height: 50,
+                                        color: Colors.red.withValues(alpha: 0.25),
+                                      ),
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () => _showPaymentHistory(
+                                            targetUserId:
+                                                entry['user_id'] as String,
+                                            targetName: entry['name'] as String,
+                                            targetLastname:
+                                                entry['lastname'] as String,
+                                            net: net,
+                                            targetColor: userColor,
+                                            targetAvatarUrl: entry['avatar_url'] as String?,
                                           ),
-                                          fontSize: 13,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 14,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.blue.withValues(
+                                                alpha: 0.10,
+                                              ),
+                                              borderRadius: const BorderRadius.only(
+                                                bottomRight: Radius.circular(12),
+                                              ),
+                                              border: Border(
+                                                top: BorderSide(
+                                                  color: Colors.blue.withValues(
+                                                    alpha: 0.25,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.history,
+                                                  size: 22,
+                                                  color: Colors.blue.shade400,
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  'Activity',
+                                                  style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.blue.shade400,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
-                            ),
-
-                            // You owe them — Pay + Activity
-                            if (!isZero && !isPositive)
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () => _showPaymentDialog(
-                                        targetUserId:
-                                            entry['user_id'] as String,
-                                        targetName: entry['name'] as String,
-                                        isSettle: false,
-                                        suggestedAmount: net.abs(),
-                                      ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 14,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.red.withValues(
-                                            alpha: 0.15,
-                                          ),
-                                          borderRadius: const BorderRadius.only(
-                                            bottomLeft: Radius.circular(12),
-                                          ),
-                                          border: Border(
-                                            top: BorderSide(
-                                              color: Colors.red.withValues(
-                                                alpha: 0.25,
-                                              ),
+                        
+                                // They owe you — Nudge + Activity
+                                if (!isZero && isPositive)
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: isNudgeDisabled
+                                              ? null // 👈 disabled — no action
+                                              : () => _nudge(
+                                                  targetUserId:
+                                                      entry['user_id'] as String,
+                                                  targetName:
+                                                      entry['name'] as String,
+                                                  currentCount: nudgeCount,
+                                                  lastNudgedAt: lastNudgedAt,
+                                                ),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 14,
                                             ),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.payments_outlined,
-                                              size: 22,
-                                              color: Colors.red.shade400,
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              'Pay',
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.red.shade400,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    width: 1,
-                                    height: 50,
-                                    color: Colors.red.withValues(alpha: 0.25),
-                                  ),
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () => _showPaymentHistory(
-                                        targetUserId:
-                                            entry['user_id'] as String,
-                                        targetName: entry['name'] as String,
-                                        targetLastname:
-                                            entry['lastname'] as String,
-                                        net: net,
-                                        targetColor: userColor,
-                                        targetAvatarUrl: entry['avatar_url'] as String?,
-                                      ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 14,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.blue.withValues(
-                                            alpha: 0.10,
-                                          ),
-                                          borderRadius: const BorderRadius.only(
-                                            bottomRight: Radius.circular(12),
-                                          ),
-                                          border: Border(
-                                            top: BorderSide(
-                                              color: Colors.blue.withValues(
-                                                alpha: 0.25,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.history,
-                                              size: 22,
-                                              color: Colors.blue.shade400,
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              'Activity',
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.blue.shade400,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                            // They owe you — Nudge + Activity
-                            if (!isZero && isPositive)
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: isNudgeDisabled
-                                          ? null // 👈 disabled — no action
-                                          : () => _nudge(
-                                              targetUserId:
-                                                  entry['user_id'] as String,
-                                              targetName:
-                                                  entry['name'] as String,
-                                              currentCount: nudgeCount,
-                                              lastNudgedAt: lastNudgedAt,
-                                            ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 14,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isNudgeDisabled
-                                              ? Colors.white.withValues(
-                                                  alpha: 0.04,
-                                                ) // 👈 grayed
-                                              : _getNudgeColor(
-                                                  nudgeCount,
-                                                ).withValues(alpha: 0.15),
-                                          borderRadius: const BorderRadius.only(
-                                            bottomLeft: Radius.circular(12),
-                                          ),
-                                          border: Border(
-                                            top: BorderSide(
+                                            decoration: BoxDecoration(
                                               color: isNudgeDisabled
                                                   ? Colors.white.withValues(
-                                                      alpha: 0.08,
-                                                    )
+                                                      alpha: 0.04,
+                                                    ) // 👈 grayed
                                                   : _getNudgeColor(
                                                       nudgeCount,
-                                                    ).withValues(alpha: 0.25),
-                                            ),
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              isNudgeOnCooldown
-                                                  ? Icons
-                                                        .hourglass_empty // 👈 cooldown icon
-                                                  : nudgeCount >= 3
-                                                  ? Icons
-                                                        .notifications_off_outlined // 👈 max icon
-                                                  : Icons
-                                                        .notifications_outlined,
-                                              size: 22,
-                                              color: isNudgeDisabled
-                                                  ? Colors.white.withValues(
-                                                      alpha: 0.25,
-                                                    )
-                                                  : _getNudgeColor(nudgeCount),
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              isNudgeOnCooldown
-                                                  ? 'Cooldown (${nudgeCooldownHoursLeft}h)'
-                                                  : nudgeCount >= 3
-                                                  ? 'Nudge x3'
-                                                  : nudgeCount == 0
-                                                  ? 'Nudge'
-                                                  : 'Nudge x$nudgeCount',
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w600,
-                                                color: isNudgeDisabled
-                                                    ? Colors.white.withValues(
-                                                        alpha: 0.25,
-                                                      )
-                                                    : _getNudgeColor(
-                                                        nudgeCount,
-                                                      ),
+                                                    ).withValues(alpha: 0.15),
+                                              borderRadius: const BorderRadius.only(
+                                                bottomLeft: Radius.circular(12),
+                                              ),
+                                              border: Border(
+                                                top: BorderSide(
+                                                  color: isNudgeDisabled
+                                                      ? Colors.white.withValues(
+                                                          alpha: 0.08,
+                                                        )
+                                                      : _getNudgeColor(
+                                                          nudgeCount,
+                                                        ).withValues(alpha: 0.25),
+                                                ),
                                               ),
                                             ),
-                                          ],
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  isNudgeOnCooldown
+                                                      ? Icons
+                                                            .hourglass_empty // 👈 cooldown icon
+                                                      : nudgeCount >= 3
+                                                      ? Icons
+                                                            .notifications_off_outlined // 👈 max icon
+                                                      : Icons
+                                                            .notifications_outlined,
+                                                  size: 22,
+                                                  color: isNudgeDisabled
+                                                      ? Colors.white.withValues(
+                                                          alpha: 0.25,
+                                                        )
+                                                      : _getNudgeColor(nudgeCount),
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  isNudgeOnCooldown
+                                                      ? 'Cooldown (${nudgeCooldownHoursLeft}h)'
+                                                      : nudgeCount >= 3
+                                                      ? 'Nudge x3'
+                                                      : nudgeCount == 0
+                                                      ? 'Nudge'
+                                                      : 'Nudge x$nudgeCount',
+                                                  style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: isNudgeDisabled
+                                                        ? Colors.white.withValues(
+                                                            alpha: 0.25,
+                                                          )
+                                                        : _getNudgeColor(
+                                                            nudgeCount,
+                                                          ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                                  Container(
-                                    width: 1,
-                                    height: 50,
-                                    color: Colors.blue.withValues(alpha: 0.25),
-                                  ),
-                                  Expanded(
-                                    child: GestureDetector(
-                                      onTap: () => _showPaymentHistory(
-                                        targetUserId:
-                                            entry['user_id'] as String,
-                                        targetName: entry['name'] as String,
-                                        targetLastname:
-                                            entry['lastname'] as String,
-                                        net: net,
-                                        targetColor: userColor,
-                                        targetAvatarUrl: entry['avatar_url'] as String?,
+                                      Container(
+                                        width: 1,
+                                        height: 50,
+                                        color: Colors.blue.withValues(alpha: 0.25),
                                       ),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 14,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.blue.withValues(
-                                            alpha: 0.10,
+                                      Expanded(
+                                        child: GestureDetector(
+                                          onTap: () => _showPaymentHistory(
+                                            targetUserId:
+                                                entry['user_id'] as String,
+                                            targetName: entry['name'] as String,
+                                            targetLastname:
+                                                entry['lastname'] as String,
+                                            net: net,
+                                            targetColor: userColor,
+                                            targetAvatarUrl: entry['avatar_url'] as String?,
                                           ),
-                                          borderRadius: const BorderRadius.only(
-                                            bottomRight: Radius.circular(12),
-                                          ),
-                                          border: Border(
-                                            top: BorderSide(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 14,
+                                            ),
+                                            decoration: BoxDecoration(
                                               color: Colors.blue.withValues(
-                                                alpha: 0.25,
+                                                alpha: 0.10,
                                               ),
+                                              borderRadius: const BorderRadius.only(
+                                                bottomRight: Radius.circular(12),
+                                              ),
+                                              border: Border(
+                                                top: BorderSide(
+                                                  color: Colors.blue.withValues(
+                                                    alpha: 0.25,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.history,
+                                                  size: 22,
+                                                  color: Colors.blue.shade400,
+                                                ),
+                                                const SizedBox(width: 6),
+                                                Text(
+                                                  'Activity',
+                                                  style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: Colors.blue.shade400,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.history,
-                                              size: 22,
-                                              color: Colors.blue.shade400,
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              'Activity',
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w600,
-                                                color: Colors.blue.shade400,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                            // Settled — Activity only
-                            if (isZero)
-                              GestureDetector(
-                                onTap: () => _showPaymentHistory(
-                                  targetUserId: entry['user_id'] as String,
-                                  targetName: entry['name'] as String,
-                                  targetLastname: entry['lastname'] as String,
-                                  net: net,
-                                  targetColor: userColor,
-                                  targetAvatarUrl: entry['avatar_url'] as String?,
-                                ),
-                                child: Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.withValues(alpha: 0.10),
-                                    borderRadius: const BorderRadius.only(
-                                      bottomLeft: Radius.circular(12),
-                                      bottomRight: Radius.circular(12),
-                                    ),
-                                    border: Border(
-                                      top: BorderSide(
-                                        color: Colors.blue.withValues(
-                                          alpha: 0.25,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.history,
-                                        size: 22,
-                                        color: Colors.blue.shade400,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        'Activity',
-                                        style: TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.blue.shade400,
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    );
-
-                    String getNudgePhrase(int count) {
-                      switch (count) {
-                        case 1:
-                          return 'Alayun la pagbayad!';
-                        case 2:
-                          return 'Ayaw nala pagbinayad!';
-                        case 3:
-                          return 'PAGBAYAD NA!';
-                        default:
-                          return 'Nudged!';
-                      }
-                    }
-
-                    if (isNudged) {
-                      cardWidget = AnimatedBuilder(
-                        animation: _nudgeAnimation,
-                        builder: (context, child) => Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(13),
-                            border: Border.all(
-                              color: _getNudgeGlowColor(
-                                nudgedCountReceived,
-                              ).withValues(alpha: _nudgeAnimation.value),
-                              width: 2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _getNudgeGlowColor(nudgedCountReceived)
-                                    .withValues(
-                                      alpha: _nudgeAnimation.value * 0.3,
+                        
+                                // Settled — Activity only
+                                if (isZero)
+                                  GestureDetector(
+                                    onTap: () => _showPaymentHistory(
+                                      targetUserId: entry['user_id'] as String,
+                                      targetName: entry['name'] as String,
+                                      targetLastname: entry['lastname'] as String,
+                                      net: net,
+                                      targetColor: userColor,
+                                      targetAvatarUrl: entry['avatar_url'] as String?,
                                     ),
-                                blurRadius: 12,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: child,
-                        ),
-                        child: cardWidget,
-                      );
-
-                      // Wrap in Stack to add nudge count badge
-                      cardWidget = Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          cardWidget,
-                          Positioned(
-                            top: -9,
-                            right: -8,
-                            child: AnimatedBuilder(
-                              animation: _nudgeAnimation,
-                              builder: (context, child) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _getNudgeGlowColor(
-                                    nudgedCountReceived,
-                                  ),
-                                  borderRadius: BorderRadius.circular(50),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color:
-                                          _getNudgeGlowColor(
-                                            nudgedCountReceived,
-                                          ).withValues(
-                                            alpha: _nudgeAnimation.value * 0.6,
+                                    child: Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.withValues(alpha: 0.10),
+                                        borderRadius: const BorderRadius.only(
+                                          bottomLeft: Radius.circular(12),
+                                          bottomRight: Radius.circular(12),
+                                        ),
+                                        border: Border(
+                                          top: BorderSide(
+                                            color: Colors.blue.withValues(
+                                              alpha: 0.25,
+                                            ),
                                           ),
-                                      blurRadius: 8,
-                                      spreadRadius: 1,
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      getNudgePhrase(nudgedCountReceived),
-                                      style: const TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.history,
+                                            size: 22,
+                                            color: Colors.blue.shade400,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            'Activity',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.blue.shade400,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ],
-                                ),
-                              ),
+                                  ),
+                              ],
                             ),
                           ),
-                        ],
-                      );
-                    }
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      child: cardWidget,
-                    );
-                  },
-                ),
+                        );
+                        
+                        String getNudgePhrase(int count) {
+                          switch (count) {
+                            case 1:
+                              return 'Alayun la pagbayad!';
+                            case 2:
+                              return 'Ayaw nala pagbinayad!';
+                            case 3:
+                              return 'PAGBAYAD NA!';
+                            default:
+                              return 'Nudged!';
+                          }
+                        }
+                        
+                        if (isNudged) {
+                          cardWidget = AnimatedBuilder(
+                            animation: _nudgeAnimation,
+                            builder: (context, child) => Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(13),
+                                border: Border.all(
+                                  color: _getNudgeGlowColor(
+                                    nudgedCountReceived,
+                                  ).withValues(alpha: _nudgeAnimation.value),
+                                  width: 2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _getNudgeGlowColor(nudgedCountReceived)
+                                        .withValues(
+                                          alpha: _nudgeAnimation.value * 0.3,
+                                        ),
+                                    blurRadius: 12,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: child,
+                            ),
+                            child: cardWidget,
+                          );
+                        
+                          // Wrap in Stack to add nudge count badge
+                          cardWidget = Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              cardWidget,
+                              Positioned(
+                                top: -9,
+                                right: -8,
+                                child: AnimatedBuilder(
+                                  animation: _nudgeAnimation,
+                                  builder: (context, child) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _getNudgeGlowColor(
+                                        nudgedCountReceived,
+                                      ),
+                                      borderRadius: BorderRadius.circular(50),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color:
+                                              _getNudgeGlowColor(
+                                                nudgedCountReceived,
+                                              ).withValues(
+                                                alpha: _nudgeAnimation.value * 0.6,
+                                              ),
+                                          blurRadius: 8,
+                                          spreadRadius: 1,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          getNudgePhrase(nudgedCountReceived),
+                                          style: const TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                        
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          child: cardWidget,
+                        );
+                                          },
+                                        ),
+                      ),
+                    ),
               ),
             ),
           ],

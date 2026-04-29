@@ -608,428 +608,433 @@ class _DashboardPageState extends State<DashboardPage> {
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: SizedBox(
-              width: double.infinity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 20),
-
-                  Center(
-                    child: const _BreathingLogo(),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  Text(
-                    funGreeting,
-                    textAlign: TextAlign.left,
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // _dashboardStatusBubble(CurrentUser.instance.status),
-                  GestureDetector(
-                    onTap: _showStatusEditor,
-                    behavior:
-                        HitTestBehavior.opaque, // ensures full row is clickable
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          _buildAvatar(),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: _dashboardStatusBubble(
-                              context.watch<StatusProvider>().status,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  Row(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: _buildCardTile(
-                          'Total group expense',
-                          Icons.group,
-                          '₱ ${currencyFormat.format(_totalGroupExpense ?? 0)}',
-                          groupPct,
-                          isLoading:
-                              _isLoadingMetrics || _totalGroupExpense == null,
+                      const SizedBox(height: 20),
+              
+                      Center(
+                        child: const _BreathingLogo(),
+                      ),
+              
+                      const SizedBox(height: 20),
+              
+                      Text(
+                        funGreeting,
+                        textAlign: TextAlign.left,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white.withValues(alpha: 0.9),
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: _buildCardTile(
-                          'Total own expense',
-                          Icons.person,
-                          '₱ ${currencyFormat.format(_totalOwnExpense ?? 0)}',
-                          ownPct,
-                          isLoading:
-                              _isLoadingMetrics || _totalGroupExpense == null,
+              
+                      const SizedBox(height: 20),
+              
+                      // _dashboardStatusBubble(CurrentUser.instance.status),
+                      GestureDetector(
+                        onTap: _showStatusEditor,
+                        behavior:
+                            HitTestBehavior.opaque, // ensures full row is clickable
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              _buildAvatar(),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _dashboardStatusBubble(
+                                  context.watch<StatusProvider>().status,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  if (_isLoadingMetrics) ...[
-                    Row(
-                      children: [
-                        Expanded(child: _buildShimmerCard()),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildShimmerCard()),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(child: _buildShimmerCard()),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildShimmerCard()),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Summary shimmer
-                    ...List.generate(3, (_) => _buildShimmerTile()),
-
-                    const SizedBox(height: 24),
-
-                    // Expenses shimmer
-                    ...List.generate(3, (_) => _buildShimmerTile()),
-                  ] else ...[
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildCardTile(
-                            'Total owes to you',
-                            Icons.arrow_downward,
-                            '₱ ${currencyFormat.format(_totalOwedToYou)}',
-                            null,
-                            iconBgColor: Colors.green.shade400,
-                            iconColor: Colors.white,
-                            amountValue: _totalOwedToYou,
-                            isOweCard: false,
+              
+                      const SizedBox(height: 20),
+              
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildCardTile(
+                              'Total group expense',
+                              Icons.group,
+                              '₱ ${currencyFormat.format(_totalGroupExpense ?? 0)}',
+                              groupPct,
+                              isLoading:
+                                  _isLoadingMetrics || _totalGroupExpense == null,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildCardTile(
-                            'Total you owe',
-                            Icons.arrow_upward,
-                            '₱ ${currencyFormat.format(_totalYouOwe)}',
-                            null,
-                            iconBgColor: Colors.red.shade400,
-                            iconColor: Colors.white,
-                            amountValue: _totalYouOwe,
-                            isOweCard: true,
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3C3C63),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            offset: const Offset(0, 8),
-                            blurRadius: 16,
-                            spreadRadius: 0,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildCardTile(
+                              'Total own expense',
+                              Icons.person,
+                              '₱ ${currencyFormat.format(_totalOwnExpense ?? 0)}',
+                              ownPct,
+                              isLoading:
+                                  _isLoadingMetrics || _totalGroupExpense == null,
+                            ),
                           ),
                         ],
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Summary of Balances',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+              
+                      const SizedBox(height: 16),
+              
+                      if (_isLoadingMetrics) ...[
+                        Row(
+                          children: [
+                            Expanded(child: _buildShimmerCard()),
+                            const SizedBox(width: 16),
+                            Expanded(child: _buildShimmerCard()),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(child: _buildShimmerCard()),
+                            const SizedBox(width: 16),
+                            Expanded(child: _buildShimmerCard()),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+              
+                        // Summary shimmer
+                        ...List.generate(3, (_) => _buildShimmerTile()),
+              
+                        const SizedBox(height: 24),
+              
+                        // Expenses shimmer
+                        ...List.generate(3, (_) => _buildShimmerTile()),
+                      ] else ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildCardTile(
+                                'Total owes to you',
+                                Icons.arrow_downward,
+                                '₱ ${currencyFormat.format(_totalOwedToYou)}',
+                                null,
+                                iconBgColor: Colors.green.shade400,
+                                iconColor: Colors.white,
+                                amountValue: _totalOwedToYou,
+                                isOweCard: false,
+                              ),
                             ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildCardTile(
+                                'Total you owe',
+                                Icons.arrow_upward,
+                                '₱ ${currencyFormat.format(_totalYouOwe)}',
+                                null,
+                                iconBgColor: Colors.red.shade400,
+                                iconColor: Colors.white,
+                                amountValue: _totalYouOwe,
+                                isOweCard: true,
+                              ),
+                            ),
+                          ],
+                        ),
+              
+                        const SizedBox(height: 32),
+              
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3C3C63),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                offset: const Offset(0, 8),
+                                blurRadius: 16,
+                                spreadRadius: 0,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
-
-                          if (_balanceSummaries.isEmpty)
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF171A3F),
-                                borderRadius: BorderRadius.circular(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Summary of Balances',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               ),
-                              child: const Text(
-                                'No balances found.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.white70),
-                              ),
-                            )
-                          else
-                            ..._balanceSummaries.map(
-                              (s) => _buildSummaryTile(s, currencyFormat),
-                            ),
-
-                          const SizedBox(height: 16),
-
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton(
-                              onPressed: () {
-                                final parentState = context
-                                    .findAncestorStateOfType<HomePageState>();
-                                if (parentState != null) {
-                                  parentState.switchTab(
-                                    3,
-                                  ); // Navigate to the Balance tab
-                                } else {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const BalancePage(),
+                              const SizedBox(height: 16),
+              
+                              if (_balanceSummaries.isEmpty)
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF171A3F),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Text(
+                                    'No balances found.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                )
+                              else
+                                ..._balanceSummaries.map(
+                                  (s) => _buildSummaryTile(s, currencyFormat),
+                                ),
+              
+                              const SizedBox(height: 16),
+              
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton(
+                                  onPressed: () {
+                                    final parentState = context
+                                        .findAncestorStateOfType<HomePageState>();
+                                    if (parentState != null) {
+                                      parentState.switchTab(
+                                        3,
+                                      ); // Navigate to the Balance tab
+                                    } else {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => const BalancePage(),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: const Color(0xFFEEEEEE),
+                                    foregroundColor: const Color(0xFF171A3F),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 20,
                                     ),
-                                  );
-                                }
-                              },
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFFEEEEEE),
-                                foregroundColor: const Color(0xFF171A3F),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 20,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: const Text(
-                                'Settle Now',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3C3C63),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            offset: const Offset(0, 8),
-                            blurRadius: 16,
-                            spreadRadius: 0,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Recent Expenses',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          if (expenseProvider.expenses.isEmpty)
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF171A3F),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Text(
-                                'No recent expenses.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.white70),
-                              ),
-                            )
-                          else
-                            ...expenseProvider.expenses
-                                .take(3)
-                                .map(
-                                  (e) => _buildExpenseTile(e, currencyFormat),
-                                ),
-
-                          const SizedBox(height: 16),
-
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton(
-                              onPressed: () {
-                                final parentState = context
-                                    .findAncestorStateOfType<HomePageState>();
-                                if (parentState != null) {
-                                  parentState.switchTab(
-                                    1,
-                                  ); // Navigate to All Expenses tab
-                                }
-                              },
-                              style: FilledButton.styleFrom(
-                                backgroundColor: const Color(0xFFEEEEEE),
-                                foregroundColor: const Color(0xFF171A3F),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 20,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: const Text(
-                                'View All Expenses',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3C3C63),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            offset: const Offset(0, 8),
-                            blurRadius: 16,
-                            spreadRadius: 0,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Your top expenses since last 7 days',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          if (_topExpensesThisWeek.isEmpty)
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(20),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF171A3F),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              child: const Text(
-                                'No expenses this week.',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.white70),
-                              ),
-                            )
-                          else
-                            ..._topExpensesThisWeek
-                                .take(3)
-                                .toList()
-                                .asMap()
-                                .entries
-                                .map(
-                                  (e) => _buildTopExpenseTile(
-                                    e.value,
-                                    e.key + 1,
-                                    currencyFormat,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: const Text(
+                                    'Settle Now',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                    ),
                                   ),
                                 ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF3C3C63),
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.15),
-                            offset: const Offset(0, 8),
-                            blurRadius: 16,
-                            spreadRadius: 0,
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Members for ${groupProvider.selectedGroupName ?? "Group"}',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                        ),
+              
+                        const SizedBox(height: 32),
+              
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3C3C63),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                offset: const Offset(0, 8),
+                                blurRadius: 16,
+                                spreadRadius: 0,
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
-
-                          if (groupMembers.isEmpty)
-                            const Text(
-                              'No members found.',
-                              style: TextStyle(color: Colors.white70),
-                            )
-                          else
-                            ...groupMembers.map(
-                              (m) =>
-                                  _buildMemberTile(m, m['id'] == createdById),
-                            ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 40),
-                  ],
-                ],
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Recent Expenses',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+              
+                              if (expenseProvider.expenses.isEmpty)
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF171A3F),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Text(
+                                    'No recent expenses.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                )
+                              else
+                                ...expenseProvider.expenses
+                                    .take(3)
+                                    .map(
+                                      (e) => _buildExpenseTile(e, currencyFormat),
+                                    ),
+              
+                              const SizedBox(height: 16),
+              
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton(
+                                  onPressed: () {
+                                    final parentState = context
+                                        .findAncestorStateOfType<HomePageState>();
+                                    if (parentState != null) {
+                                      parentState.switchTab(
+                                        1,
+                                      ); // Navigate to All Expenses tab
+                                    }
+                                  },
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: const Color(0xFFEEEEEE),
+                                    foregroundColor: const Color(0xFF171A3F),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 20,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                  child: const Text(
+                                    'View All Expenses',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+              
+                        const SizedBox(height: 32),
+              
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3C3C63),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                offset: const Offset(0, 8),
+                                blurRadius: 16,
+                                spreadRadius: 0,
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Your top expenses since last 7 days',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+              
+                              if (_topExpensesThisWeek.isEmpty)
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF171A3F),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Text(
+                                    'No expenses this week.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                )
+                              else
+                                ..._topExpensesThisWeek
+                                    .take(3)
+                                    .toList()
+                                    .asMap()
+                                    .entries
+                                    .map(
+                                      (e) => _buildTopExpenseTile(
+                                        e.value,
+                                        e.key + 1,
+                                        currencyFormat,
+                                      ),
+                                    ),
+                            ],
+                          ),
+                        ),
+              
+                        const SizedBox(height: 32),
+              
+                        Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3C3C63),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.15),
+                                offset: const Offset(0, 8),
+                                blurRadius: 16,
+                                spreadRadius: 0,
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Members for ${groupProvider.selectedGroupName ?? "Group"}',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+              
+                              if (groupMembers.isEmpty)
+                                const Text(
+                                  'No members found.',
+                                  style: TextStyle(color: Colors.white70),
+                                )
+                              else
+                                ...groupMembers.map(
+                                  (m) =>
+                                      _buildMemberTile(m, m['id'] == createdById),
+                                ),
+                            ],
+                          ),
+                        ),
+              
+                        const SizedBox(height: 40),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
