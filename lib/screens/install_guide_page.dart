@@ -213,13 +213,11 @@ class _StepData {
   final int stepNumber;
   final String description;
   final String imagePath;
-  final bool isDone;
 
   const _StepData({
     required this.stepNumber,
     required this.description,
     required this.imagePath,
-    this.isDone = false,
   });
 }
 
@@ -287,7 +285,7 @@ class _PlatformSection extends StatelessWidget {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: steps.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               return _StepCard(step: steps[index], accentColor: accentColor);
             },
@@ -340,10 +338,10 @@ class _StepCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  step.isDone ? 'Done' : 'Step ${step.stepNumber}',
+                  'Step ${step.stepNumber}',
                   style: TextStyle(
                     fontSize: 10,
-                    color: step.isDone ? Colors.greenAccent : accentColor,
+                    color: accentColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
