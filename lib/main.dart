@@ -4,6 +4,7 @@ import 'package:divido_app/screens/avatar_setup_page.dart';
 import 'package:divido_app/screens/email_confirmation_page.dart';
 import 'package:divido_app/screens/groups_page.dart';
 import 'package:divido_app/screens/home.dart';
+import 'package:divido_app/screens/install_guide_page.dart';
 import 'package:divido_app/screens/login.dart';
 import 'package:divido_app/screens/profile_page.dart';
 import 'package:divido_app/screens/register_page.dart';
@@ -94,6 +95,7 @@ class MyApp extends StatelessWidget {
           '/avatar-setup': (context) => const AvatarSetupPage(),
           '/email-confirm': (context) => const EmailConfirmationPage(),
           '/groups': (context) => const GroupsPage(),
+          '/install-guide': (context) => const InstallGuidePage(),
         },
       ),
     );

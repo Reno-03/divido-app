@@ -72,6 +72,18 @@ flutter:
     - assets/divido_logo.png
     - assets/gcash_logo.png
     - assets/divido_logo_only.png
+    - assets/install/android_step1.png
+    - assets/install/android_step2.png
+    - assets/install/android_step3.png
+    - assets/install/android_step4.png
+    - assets/install/desktop_step1.png
+    - assets/install/desktop_step2.png
+    - assets/install/desktop_step3.png 
+    - assets/install/desktop_step4.png
+    - assets/install/ios_step1.png
+    - assets/install/ios_step2.png
+    - assets/install/ios_step3.png
+    - assets/install/ios_step4.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
