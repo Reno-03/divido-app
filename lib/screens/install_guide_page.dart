@@ -88,7 +88,7 @@ class InstallGuidePage extends StatelessWidget {
                       ),
                       _StepData(
                         stepNumber: 3,
-                        description: 'Tap "Add install" to confirm',
+                        description: 'Tap "Install" to confirm installation',
                         imagePath: 'assets/install/android_step3.png',
                       ),
                       _StepData(
