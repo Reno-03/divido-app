@@ -275,6 +275,7 @@ class HomePageState extends State<HomePage> {
             ),
 
             drawer: Drawer(
+              backgroundColor: const Color(0xFF0F1128),
               child: SafeArea(
                 child: Column(
                   children: [
