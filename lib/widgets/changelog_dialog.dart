@@ -18,7 +18,11 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
       backgroundColor: const Color(0xFF171A3F),
       title: Row(
         children: [
-          const Icon(Icons.new_releases_outlined, color: Colors.white, size: 22),
+          const Icon(
+            Icons.new_releases_outlined,
+            color: Colors.white,
+            size: 22,
+          ),
           const SizedBox(width: 8),
           const Text(
             "What's New",
@@ -39,7 +43,7 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
                 borderRadius: BorderRadius.circular(50),
               ),
               child: const Text(
-                'v1.0.0 — Initial Stable Release 🎉',
+                'v1.1.0 — Installation Guide & UI Improvements',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.white,
@@ -50,25 +54,17 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
             const SizedBox(height: 14),
 
             _section('🆕 New', [
-              'Terms and Conditions screen before account creation',
-              'Balance pill on Groups page — see who you owe at a glance',
-              'Invite Code now visible directly on the Group Info page',
-              'Fallback empty states for Balances, All, and Mine pages',
-              'RLS Policies added in Supabase for secure database access',
-              'Home App Bar has now Group Photo Avatar',
+              'Add Copyable Invite Code in fallback pages for All and Mine expenses when there are no expenses yet',
+              'Add optional card tile for installing Divido as a PWA',
+              'Add Install App guide page for Android, iOS, and Desktop',
             ]),
 
             const SizedBox(height: 10),
 
-            _section('⚡ Optimized & Fixed', [
-              'Dashboard metrics now update correctly when switching groups quickly',
-              'Fixed Hero tag conflict exception in home.dart',
-              'Set Status modal on Profile page redesigned',
-              'Circle avatar fixed on Balance Activity page',
-              'All bottom modal sheets updated to match Divido theme',
-              'Create Expense no longer infinite-loads when group has 1 member',
-              'Breathing Divido logo now uses Flutter animations instead of GIF',
-              'Improved and polished UI/UX across all screens',
+            _section('⚡ Optimized', [
+              'Center vertically all fallback pages on Home',
+              'Add color to balance cards and improve overall UX',
+              'Change background color for Drawer in Home page',
             ]),
 
             const SizedBox(height: 16),
