@@ -3,6 +3,7 @@ import 'package:divido_app/providers/group_provider.dart';
 import 'package:divido_app/screens/edit_expense_modal.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
@@ -111,98 +112,97 @@ class _MinePageState extends State<MinePage> {
             ),
 
             const SizedBox(height: 20),
-            
 
-              // Confirmation message with expense title
-              RichText(
-                textAlign: TextAlign.center,
-                text: TextSpan(
-                  style: const TextStyle(fontSize: 14, color: Colors.white70),
-                  children: [
-                    const TextSpan(
-                      text: 'Are you sure you want to delete the expense ',
-                    ),
-                    TextSpan(
-                      text: expenseTitle,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const TextSpan(text: '? This action cannot be undone.'),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Buttons
-              Row(
+            // Confirmation message with expense title
+            RichText(
+              textAlign: TextAlign.center,
+              text: TextSpan(
+                style: const TextStyle(fontSize: 14, color: Colors.white70),
                 children: [
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.white.withValues(alpha: 0.1),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Cancel',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
+                  const TextSpan(
+                    text: 'Are you sure you want to delete the expense ',
+                  ),
+                  TextSpan(
+                    text: expenseTitle,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () async {
-                        final messenger = ScaffoldMessenger.of(context);
-                        Navigator.pop(context);
-                        try {
-                          await supabase
-                              .from('expenses')
-                              .delete()
-                              .eq('id', expenseId);
-                          await provider.refresh(null);
-                        } catch (e) {
-                          if (mounted) {
-                            messenger.showSnackBar(
-                              const SnackBar(
-                                content: Text('Failed to delete expense.'),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.red.withValues(alpha: 0.15),
-                        foregroundColor: Colors.red.shade400,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'Delete',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
+                  const TextSpan(text: '? This action cannot be undone.'),
                 ],
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 24),
+
+            // Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: 0.1),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      Navigator.pop(context);
+                      try {
+                        await supabase
+                            .from('expenses')
+                            .delete()
+                            .eq('id', expenseId);
+                        await provider.refresh(null);
+                      } catch (e) {
+                        if (mounted) {
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to delete expense.'),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.red.withValues(alpha: 0.15),
+                      foregroundColor: Colors.red.shade400,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Delete',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-      );
+      ),
+    );
   }
 
   void _showEditExpenseModal({
@@ -288,6 +288,13 @@ class _MinePageState extends State<MinePage> {
         .where((expense) => expense['owner_id'] == currentUserId)
         .toList();
 
+    // Get invite code from group provider
+    final selectedGroup = Provider.of<GroupProvider>(
+      context,
+      listen: false,
+    ).selectedGroup;
+    final inviteCode = selectedGroup?['invite_code'] as String?;
+
     if (myExpenses.isEmpty) {
       return Column(
         children: [
@@ -330,6 +337,51 @@ class _MinePageState extends State<MinePage> {
                           color: Colors.white.withValues(alpha: 0.3),
                         ),
                       ),
+                      if (inviteCode != null) ...[
+                        const SizedBox(height: 24),
+                        GestureDetector(
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(text: inviteCode));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Invite code copied!'),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.07),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.15),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.copy,
+                                  size: 14,
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Invite Code: $inviteCode',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -375,7 +427,7 @@ class _MinePageState extends State<MinePage> {
                     final formattedDate = DateFormat(
                       'MMMM d, yyyy',
                     ).format(DateTime.parse(dateKey));
-                
+
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -385,7 +437,9 @@ class _MinePageState extends State<MinePage> {
                             children: [
                               const Expanded(child: Divider()),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
                                 child: Text(
                                   formattedDate,
                                   style: const TextStyle(
@@ -402,22 +456,26 @@ class _MinePageState extends State<MinePage> {
                           final isPaid = expense['is_paid'] == true;
                           final expenseId = expense['id'] as String;
                           final breakdowns =
-                              expense['expense_breakdowns'] as List<dynamic>? ?? [];
+                              expense['expense_breakdowns'] as List<dynamic>? ??
+                              [];
                           final filteredBreakdowns = breakdowns
                               .where((b) => b['payer_id'] != currentUserId)
                               .toList();
-                
+
                           final ownerRawColor =
-                              expense['profiles']?['color'] as String? ?? '#6366F1';
+                              expense['profiles']?['color'] as String? ??
+                              '#6366F1';
                           final ownerColor = Color(
                             int.parse(
                               'FF${ownerRawColor.replaceAll('#', '')}',
                               radix: 16,
                             ),
                           );
-                
+
                           return Card(
-                            color: ownerColor.withValues(alpha: 0.1), // subtle tint
+                            color: ownerColor.withValues(
+                              alpha: 0.1,
+                            ), // subtle tint
                             margin: const EdgeInsets.only(bottom: 12),
                             child: AnimatedOpacity(
                               opacity: isPaid ? 0.45 : 1.0,
@@ -428,7 +486,8 @@ class _MinePageState extends State<MinePage> {
                                   Padding(
                                     padding: const EdgeInsets.all(25),
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         // Title + Total
                                         Row(
@@ -444,7 +503,8 @@ class _MinePageState extends State<MinePage> {
                                                     child: Text(
                                                       expense['title'] ?? '',
                                                       style: TextStyle(
-                                                        fontWeight: FontWeight.bold,
+                                                        fontWeight:
+                                                            FontWeight.bold,
                                                         fontSize: 20,
                                                         decoration: isPaid
                                                             ? TextDecoration
@@ -461,13 +521,17 @@ class _MinePageState extends State<MinePage> {
                                                     onTap: () => _showEditExpenseModal(
                                                       expenseId: expenseId,
                                                       currentTitle:
-                                                          expense['title'] ?? '',
+                                                          expense['title'] ??
+                                                          '',
                                                       currentTotal:
-                                                          (expense['total'] as num)
+                                                          (expense['total']
+                                                                  as num)
                                                               .toDouble(),
                                                       breakdowns:
                                                           (expense['expense_breakdowns']
-                                                                  as List<dynamic>)
+                                                                  as List<
+                                                                    dynamic
+                                                                  >)
                                                               .map(
                                                                 (e) =>
                                                                     Map<
@@ -484,9 +548,10 @@ class _MinePageState extends State<MinePage> {
                                                       provider: expenseProvider,
                                                     ),
                                                     child: Container(
-                                                      padding: const EdgeInsets.all(
-                                                        5,
-                                                      ),
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            5,
+                                                          ),
                                                       decoration: BoxDecoration(
                                                         shape: BoxShape.circle,
                                                         color: Colors.white
@@ -498,7 +563,9 @@ class _MinePageState extends State<MinePage> {
                                                         Icons.edit_outlined,
                                                         size: 18,
                                                         color: Colors.white
-                                                            .withValues(alpha: 0.8),
+                                                            .withValues(
+                                                              alpha: 0.8,
+                                                            ),
                                                       ),
                                                     ),
                                                   ),
@@ -519,67 +586,71 @@ class _MinePageState extends State<MinePage> {
                                             ),
                                           ],
                                         ),
-                
+
                                         // Description block (full-width background)
                                         if (expense['description'] != null &&
                                             expense['description']
                                                 .toString()
                                                 .isNotEmpty)
                                           Padding(
-                                            padding: const EdgeInsets.only(top: 6),
+                                            padding: const EdgeInsets.only(
+                                              top: 6,
+                                            ),
                                             child: Container(
                                               width: double.infinity,
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 12,
-                                                vertical: 8,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 12,
+                                                    vertical: 8,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: Colors.white.withValues(
                                                   alpha: 0.04,
                                                 ),
-                                                borderRadius: BorderRadius.circular(
-                                                  10,
-                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
                                               ),
                                               child: Text(
                                                 expense['description'],
                                                 style: TextStyle(
                                                   fontSize: 14,
-                                                  color: Colors.white.withValues(
-                                                    alpha: 0.65,
-                                                  ),
+                                                  color: Colors.white
+                                                      .withValues(alpha: 0.65),
                                                 ),
                                               ),
                                             ),
                                           ),
-                
+
                                         const SizedBox(height: 12),
-                
+
                                         const Text(
                                           'Payers:',
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                
+
                                         const SizedBox(height: 6),
-                
+
                                         ...filteredBreakdowns.map((b) {
                                           final user = b['profiles'];
                                           final firstName =
                                               user?['firstname'] ?? '';
-                                          final lastName = user?['lastname'] ?? '';
+                                          final lastName =
+                                              user?['lastname'] ?? '';
                                           final payerName = user != null
                                               ? '$firstName $lastName'
                                               : 'Unknown';
-                
+
                                           final initials = [
                                             firstName.isNotEmpty
                                                 ? firstName[0]
                                                 : '',
-                                            lastName.isNotEmpty ? lastName[0] : '',
+                                            lastName.isNotEmpty
+                                                ? lastName[0]
+                                                : '',
                                           ].join().toUpperCase();
-                
+
                                           // Get color from user data
                                           final rawColor =
                                               user?['color'] as String? ??
@@ -591,19 +662,21 @@ class _MinePageState extends State<MinePage> {
                                             ),
                                           );
                                           return Padding(
-                                            padding: const EdgeInsets.only(top: 6),
+                                            padding: const EdgeInsets.only(
+                                              top: 6,
+                                            ),
                                             child: Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 10,
-                                                vertical: 8,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 8,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: Colors.white.withValues(
                                                   alpha: 0.04,
                                                 ),
-                                                borderRadius: BorderRadius.circular(
-                                                  10,
-                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
                                               ),
                                               child: Row(
                                                 children: [
@@ -616,57 +689,57 @@ class _MinePageState extends State<MinePage> {
                                                       height: 32,
                                                       decoration: BoxDecoration(
                                                         shape: BoxShape.circle,
-                                                        gradient: LinearGradient(
-                                                          begin: Alignment.topLeft,
-                                                          end:
-                                                              Alignment.bottomRight,
-                                                          colors: [
-                                                            userColor,
-                                                            userColor.withValues(
-                                                              alpha: 0.7,
+                                                        gradient:
+                                                            LinearGradient(
+                                                              begin: Alignment
+                                                                  .topLeft,
+                                                              end: Alignment
+                                                                  .bottomRight,
+                                                              colors: [
+                                                                userColor,
+                                                                userColor
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.7,
+                                                                    ),
+                                                              ],
                                                             ),
-                                                          ],
-                                                        ),
                                                       ),
-                                                      clipBehavior: Clip.antiAlias,
+                                                      clipBehavior:
+                                                          Clip.antiAlias,
                                                       child:
                                                           avatarUrl != null &&
-                                                              avatarUrl.isNotEmpty
+                                                              avatarUrl
+                                                                  .isNotEmpty
                                                           ? Image.network(
                                                               avatarUrl,
                                                               fit: BoxFit.cover,
-                                                              errorBuilder:
-                                                                  (
-                                                                    _,
-                                                                    _,
-                                                                    _,
-                                                                  ) => Center(
-                                                                    child: Text(
-                                                                      initials,
-                                                                      style: const TextStyle(
-                                                                        fontSize:
-                                                                            12,
-                                                                        fontWeight:
-                                                                            FontWeight
-                                                                                .bold,
-                                                                        color: Colors
-                                                                            .white,
-                                                                      ),
-                                                                    ),
+                                                              errorBuilder: (_, _, _) => Center(
+                                                                child: Text(
+                                                                  initials,
+                                                                  style: const TextStyle(
+                                                                    fontSize:
+                                                                        12,
+                                                                    fontWeight:
+                                                                        FontWeight
+                                                                            .bold,
+                                                                    color: Colors
+                                                                        .white,
                                                                   ),
+                                                                ),
+                                                              ),
                                                             )
                                                           : Center(
                                                               child: Text(
                                                                 initials,
-                                                                style:
-                                                                    const TextStyle(
-                                                                      fontSize: 12,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .bold,
-                                                                      color: Colors
-                                                                          .white,
-                                                                    ),
+                                                                style: const TextStyle(
+                                                                  fontSize: 12,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  color: Colors
+                                                                      .white,
+                                                                ),
                                                               ),
                                                             ),
                                                     );
@@ -677,7 +750,8 @@ class _MinePageState extends State<MinePage> {
                                                       payerName,
                                                       style: const TextStyle(
                                                         fontSize: 14,
-                                                        fontWeight: FontWeight.w500,
+                                                        fontWeight:
+                                                            FontWeight.w500,
                                                       ),
                                                     ),
                                                   ),
@@ -685,9 +759,12 @@ class _MinePageState extends State<MinePage> {
                                                     '₱${b['amount']}',
                                                     style: TextStyle(
                                                       fontSize: 14,
-                                                      fontWeight: FontWeight.w600,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                       color: Colors.white
-                                                          .withValues(alpha: 0.65),
+                                                          .withValues(
+                                                            alpha: 0.65,
+                                                          ),
                                                     ),
                                                   ),
                                                 ],
@@ -698,7 +775,7 @@ class _MinePageState extends State<MinePage> {
                                       ],
                                     ),
                                   ),
-                
+
                                   // Full-width CTA at the bottom
                                   Row(
                                     children: [
@@ -728,9 +805,12 @@ class _MinePageState extends State<MinePage> {
                                                   : Colors.green.withValues(
                                                       alpha: 0.15,
                                                     ),
-                                              borderRadius: const BorderRadius.only(
-                                                bottomLeft: Radius.circular(12),
-                                              ),
+                                              borderRadius:
+                                                  const BorderRadius.only(
+                                                    bottomLeft: Radius.circular(
+                                                      12,
+                                                    ),
+                                                  ),
                                               border: Border(
                                                 top: BorderSide(
                                                   color: isPaid
@@ -761,14 +841,17 @@ class _MinePageState extends State<MinePage> {
                                                 ),
                                                 const SizedBox(width: 6),
                                                 Text(
-                                                  isPaid ? 'Undo' : 'Mark as Paid',
+                                                  isPaid
+                                                      ? 'Undo'
+                                                      : 'Mark as Paid',
                                                   style: TextStyle(
                                                     fontSize: 18,
                                                     fontWeight: FontWeight.w600,
                                                     color: isPaid
-                                                        ? Colors.white.withValues(
-                                                            alpha: 0.3,
-                                                          )
+                                                        ? Colors.white
+                                                              .withValues(
+                                                                alpha: 0.3,
+                                                              )
                                                         : Colors.green.shade400,
                                                   ),
                                                 ),
@@ -777,14 +860,16 @@ class _MinePageState extends State<MinePage> {
                                           ),
                                         ),
                                       ),
-                
+
                                       // Divider
                                       Container(
                                         width: 1,
                                         height: 50,
-                                        color: Colors.white.withValues(alpha: 0.08),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.08,
+                                        ),
                                       ),
-                
+
                                       // Delete button
                                       Expanded(
                                         flex:
@@ -804,9 +889,11 @@ class _MinePageState extends State<MinePage> {
                                               color: Colors.red.withValues(
                                                 alpha: 0.10,
                                               ),
-                                              borderRadius: const BorderRadius.only(
-                                                bottomRight: Radius.circular(12),
-                                              ),
+                                              borderRadius:
+                                                  const BorderRadius.only(
+                                                    bottomRight:
+                                                        Radius.circular(12),
+                                                  ),
                                               border: Border(
                                                 top: BorderSide(
                                                   color: Colors.red.withValues(

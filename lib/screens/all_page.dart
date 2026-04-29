@@ -1,6 +1,7 @@
 import 'package:divido_app/providers/group_provider.dart';
 import 'package:divido_app/screens/expense_detail_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart'; // For formatting dates
 import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -371,6 +372,13 @@ class _AllPageState extends State<AllPage> {
 
     final sortedDates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
 
+    // Get invite code from group provider
+    final selectedGroup = Provider.of<GroupProvider>(
+      context,
+      listen: false,
+    ).selectedGroup;
+    final inviteCode = selectedGroup?['invite_code'] as String?;
+
     return Scaffold(
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -405,7 +413,7 @@ class _AllPageState extends State<AllPage> {
                     ),
                     style: const TextStyle(fontSize: 14),
                   ),
-            
+
                   // Filter indicator
                   if (_isFiltered)
                     Positioned(
@@ -476,6 +484,54 @@ class _AllPageState extends State<AllPage> {
                             color: Colors.white.withValues(alpha: 0.3),
                           ),
                         ),
+
+                        if (inviteCode != null) ...[
+                          const SizedBox(height: 24),
+                          GestureDetector(
+                            onTap: () {
+                              Clipboard.setData(
+                                ClipboardData(text: inviteCode),
+                              );
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Invite code copied!'),
+                                ),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.07),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.copy,
+                                    size: 14,
+                                    color: Colors.white.withValues(alpha: 0.5),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Invite Code: $inviteCode',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -541,11 +597,11 @@ class _AllPageState extends State<AllPage> {
                       itemBuilder: (context, index) {
                         final dateKey = sortedDates[index];
                         final expensesForDate = grouped[dateKey]!;
-                    
+
                         final formattedDate = DateFormat(
                           'MMMM d, yyyy',
                         ).format(DateTime.parse(dateKey));
-                    
+
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -575,17 +631,18 @@ class _AllPageState extends State<AllPage> {
                               final owner = expense['profiles'];
                               final ownerId = owner?['id'];
                               final breakdowns =
-                                  expense['expense_breakdowns'] as List<dynamic>? ??
+                                  expense['expense_breakdowns']
+                                      as List<dynamic>? ??
                                   [];
-                    
+
                               final ownerName = owner != null
                                   ? '${owner['firstname']} ${owner['lastname']}'
                                   : 'Unknown';
-                    
+
                               final filteredBreakdowns = breakdowns
                                   .where((b) => b['payer_id'] != ownerId)
                                   .toList();
-                    
+
                               // Get owner color
                               final ownerRawColor =
                                   expense['profiles']?['color'] as String? ??
@@ -596,7 +653,7 @@ class _AllPageState extends State<AllPage> {
                                   radix: 16,
                                 ),
                               );
-                    
+
                               return Hero(
                                 tag: 'expense_${expense['id']}',
                                 child: GestureDetector(
@@ -607,9 +664,8 @@ class _AllPageState extends State<AllPage> {
                                         transitionDuration: const Duration(
                                           milliseconds: 400,
                                         ),
-                                        reverseTransitionDuration: const Duration(
-                                          milliseconds: 300,
-                                        ),
+                                        reverseTransitionDuration:
+                                            const Duration(milliseconds: 300),
                                         pageBuilder: (_, animation, _) =>
                                             ExpenseDetailPage(
                                               expense: expense,
@@ -620,7 +676,7 @@ class _AllPageState extends State<AllPage> {
                                             parent: animation,
                                             curve: Curves.easeOut,
                                           );
-                    
+
                                           final scale =
                                               Tween<double>(
                                                 begin: 0.95,
@@ -631,7 +687,7 @@ class _AllPageState extends State<AllPage> {
                                                   curve: Curves.easeOutCubic,
                                                 ),
                                               );
-                    
+
                                           return FadeTransition(
                                             opacity: fade,
                                             child: ScaleTransition(
@@ -643,7 +699,9 @@ class _AllPageState extends State<AllPage> {
                                                   borderRadius:
                                                       BorderRadius.circular(12),
                                                   child: Container(
-                                                    color: Color(0xFF171A3F), // matches detail page bg
+                                                    color: Color(
+                                                      0xFF171A3F,
+                                                    ), // matches detail page bg
                                                     child:
                                                         child, // your card content
                                                   ),
@@ -671,7 +729,9 @@ class _AllPageState extends State<AllPage> {
                                               width: 5,
                                             ),
                                           ),
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                         child: Padding(
                                           padding: const EdgeInsets.all(25),
@@ -681,15 +741,18 @@ class _AllPageState extends State<AllPage> {
                                             children: [
                                               Row(
                                                 mainAxisAlignment:
-                                                    MainAxisAlignment.spaceBetween,
+                                                    MainAxisAlignment
+                                                        .spaceBetween,
                                                 children: [
                                                   Expanded(
                                                     child: Column(
                                                       crossAxisAlignment:
-                                                          CrossAxisAlignment.start,
+                                                          CrossAxisAlignment
+                                                              .start,
                                                       children: [
                                                         Text(
-                                                          expense['title'] ?? '',
+                                                          expense['title'] ??
+                                                              '',
                                                           style: TextStyle(
                                                             fontWeight:
                                                                 FontWeight.bold,
@@ -706,12 +769,13 @@ class _AllPageState extends State<AllPage> {
                                                           ownerName,
                                                           style: const TextStyle(
                                                             fontSize: 14,
-                                                            color: Color.fromARGB(
-                                                              137,
-                                                              255,
-                                                              255,
-                                                              255,
-                                                            ),
+                                                            color:
+                                                                Color.fromARGB(
+                                                                  137,
+                                                                  255,
+                                                                  255,
+                                                                  255,
+                                                                ),
                                                           ),
                                                         ),
                                                       ],
@@ -720,7 +784,8 @@ class _AllPageState extends State<AllPage> {
                                                   Text(
                                                     '₱ ${expense['total']}',
                                                     style: TextStyle(
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       fontSize: 33,
                                                       decoration: isPaid
                                                           ? TextDecoration
@@ -749,7 +814,7 @@ class _AllPageState extends State<AllPage> {
                                                 final payerName = user != null
                                                     ? '$firstName $lastName'
                                                     : 'Unknown';
-                    
+
                                                 // Generate initials
                                                 final initials = [
                                                   firstName.isNotEmpty
@@ -759,7 +824,7 @@ class _AllPageState extends State<AllPage> {
                                                       ? lastName[0]
                                                       : '',
                                                 ].join().toUpperCase();
-                    
+
                                                 final rawColor =
                                                     user?['color'] as String? ??
                                                     '#6366F1';
@@ -769,11 +834,12 @@ class _AllPageState extends State<AllPage> {
                                                     radix: 16,
                                                   ),
                                                 );
-                    
+
                                                 return Padding(
-                                                  padding: const EdgeInsets.only(
-                                                    top: 6,
-                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 6,
+                                                      ),
                                                   child: Container(
                                                     padding:
                                                         const EdgeInsets.symmetric(
@@ -782,9 +848,13 @@ class _AllPageState extends State<AllPage> {
                                                         ),
                                                     decoration: BoxDecoration(
                                                       color: Colors.white
-                                                          .withValues(alpha: 0.04),
+                                                          .withValues(
+                                                            alpha: 0.04,
+                                                          ),
                                                       borderRadius:
-                                                          BorderRadius.circular(10),
+                                                          BorderRadius.circular(
+                                                            10,
+                                                          ),
                                                     ),
                                                     child: Row(
                                                       children: [
@@ -799,8 +869,8 @@ class _AllPageState extends State<AllPage> {
                                                             width: 32,
                                                             height: 32,
                                                             decoration: BoxDecoration(
-                                                              shape:
-                                                                  BoxShape.circle,
+                                                              shape: BoxShape
+                                                                  .circle,
                                                               gradient: LinearGradient(
                                                                 begin: Alignment
                                                                     .topLeft,
@@ -810,7 +880,8 @@ class _AllPageState extends State<AllPage> {
                                                                   userColor,
                                                                   userColor
                                                                       .withValues(
-                                                                        alpha: 0.7,
+                                                                        alpha:
+                                                                            0.7,
                                                                       ),
                                                                 ],
                                                               ),
@@ -818,7 +889,8 @@ class _AllPageState extends State<AllPage> {
                                                             clipBehavior:
                                                                 Clip.antiAlias,
                                                             child:
-                                                                avatarUrl != null &&
+                                                                avatarUrl !=
+                                                                        null &&
                                                                     avatarUrl
                                                                         .isNotEmpty
                                                                 ? Image.network(
@@ -832,10 +904,9 @@ class _AllPageState extends State<AllPage> {
                                                                           fontSize:
                                                                               12,
                                                                           fontWeight:
-                                                                              FontWeight
-                                                                                  .bold,
-                                                                          color: Colors
-                                                                              .white,
+                                                                              FontWeight.bold,
+                                                                          color:
+                                                                              Colors.white,
                                                                         ),
                                                                       ),
                                                                     ),
@@ -847,8 +918,7 @@ class _AllPageState extends State<AllPage> {
                                                                         fontSize:
                                                                             12,
                                                                         fontWeight:
-                                                                            FontWeight
-                                                                                .bold,
+                                                                            FontWeight.bold,
                                                                         color: Colors
                                                                             .white,
                                                                       ),
@@ -856,15 +926,19 @@ class _AllPageState extends State<AllPage> {
                                                                   ),
                                                           );
                                                         }(),
-                                                        const SizedBox(width: 10),
+                                                        const SizedBox(
+                                                          width: 10,
+                                                        ),
                                                         Expanded(
                                                           child: Text(
                                                             payerName,
-                                                            style: const TextStyle(
-                                                              fontSize: 14,
-                                                              fontWeight:
-                                                                  FontWeight.w500,
-                                                            ),
+                                                            style:
+                                                                const TextStyle(
+                                                                  fontSize: 14,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w500,
+                                                                ),
                                                           ),
                                                         ),
                                                         Text(
@@ -874,7 +948,9 @@ class _AllPageState extends State<AllPage> {
                                                             fontWeight:
                                                                 FontWeight.w600,
                                                             color: Colors.white
-                                                                .withValues(alpha: 0.65),
+                                                                .withValues(
+                                                                  alpha: 0.65,
+                                                                ),
                                                           ),
                                                         ),
                                                       ],
