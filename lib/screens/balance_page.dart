@@ -1632,8 +1632,9 @@ class _BalancePageState extends State<BalancePage>
 
                               // 👇 wrap only if nudged
                               Widget cardWidget = Card(
+                                color: const Color(0xFF0F1128),
                                 child: Opacity(
-                                  opacity: isZero ? 0.45 : 1.0,
+                                  opacity: 1.0,
                                   child: Column(
                                     children: [
                                       // Status strip
