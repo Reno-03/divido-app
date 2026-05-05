@@ -16,9 +16,12 @@ class GroupsPage extends StatefulWidget {
 class _GroupsPageState extends State<GroupsPage> {
   final _supabase = Supabase.instance.client;
 
+   
   // groupId -> net balance (positive = owed to you, negative = you owe)
   Map<String, double> _groupBalances = {};
   bool _isLoadingBalances = false;
+   List<Map<String, dynamic>> _sortedGroups = [];
+
 
   @override
   void initState() {
@@ -40,6 +43,8 @@ class _GroupsPageState extends State<GroupsPage> {
     setState(() => _isLoadingBalances = true);
 
     final groupIds = groups.map((g) => g['id'] as String).toList();
+
+   
 
     // Run all 4 queries in parallel across all groups at once
     final results = await Future.wait([
@@ -101,11 +106,29 @@ class _GroupsPageState extends State<GroupsPage> {
     }
 
     if (mounted) {
-      setState(() {
-        _groupBalances = balances;
-        _isLoadingBalances = false;
-      });
+  final sortedGroups = [...groups]..sort((a, b) {
+    final aNet = balances[a['id'] as String] ?? 0.0;
+    final bNet = balances[b['id'] as String] ?? 0.0;
+
+    int category(double net) {
+      if (net < -0.01) return 0;  // you owe
+      if (net > 0.01) return 1;   // owes you
+      return 2;                    // settled
     }
+
+    final aCat = category(aNet);
+    final bCat = category(bNet);
+
+    if (aCat != bCat) return aCat.compareTo(bCat);
+    return bNet.abs().compareTo(aNet.abs());
+  });
+
+  setState(() {
+    _groupBalances = balances;
+    _sortedGroups = sortedGroups;  // ← new state variable
+    _isLoadingBalances = false;
+  });
+}
   }
 
   void _showCreateGroupSheet() {
@@ -533,7 +556,9 @@ class _GroupsPageState extends State<GroupsPage> {
   Widget build(BuildContext context) {
     return Consumer<GroupProvider>(
       builder: (context, groupProvider, _) {
-        final groups = groupProvider.groups;
+        final groups = _sortedGroups.isEmpty 
+    ? groupProvider.groups  // fallback while balances are loading
+    : _sortedGroups;        // sorted once balances are ready
         final isLoading = groupProvider.isLoading;
 
         return Scaffold(
@@ -740,33 +765,27 @@ class _GroupsPageState extends State<GroupsPage> {
                               ),
 
                               // action buttons
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              GroupInfoPage(group: group),
-                                        ),
-                                      );
-                                    },
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: const BoxDecoration(),
-                                      child: Icon(
-                                        Icons.arrow_forward_ios,
-                                        size: 16,
-                                        color: Colors.white.withValues(
-                                          alpha: 0.4,
-                                        ),
-                                      ),
+                              GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          GroupInfoPage(group: group),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: const BoxDecoration(),
+                                  child: Icon(
+                                    Icons.arrow_forward_ios,
+                                    size: 16,
+                                    color: Colors.white.withValues(
+                                      alpha: 0.4,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                ],
+                                ),
                               ),
                             ],
                           ),
@@ -803,10 +822,17 @@ class _GroupsPageState extends State<GroupsPage> {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: _showJoinGroupSheet,
-                          icon: const Icon(Icons.key_outlined, size: 18, color: Colors.white),
+                          icon: const Icon(
+                            Icons.key_outlined,
+                            size: 18,
+                            color: Colors.white,
+                          ),
                           label: const Text(
                             'Join Group',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 24),
