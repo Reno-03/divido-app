@@ -99,7 +99,7 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Image.asset('assets/divido_logo.png', width: 140, height: 140),
-          
+
                 const Text(
                   'Welcome to Divido!',
                   style: TextStyle(
@@ -109,7 +109,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 const SizedBox(height: 32),
-          
+
                 // Username
                 TextField(
                   controller: usernameController,
@@ -126,7 +126,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-          
+
                 // Password
                 TextField(
                   controller: passwordController,
@@ -154,18 +154,34 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-          
+
                 // Error message
                 if (_errorMessage != null) ...[
                   const SizedBox(height: 12),
                   Text(
                     _errorMessage!,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 14,
+                    ),
                   ),
                 ],
-          
+
                 const SizedBox(height: 24),
-          
+
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: GestureDetector(
+                    onTap: () =>
+                        Navigator.pushNamed(context, '/forgot-password'),
+                    child: const Text(
+                      'Forgot Password?',
+                      style: TextStyle(color: Colors.white54, fontSize: 13),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+
                 // Login Button
                 SizedBox(
                   width: double.infinity,
@@ -194,9 +210,9 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                   ),
                 ),
-          
+
                 const SizedBox(height: 30),
-          
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -216,7 +232,7 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ],
                 ),
-          
+
                 const SizedBox(height: 100),
               ],
             ),
