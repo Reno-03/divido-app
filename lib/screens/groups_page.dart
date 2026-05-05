@@ -429,119 +429,7 @@ class _GroupsPageState extends State<GroupsPage> {
       ),
     );
   }
-
-  void _showInviteCode(Map<String, dynamic> group) {
-    final code = group['invite_code'] as String;
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: const Color(0xFF171A3F),
-      barrierColor: Colors.black.withValues(alpha: 0.85),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Center(
-              child: Container(
-                margin: const EdgeInsets.symmetric(vertical: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Invite Code',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.pop(ctx),
-                  child: Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.grey.withValues(alpha: 0.2),
-                    ),
-                    child: const Icon(Icons.close, size: 16),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    code,
-                    style: const TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 8,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Share this code to invite members',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.4),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  await Clipboard.setData(ClipboardData(text: code));
-                  if (!mounted) return;
-                  messenger.showSnackBar(
-                    const SnackBar(content: Text('Invite code copied!')),
-                  );
-                  if (ctx.mounted) Navigator.pop(ctx);
-                },
-                icon: const Icon(Icons.copy, size: 18),
-                label: const Text(
-                  'Copy Code',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF171A3F),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
+  
   void _confirmLeaveGroup(Map<String, dynamic> group) {
     showDialog(
       context: context,
@@ -846,26 +734,6 @@ class _GroupsPageState extends State<GroupsPage> {
                                       ),
                                       child: Icon(
                                         Icons.info_outline,
-                                        size: 16,
-                                        color: Colors.white.withValues(
-                                          alpha: 0.5,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  GestureDetector(
-                                    onTap: () => _showInviteCode(group),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.white.withValues(
-                                          alpha: 0.08,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.share_outlined,
                                         size: 16,
                                         color: Colors.white.withValues(
                                           alpha: 0.5,
