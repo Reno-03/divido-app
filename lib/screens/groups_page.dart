@@ -16,18 +16,23 @@ class GroupsPage extends StatefulWidget {
 class _GroupsPageState extends State<GroupsPage> {
   final _supabase = Supabase.instance.client;
 
-   
   // groupId -> net balance (positive = owed to you, negative = you owe)
   Map<String, double> _groupBalances = {};
   bool _isLoadingBalances = false;
-   List<Map<String, dynamic>> _sortedGroups = [];
-
+  List<Map<String, dynamic>> _sortedGroups = [];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await Provider.of<GroupProvider>(context, listen: false).fetchGroups();
+      final groupProvider = Provider.of<GroupProvider>(context, listen: false);
+      if (groupProvider.groups.isEmpty) {
+        await groupProvider.fetchGroups();
+      }
+      // pre-populate with unsorted so there's no empty→unsorted→sorted jump
+      setState(() {
+        _sortedGroups = [...groupProvider.groups];
+      });
       _fetchAllGroupBalances();
     });
   }
@@ -43,8 +48,6 @@ class _GroupsPageState extends State<GroupsPage> {
     setState(() => _isLoadingBalances = true);
 
     final groupIds = groups.map((g) => g['id'] as String).toList();
-
-   
 
     // Run all 4 queries in parallel across all groups at once
     final results = await Future.wait([
@@ -106,29 +109,30 @@ class _GroupsPageState extends State<GroupsPage> {
     }
 
     if (mounted) {
-  final sortedGroups = [...groups]..sort((a, b) {
-    final aNet = balances[a['id'] as String] ?? 0.0;
-    final bNet = balances[b['id'] as String] ?? 0.0;
+      final sortedGroups = [...groups]
+        ..sort((a, b) {
+          final aNet = balances[a['id'] as String] ?? 0.0;
+          final bNet = balances[b['id'] as String] ?? 0.0;
 
-    int category(double net) {
-      if (net < -0.01) return 0;  // you owe
-      if (net > 0.01) return 1;   // owes you
-      return 2;                    // settled
+          int category(double net) {
+            if (net < -0.01) return 0; // you owe
+            if (net > 0.01) return 1; // owes you
+            return 2; // settled
+          }
+
+          final aCat = category(aNet);
+          final bCat = category(bNet);
+
+          if (aCat != bCat) return aCat.compareTo(bCat);
+          return bNet.abs().compareTo(aNet.abs());
+        });
+
+      setState(() {
+        _groupBalances = balances;
+        _sortedGroups = sortedGroups; // ← new state variable
+        _isLoadingBalances = false;
+      });
     }
-
-    final aCat = category(aNet);
-    final bCat = category(bNet);
-
-    if (aCat != bCat) return aCat.compareTo(bCat);
-    return bNet.abs().compareTo(aNet.abs());
-  });
-
-  setState(() {
-    _groupBalances = balances;
-    _sortedGroups = sortedGroups;  // ← new state variable
-    _isLoadingBalances = false;
-  });
-}
   }
 
   void _showCreateGroupSheet() {
@@ -556,9 +560,10 @@ class _GroupsPageState extends State<GroupsPage> {
   Widget build(BuildContext context) {
     return Consumer<GroupProvider>(
       builder: (context, groupProvider, _) {
-        final groups = _sortedGroups.isEmpty 
-    ? groupProvider.groups  // fallback while balances are loading
-    : _sortedGroups;        // sorted once balances are ready
+        final groups = _sortedGroups.isEmpty
+            ? groupProvider
+                  .groups // fallback while balances are loading
+            : _sortedGroups; // sorted once balances are ready
         final isLoading = groupProvider.isLoading;
 
         return Scaffold(
@@ -781,9 +786,7 @@ class _GroupsPageState extends State<GroupsPage> {
                                   child: Icon(
                                     Icons.arrow_forward_ios,
                                     size: 16,
-                                    color: Colors.white.withValues(
-                                      alpha: 0.4,
-                                    ),
+                                    color: Colors.white.withValues(alpha: 0.4),
                                   ),
                                 ),
                               ),
