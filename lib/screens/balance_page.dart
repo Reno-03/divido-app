@@ -272,10 +272,10 @@ class _BalancePageState extends State<BalancePage>
         // 3. they owe you
         // 4. settled
         int category(double net, int nudged) {
-          if (nudged > 0) return 0; 
-          if (net < -0.01) return 1; 
-          if (net > 0.01) return 2; 
-          return 3; 
+          if (nudged > 0) return 0;
+          if (net < -0.01) return 1;
+          if (net > 0.01) return 2;
+          return 3;
         }
 
         final aCat = category(aNet, aNudged);
@@ -286,15 +286,15 @@ class _BalancePageState extends State<BalancePage>
 
         // same category → sort within
         if (aCat == 0) {
-          return bNudged.compareTo(aNudged); 
+          return bNudged.compareTo(aNudged);
         }
         if (aCat == 1) {
-          return aNet.compareTo(bNet); 
+          return aNet.compareTo(bNet);
         }
         if (aCat == 2) {
           return bNet.compareTo(aNet);
-        } 
-        return 0; 
+        }
+        return 0;
       });
   }
 
@@ -593,42 +593,144 @@ class _BalancePageState extends State<BalancePage>
     required double net,
     required Color targetColor,
   }) {
-    showDialog(
+    showModalBottomSheet(
       context: ctx,
-      builder: (dialogCtx) => AlertDialog(
-        title: const Text('Remove Payment'),
-        content: const Text(
-          'Are you sure you want to remove this payment? This cannot be undone.',
+      isScrollControlled: true,
+      useSafeArea: true,
+      barrierColor: Colors.black.withValues(alpha: 0.85),
+      backgroundColor: const Color(0xFF171A3F),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          0,
+          20,
+          MediaQuery.of(sheetCtx).viewInsets.bottom + 24,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogCtx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(dialogCtx); // close confirm dialog
-              Navigator.pop(ctx); // close payment history sheet
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Drag handle
+            Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
 
-              await supabase.from('payments').delete().eq('id', paymentId);
+            // Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Remove Payment',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () => Navigator.pop(sheetCtx),
+                  child: Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey.withValues(alpha: 0.2),
+                    ),
+                    child: const Icon(Icons.close, size: 16),
+                  ),
+                ),
+              ],
+            ),
 
-              setState(() {
-                _balanceFuture = _fetchNetBalances();
-              });
+            const SizedBox(height: 20),
 
-              // Reopen payment history with updated data
-              _showPaymentHistory(
-                targetUserId: targetUserId,
-                targetName: targetName,
-                targetLastname: targetLastname,
-                net: net,
-                targetColor: targetColor,
-              );
-            },
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Remove', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+            // Confirmation message
+            const Text(
+              'Are you sure you want to remove this payment? This action cannot be undone.',
+              style: TextStyle(fontSize: 14, color: Colors.white70),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(sheetCtx),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: 0.1),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () async {
+                      Navigator.pop(sheetCtx); 
+                      Navigator.pop(ctx); 
+
+                      await supabase
+                          .from('payments')
+                          .delete()
+                          .eq('id', paymentId);
+
+                      setState(() {
+                        _balanceFuture = _fetchNetBalances();
+                      });
+
+                      _showPaymentHistory(
+                        targetUserId: targetUserId,
+                        targetName: targetName,
+                        targetLastname: targetLastname,
+                        net: net,
+                        targetColor: targetColor,
+                      );
+                    },
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.red.withValues(alpha: 0.15),
+                      foregroundColor: Colors.red.shade400,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Remove',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
