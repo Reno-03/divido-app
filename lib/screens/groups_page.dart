@@ -439,35 +439,6 @@ class _GroupsPageState extends State<GroupsPage> {
     );
   }
 
-  void _confirmLeaveGroup(Map<String, dynamic> group) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF171A3F),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Leave Group'),
-        content: Text('Are you sure you want to leave "${group['name']}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              await Provider.of<GroupProvider>(
-                context,
-                listen: false,
-              ).leaveGroup(group['id'] as String);
-            },
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Leave', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// The balance pill shown under the group name
   Widget _buildBalancePill(String groupId) {
     if (_isLoadingBalances) {
@@ -784,39 +755,17 @@ class _GroupsPageState extends State<GroupsPage> {
                                     },
                                     child: Container(
                                       padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.white.withValues(
-                                          alpha: 0.08,
-                                        ),
-                                      ),
+                                      decoration: const BoxDecoration(),
                                       child: Icon(
-                                        Icons.info_outline,
+                                        Icons.arrow_forward_ios,
                                         size: 16,
                                         color: Colors.white.withValues(
-                                          alpha: 0.5,
+                                          alpha: 0.4,
                                         ),
                                       ),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  GestureDetector(
-                                    onTap: () => _confirmLeaveGroup(group),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(8),
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.red.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.logout,
-                                        size: 16,
-                                        color: Colors.red.shade400,
-                                      ),
-                                    ),
-                                  ),
                                 ],
                               ),
                             ],
@@ -854,10 +803,10 @@ class _GroupsPageState extends State<GroupsPage> {
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: _showJoinGroupSheet,
-                          icon: const Icon(Icons.key_outlined, size: 18),
+                          icon: const Icon(Icons.key_outlined, size: 18, color: Colors.white),
                           label: const Text(
                             'Join Group',
-                            style: TextStyle(fontWeight: FontWeight.bold),
+                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                           ),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 24),

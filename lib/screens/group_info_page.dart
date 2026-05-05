@@ -49,7 +49,7 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
       _avatarUrl = '$url?v=${DateTime.now().millisecondsSinceEpoch}';
     }
   }
-  
+
   // =========================
   // 📸 IMAGE UPLOAD
   // =========================
@@ -358,7 +358,9 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                   const SizedBox(height: 16),
                   GestureDetector(
                     onTap: () {
-                      Clipboard.setData(ClipboardData(text: widget.group['invite_code']));
+                      Clipboard.setData(
+                        ClipboardData(text: widget.group['invite_code']),
+                      );
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Invite code copied to clipboard'),
@@ -367,7 +369,10 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                       );
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
@@ -632,6 +637,237 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                 ),
               ),
 
+            if (isMember && !isCreator) ...[
+              Container(
+                margin: const EdgeInsets.only(top: 24),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3C3C63),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      offset: const Offset(0, 8),
+                      blurRadius: 16,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Leave Group',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'You will need an invite code to rejoin.',
+                      style: TextStyle(fontSize: 12, color: Colors.white70),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () async {
+                          final groupProvider = context.read<GroupProvider>();
+                          final messenger = ScaffoldMessenger.of(context);
+                          final confirmed = await showModalBottomSheet<bool>(
+                            context: context,
+                            isScrollControlled: true,
+                            useSafeArea: true,
+                            barrierColor: Colors.black.withValues(alpha: 0.85),
+                            backgroundColor: const Color(0xFF171A3F),
+                            shape: const RoundedRectangleBorder(
+                              borderRadius: BorderRadius.vertical(
+                                top: Radius.circular(20),
+                              ),
+                            ),
+                            builder: (ctx) => Padding(
+                              padding: EdgeInsets.fromLTRB(
+                                20,
+                                0,
+                                20,
+                                MediaQuery.of(ctx).viewInsets.bottom + 24,
+                              ),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Drag handle
+                                  Center(
+                                    child: Container(
+                                      margin: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      width: 40,
+                                      height: 4,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.2,
+                                        ),
+                                        borderRadius: BorderRadius.circular(2),
+                                      ),
+                                    ),
+                                  ),
+                                  // Header
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        'Leave Group',
+                                        style: TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      GestureDetector(
+                                        onTap: () => Navigator.pop(ctx, false),
+                                        child: Container(
+                                          width: 28,
+                                          height: 28,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            color: Colors.grey.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.close,
+                                            size: 16,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 20),
+                                  RichText(
+                                    text: TextSpan(
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.white70,
+                                      ),
+                                      children: [
+                                        const TextSpan(
+                                          text:
+                                              'Are you sure you want to leave ',
+                                        ),
+                                        TextSpan(
+                                          text: widget.group['name'] as String,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        const TextSpan(
+                                          text:
+                                              '? You\'ll need an invite code to rejoin.',
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: FilledButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, false),
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor: Colors.white
+                                                .withValues(alpha: 0.1),
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 16,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Cancel',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: FilledButton(
+                                          onPressed: () =>
+                                              Navigator.pop(ctx, true),
+                                          style: FilledButton.styleFrom(
+                                            backgroundColor: Colors.red
+                                                .withValues(alpha: 0.15),
+                                            foregroundColor:
+                                                Colors.red.shade400,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 16,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Leave',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+
+                          if (confirmed != true) return;
+                          await groupProvider.leaveGroup(
+                            widget.group['id'] as String,
+                          );
+                          if (!mounted) return;
+                          Navigator.pop(context); // exit group info page
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text('Left ${widget.group['name']}'),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.logout, size: 18),
+                        label: const Text(
+                          'Leave Group',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.red.withValues(alpha: 0.15),
+                          foregroundColor: Colors.red.shade400,
+                          padding: const EdgeInsets.symmetric(vertical: 20),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 40),
           ],
         ),
@@ -753,7 +989,10 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                                     backgroundColor: Colors.redAccent,
                                   ),
                                   onPressed: () => Navigator.pop(ctx, true),
-                                  child: const Text('Remove', style: TextStyle(color: Colors.white)),
+                                  child: const Text(
+                                    'Remove',
+                                    style: TextStyle(color: Colors.white),
+                                  ),
                                 ),
                               ],
                             ),
@@ -768,9 +1007,9 @@ class _GroupInfoPageState extends State<GroupInfoPage> {
                             userId: m['id'],
                           );
 
-                        if (!mounted) return;
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        messenger.showSnackBar(
+                          if (!mounted) return;
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          messenger.showSnackBar(
                             SnackBar(content: Text('${m['name']} removed')),
                           );
                         },
