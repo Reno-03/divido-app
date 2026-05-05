@@ -734,22 +734,34 @@ class _GroupsPageState extends State<GroupsPage> {
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    if (group['description'] != null &&
-                                        (group['description'] as String)
-                                            .isNotEmpty) ...[
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        group['description'] as String,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: Colors.white.withValues(
-                                            alpha: 0.4,
-                                          ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      (group['description'] != null &&
+                                              (group['description'] as String)
+                                                  .isNotEmpty)
+                                          ? group['description'] as String
+                                          : 'No description',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.white.withValues(
+                                          alpha:
+                                              (group['description'] != null &&
+                                                  (group['description']
+                                                          as String)
+                                                      .isNotEmpty)
+                                              ? 0.4
+                                              : 0.2,
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                        fontStyle:
+                                            (group['description'] != null &&
+                                                (group['description'] as String)
+                                                    .isNotEmpty)
+                                            ? FontStyle.normal
+                                            : FontStyle.italic,
                                       ),
-                                    ],
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                     // ← balance pill lives here
                                     _buildBalancePill(groupId),
                                   ],
