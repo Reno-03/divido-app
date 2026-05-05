@@ -2,6 +2,7 @@ import 'package:divido_app/screens/group_info_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:divido_app/services/current_user.dart';
 import '../providers/group_provider.dart';
@@ -574,7 +575,7 @@ class _GroupsPageState extends State<GroupsPage> {
             ),
           ),
           body: isLoading || _isLoadingBalances
-              ? const Center(child: CircularProgressIndicator())
+              ? _buildShimmerList()
               : groups.isEmpty
               ? Center(
                   child: Column(
@@ -853,6 +854,74 @@ class _GroupsPageState extends State<GroupsPage> {
                 ),
         );
       },
+    );
+  }
+
+  Widget _buildShimmerList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 7,
+      itemBuilder: (_, __) => Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        child: Shimmer.fromColors(
+          baseColor: Colors.grey.shade800,
+          highlightColor: Colors.grey.shade700,
+          child: Row(
+            children: [
+              // avatar circle
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 14),
+              // name + description + pill
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 180,
+                      height: 11,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 80,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
