@@ -262,18 +262,39 @@ class _BalancePageState extends State<BalancePage>
       ..sort((a, b) {
         final aNudged = a['nudged_count_received'] as int;
         final bNudged = b['nudged_count_received'] as int;
+        final aNet = a['net'] as double;
+        final bNet = b['net'] as double;
 
-        // primary: most nudged first
-        if (bNudged != aNudged) return bNudged.compareTo(aNudged);
+        // helper categories
+        // lowest value = highest priority in sorting
+        // 1. most nudged
+        // 2. you owe them
+        // 3. they owe you
+        // 4. settled
+        int category(double net, int nudged) {
+          if (nudged > 0) return 0; 
+          if (net < -0.01) return 1; 
+          if (net > 0.01) return 2; 
+          return 3; 
+        }
 
-        // secondary: largest amount you owe (negative net) first
-        final aOwed = (a['net'] as double)
-            .clamp(double.negativeInfinity, 0)
-            .abs();
-        final bOwed = (b['net'] as double)
-            .clamp(double.negativeInfinity, 0)
-            .abs();
-        return bOwed.compareTo(aOwed);
+        final aCat = category(aNet, aNudged);
+        final bCat = category(bNet, bNudged);
+
+        // different categories → sort by category
+        if (aCat != bCat) return aCat.compareTo(bCat);
+
+        // same category → sort within
+        if (aCat == 0) {
+          return bNudged.compareTo(aNudged); 
+        }
+        if (aCat == 1) {
+          return aNet.compareTo(bNet); 
+        }
+        if (aCat == 2) {
+          return bNet.compareTo(aNet);
+        } 
+        return 0; 
       });
   }
 
