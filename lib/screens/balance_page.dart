@@ -1662,14 +1662,6 @@ class _BalancePageState extends State<BalancePage>
                                           ),
                                           child: Row(
                                             children: [
-                                              Icon(
-                                                Icons.chat_bubble_outline,
-                                                size: 13,
-                                                color: Colors.white.withValues(
-                                                  alpha: 0.8,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
                                               Expanded(
                                                 child: Text(
                                                   entry['status'] as String,
