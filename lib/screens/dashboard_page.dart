@@ -826,19 +826,26 @@ class _DashboardPageState extends State<DashboardPage> {
                                     backgroundColor: const Color(0xFFEEEEEE),
                                     foregroundColor: const Color(0xFF171A3F),
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 20,
+                                      vertical: 16,
                                     ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     elevation: 0,
                                   ),
-                                  child: const Text(
-                                    'Settle Now',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                    ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Text(
+                                        'Settle Now',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Icon(Icons.arrow_forward, size: 20, color: const Color(0xFF171A3F)),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -917,19 +924,26 @@ class _DashboardPageState extends State<DashboardPage> {
                                     backgroundColor: const Color(0xFFEEEEEE),
                                     foregroundColor: const Color(0xFF171A3F),
                                     padding: const EdgeInsets.symmetric(
-                                      vertical: 20,
+                                      vertical: 16,
                                     ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     elevation: 0,
                                   ),
-                                  child: const Text(
-                                    'View All Expenses',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w800,
-                                    ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Text(
+                                        'View All Expenses',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Icon(Icons.arrow_forward, size: 20, color: const Color(0xFF171A3F)),
+                                    ],
                                   ),
                                 ),
                               ),
