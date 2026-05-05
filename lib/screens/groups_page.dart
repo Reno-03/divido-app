@@ -184,7 +184,10 @@ class _GroupsPageState extends State<GroupsPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+                    borderSide: const BorderSide(
+                      color: Colors.blue,
+                      width: 1.5,
+                    ),
                   ),
                   labelStyle: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
@@ -208,7 +211,10 @@ class _GroupsPageState extends State<GroupsPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+                    borderSide: const BorderSide(
+                      color: Colors.blue,
+                      width: 1.5,
+                    ),
                   ),
                   labelStyle: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
@@ -356,7 +362,10 @@ class _GroupsPageState extends State<GroupsPage> {
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.blue, width: 1.5),
+                    borderSide: const BorderSide(
+                      color: Colors.blue,
+                      width: 1.5,
+                    ),
                   ),
                   labelStyle: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
@@ -429,7 +438,7 @@ class _GroupsPageState extends State<GroupsPage> {
       ),
     );
   }
-  
+
   void _confirmLeaveGroup(Map<String, dynamic> group) {
     showDialog(
       context: context,
@@ -474,7 +483,41 @@ class _GroupsPageState extends State<GroupsPage> {
     }
 
     final net = _groupBalances[groupId] ?? 0.0;
-    if (net.abs() < 0.01) return const SizedBox.shrink(); // fully settled
+
+    // if balance is close enough to zero, show "Settled" pill instead of "You owe / owed to you"
+    if (net.abs() < 0.01) {
+      return Container(
+        margin: const EdgeInsets.only(top: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: const BoxDecoration(
+                color: Colors.white54,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 5),
+            const Text(
+              'Settled',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     final bool youOwe = net < 0;
     final color = youOwe ? Colors.redAccent : Colors.greenAccent;
@@ -651,8 +694,8 @@ class _GroupsPageState extends State<GroupsPage> {
                                       : Colors.white.withValues(alpha: 0.08),
                                 ),
                                 child: ClipOval(
-                                  child: avatarUrl != null &&
-                                          avatarUrl.isNotEmpty
+                                  child:
+                                      avatarUrl != null && avatarUrl.isNotEmpty
                                       ? Image.network(
                                           '$avatarUrl?v=${DateTime.now().millisecondsSinceEpoch}',
                                           fit: BoxFit.cover,
@@ -661,8 +704,9 @@ class _GroupsPageState extends State<GroupsPage> {
                                             size: 22,
                                             color: isSelected
                                                 ? Colors.blue.shade300
-                                                : Colors.white
-                                                    .withValues(alpha: 0.4),
+                                                : Colors.white.withValues(
+                                                    alpha: 0.4,
+                                                  ),
                                           ),
                                         )
                                       : Icon(
@@ -670,8 +714,9 @@ class _GroupsPageState extends State<GroupsPage> {
                                           size: 22,
                                           color: isSelected
                                               ? Colors.blue.shade300
-                                              : Colors.white
-                                                  .withValues(alpha: 0.4),
+                                              : Colors.white.withValues(
+                                                  alpha: 0.4,
+                                                ),
                                         ),
                                 ),
                               ),
@@ -697,8 +742,9 @@ class _GroupsPageState extends State<GroupsPage> {
                                         group['description'] as String,
                                         style: TextStyle(
                                           fontSize: 13,
-                                          color: Colors.white
-                                              .withValues(alpha: 0.4),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.4,
+                                          ),
                                         ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
