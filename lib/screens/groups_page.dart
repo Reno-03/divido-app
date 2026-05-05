@@ -573,7 +573,7 @@ class _GroupsPageState extends State<GroupsPage> {
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ),
-          body: isLoading
+          body: isLoading || _isLoadingBalances
               ? const Center(child: CircularProgressIndicator())
               : groups.isEmpty
               ? Center(
