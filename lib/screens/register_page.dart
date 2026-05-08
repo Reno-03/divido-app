@@ -366,7 +366,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       style: TextStyle(color: Colors.white54),
                     ),
                     GestureDetector(
-                      onTap: () => Navigator.pop(context),
+                      onTap: () =>  Navigator.pushReplacementNamed(context, '/login'),
                       child: const Text(
                         'Log In',
                         style: TextStyle(

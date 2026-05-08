@@ -6,6 +6,7 @@ import 'package:divido_app/screens/forgot_password_page.dart';
 import 'package:divido_app/screens/groups_page.dart';
 import 'package:divido_app/screens/home.dart';
 import 'package:divido_app/screens/install_guide_page.dart';
+import 'package:divido_app/screens/landing_page.dart';
 import 'package:divido_app/screens/login.dart';
 import 'package:divido_app/screens/profile_page.dart';
 import 'package:divido_app/screens/register_page.dart';
@@ -67,8 +68,9 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    final initialRoute =
-        Supabase.instance.client.auth.currentSession != null ? '/home' : '/';
+    final initialRoute = Supabase.instance.client.auth.currentSession != null
+        ? '/home'
+        : '/';
 
     return MultiProvider(
       providers: [
@@ -112,9 +114,9 @@ class _MyAppState extends State<MyApp> {
         ),
         initialRoute: initialRoute,
         routes: {
-          '/': (context) => const LoginPage(),
-          '/home': (context) => const HomePage(),
+          '/': (context) => const LandingPage(),
           '/login': (context) => const LoginPage(),
+          '/home': (context) => const HomePage(),
           '/register': (context) => const RegisterPage(),
           '/profile': (context) => const ProfilePage(),
           '/avatar-setup': (context) => const AvatarSetupPage(),
