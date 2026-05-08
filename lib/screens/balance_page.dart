@@ -80,7 +80,10 @@ class _BalancePageState extends State<BalancePage>
     if (currentCount >= 3) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Max nudges reached for $targetName')),
+          SnackBar(content: Text('Max nudges reached for $targetName'),
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(bottom: 0, left: 16, right: 16),
+          ),
         );
       }
       return;
@@ -96,6 +99,8 @@ class _BalancePageState extends State<BalancePage>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('You can nudge $targetName again in ${remaining}h'),
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.only(bottom: 0, left: 16, right: 16),
             ),
           );
         }
@@ -116,6 +121,7 @@ class _BalancePageState extends State<BalancePage>
         SnackBar(
           content: Text('$targetName has been nudged! 🔔'),
           behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(bottom: 0, left: 16, right: 16),
         ),
       );
       setState(() {
@@ -690,8 +696,8 @@ class _BalancePageState extends State<BalancePage>
                 Expanded(
                   child: FilledButton(
                     onPressed: () async {
-                      Navigator.pop(sheetCtx); 
-                      Navigator.pop(ctx); 
+                      Navigator.pop(sheetCtx);
+                      Navigator.pop(ctx);
 
                       await supabase
                           .from('payments')
@@ -1647,6 +1653,12 @@ class _BalancePageState extends State<BalancePage>
                                           const SnackBar(
                                             content: Text(
                                               'Invite code copied!',
+                                            ),
+                                            behavior: SnackBarBehavior.floating,
+                                            margin: EdgeInsets.only(
+                                              bottom: 0,
+                                              left: 16,
+                                              right: 16,
                                             ),
                                           ),
                                         );

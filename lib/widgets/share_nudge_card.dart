@@ -47,7 +47,10 @@ class _ShareNudgeCardState extends State<ShareNudgeCard> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Link copied. Paste it anywhere!')),
+          const SnackBar(content: Text('Link copied. Paste it anywhere!'),
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(bottom: 0, left: 16, right: 16),
+          ),
         );
       }
       return;

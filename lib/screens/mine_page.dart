@@ -41,7 +41,11 @@ class _MinePageState extends State<MinePage> {
       provider.toggleExpensePaidLocally(expenseId, current);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to update. Please try again.')),
+          const SnackBar(
+            content: Text('Failed to update. Please try again.'),
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.only(bottom: 0, left: 16, right: 16),
+          ),
         );
       }
     }
@@ -175,6 +179,8 @@ class _MinePageState extends State<MinePage> {
                           messenger.showSnackBar(
                             const SnackBar(
                               content: Text('Failed to delete expense.'),
+                              behavior: SnackBarBehavior.floating,
+                              margin: EdgeInsets.only(bottom: 0, left: 16, right: 16),
                             ),
                           );
                         }
@@ -353,6 +359,12 @@ class _MinePageState extends State<MinePage> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text('Invite code copied!'),
+                                    behavior: SnackBarBehavior.floating,
+                                    margin: EdgeInsets.only(
+                                      bottom: 0,
+                                      left: 16,
+                                      right: 16,
+                                    ),
                                   ),
                                 );
                               },

@@ -150,6 +150,7 @@ class HomePageState extends State<HomePage> {
         const SnackBar(
           content: Text('Invite someone to the group to create an expense.'),
           behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.only(bottom: 0, left: 16, right: 16),
         ),
       );
       return;

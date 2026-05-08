@@ -500,6 +500,12 @@ class _AllPageState extends State<AllPage> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text('Invite code copied!'),
+                                      behavior: SnackBarBehavior.floating,
+                                      margin: EdgeInsets.only(
+                                        bottom: 0,
+                                        left: 16,
+                                        right: 16,
+                                      ),
                                     ),
                                   );
                                 },
