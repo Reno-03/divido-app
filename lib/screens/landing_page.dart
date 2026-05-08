@@ -20,7 +20,7 @@ class _LandingPageState extends State<LandingPage>
   final List<_SlideData> _slides = const [
     _SlideData(
       icon: Icons.receipt_long_outlined,
-      title: 'Split bills,\nstress-free.',
+      title: 'Split expenses,\nstress-free.',
       subtitle:
           'Add expenses, split them equally or custom — Divido handles the math.',
       gradient: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
