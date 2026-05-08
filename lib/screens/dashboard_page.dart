@@ -1,6 +1,7 @@
 import 'package:divido_app/providers/status_provider.dart';
 import 'package:divido_app/screens/status_chip.dart';
 import 'package:divido_app/widgets/breathing_logo.dart';
+import 'package:divido_app/widgets/gcash_nudge_card.dart';
 import 'package:divido_app/widgets/share_nudge_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -663,8 +664,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
                       // Install app nudge card
                       InstallNudgeCard(),
+
                       const SizedBox(height: 10),
+
                       ShareNudgeCard(),
+
+                      const SizedBox(height: 10),
+
+                      GcashNudgeCard(),
 
                       const SizedBox(height: 20),
 
