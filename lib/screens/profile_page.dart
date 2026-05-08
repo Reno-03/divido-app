@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:divido_app/providers/status_provider.dart';
 import 'package:divido_app/screens/status_chip.dart';
