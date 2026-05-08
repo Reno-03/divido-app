@@ -52,11 +52,11 @@ class _LandingPageState extends State<LandingPage>
 
     _fadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 800),
     );
     _slideController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 800),
     );
 
     _fadeAnimation = CurvedAnimation(
@@ -82,10 +82,11 @@ class _LandingPageState extends State<LandingPage>
 
   void _onPageChanged(int index) {
     setState(() => _currentPage = index);
-    _fadeController.reset();
+
     _slideController.reset();
-    _fadeController.forward();
-    _slideController.forward();
+    Future.delayed(const Duration(milliseconds: 150), () {
+      if (mounted) _slideController.forward();
+    });
   }
 
   @override
@@ -95,8 +96,8 @@ class _LandingPageState extends State<LandingPage>
     return Scaffold(
       body: AnimatedContainer(
         duration: const Duration(milliseconds: 600),
-        width: double.infinity, 
-        height: double.infinity, 
+        width: double.infinity,
+        height: double.infinity,
         curve: Curves.easeInOut,
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -194,7 +195,9 @@ class _LandingPageState extends State<LandingPage>
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 600),
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(colors: slide.gradient),
+                                gradient: LinearGradient(
+                                  colors: slide.gradient,
+                                ),
                                 borderRadius: BorderRadius.circular(14),
                                 boxShadow: [
                                   BoxShadow(
@@ -237,7 +240,9 @@ class _LandingPageState extends State<LandingPage>
                               onPressed: () =>
                                   Navigator.pushNamed(context, '/register'),
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                ),
                                 side: BorderSide(
                                   color: Colors.white.withValues(alpha: 0.2),
                                 ),
@@ -284,64 +289,58 @@ class _SlideView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: fadeAnimation,
-      child: SlideTransition(
-        position: slideAnimation,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Icon blob
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      data.gradient[0].withValues(alpha: 0.3),
-                      data.gradient[1].withValues(alpha: 0.15),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: data.gradient[0].withValues(alpha: 0.4),
-                    width: 1.5,
-                  ),
-                ),
-                child: Icon(data.icon, size: 44, color: data.gradient[0]),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Icon blob
+          Container(
+            width: 100,
+            height: 100,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  data.gradient[0].withValues(alpha: 0.3),
+                  data.gradient[1].withValues(alpha: 0.15),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-
-              const SizedBox(height: 32),
-
-              Text(
-                data.title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  height: 1.15,
-                ),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: data.gradient[0].withValues(alpha: 0.4),
+                width: 1.5,
               ),
-
-              const SizedBox(height: 16),
-
-              Text(
-                data.subtitle,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  color: Colors.white.withValues(alpha: 0.55),
-                  height: 1.6,
-                ),
-              ),
-            ],
+            ),
+            child: Icon(data.icon, size: 44, color: data.gradient[0]),
           ),
-        ),
+    
+          const SizedBox(height: 32),
+    
+          Text(
+            data.title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              height: 1.15,
+            ),
+          ),
+    
+          const SizedBox(height: 16),
+    
+          Text(
+            data.subtitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 15,
+              color: Colors.white.withValues(alpha: 0.55),
+              height: 1.6,
+            ),
+          ),
+        ],
       ),
     );
   }
