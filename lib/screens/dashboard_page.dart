@@ -1,5 +1,6 @@
 import 'package:divido_app/providers/status_provider.dart';
 import 'package:divido_app/screens/status_chip.dart';
+import 'package:divido_app/widgets/breathing_logo.dart';
 import 'package:divido_app/widgets/share_nudge_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -620,7 +621,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     children: [
                       const SizedBox(height: 20),
 
-                      Center(child: const _BreathingLogo()),
+                      Center(child: const BreathingLogo()),
 
                       const SizedBox(height: 20),
 
@@ -1773,51 +1774,6 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
             ),
-    );
-  }
-}
-
-class _BreathingLogo extends StatefulWidget {
-  const _BreathingLogo();
-
-  @override
-  State<_BreathingLogo> createState() => _BreathingLogoState();
-}
-
-class _BreathingLogoState extends State<_BreathingLogo>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat(reverse: true);
-
-    _scale = Tween<double>(
-      begin: 0.92,
-      end: 1.08,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _scale,
-      builder: (_, child) => Transform.scale(scale: _scale.value, child: child),
-      child: Image.asset(
-        'assets/divido_logo_only.png', // your static PNG
-        height: 100,
-      ),
     );
   }
 }
