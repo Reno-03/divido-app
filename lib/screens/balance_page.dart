@@ -860,8 +860,8 @@ class _BalancePageState extends State<BalancePage>
                           net.abs() < 0.01
                               ? 'All settled up'
                               : net > 0
-                              ? 'Owes you ₱${net.abs().toStringAsFixed(2)}'
-                              : 'You owe ₱${net.abs().toStringAsFixed(2)}',
+                              ? 'Owes you ₱ ${net.abs().toStringAsFixed(2)}'
+                              : 'You owe ₱ ${net.abs().toStringAsFixed(2)}',
                           style: TextStyle(
                             fontSize: 13,
                             color: net.abs() < 0.01
@@ -1031,7 +1031,7 @@ class _BalancePageState extends State<BalancePage>
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Text(
-                                            '₱${amount.toStringAsFixed(2)}',
+                                            '₱ ${amount.toStringAsFixed(2)}',
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 15,

@@ -1301,7 +1301,7 @@ class _DashboardPageState extends State<DashboardPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'P $amountStr',
+                '₱ $amountStr',
                 style: TextStyle(
                   color: amountColor,
                   fontSize: 20,
@@ -1406,7 +1406,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           const SizedBox(width: 16),
           Text(
-            'P $formattedTotal',
+            '₱ $formattedTotal',
             style: const TextStyle(
               color: Colors.white,
               fontSize: 26, // striking size
@@ -1532,7 +1532,7 @@ class _DashboardPageState extends State<DashboardPage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'P $formattedOwnAmt',
+                '₱ $formattedOwnAmt',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 26,
@@ -1540,7 +1540,7 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
               Text(
-                'total: P $formattedTotal',
+                'total: ₱ $formattedTotal',
                 style: const TextStyle(color: Colors.white54, fontSize: 12),
               ),
             ],
