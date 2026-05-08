@@ -1,11 +1,13 @@
 import 'package:divido_app/constants/color_options.dart';
 import 'package:divido_app/providers/expense_provider.dart';
 import 'package:divido_app/providers/group_provider.dart';
+import 'package:divido_app/widgets/gcash_tap_hint.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:divido_app/providers/status_provider.dart';
 import 'package:divido_app/screens/status_chip.dart';
@@ -164,7 +166,8 @@ class _ProfilePageState extends State<ProfilePage> {
                   onPressed: isSaving
                       ? null
                       : () async {
-                          final expenseProvider = context.read<ExpenseProvider>();
+                          final expenseProvider = context
+                              .read<ExpenseProvider>();
                           setModalState(() => isSaving = true);
 
                           await Supabase.instance.client
@@ -205,7 +208,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 20),
                     backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,  
+                    foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -334,9 +337,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
             CurrentUser.instance.status = value.isEmpty ? null : value;
 
-            statusProvider.setStatus(
-              value.isEmpty ? null : value,
-            );
+            statusProvider.setStatus(value.isEmpty ? null : value);
 
             if (ctx.mounted) Navigator.pop(ctx);
             setState(() {});
@@ -1111,13 +1112,10 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
               ),
             ),
-            // _infoTile(
-            //   Icons.phone_outlined,
-            //   'Contact',
-            //   user.contactNumber ?? '—',
-            // ),
-            // const SizedBox(height: 12),
+
             const SizedBox(height: 12),
+
+           GcashTapHint(),
 
             // Color swatch
             Container(
