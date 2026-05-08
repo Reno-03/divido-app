@@ -37,13 +37,13 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
           children: [
             // Version badge
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(50),
               ),
               child: const Text(
-                'v1.1.0 — Installation Guide & UI Improvements',
+                'v1.2.0 — Share Divido + Forgot Password',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.white,
@@ -52,19 +52,21 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
               ),
             ),
             const SizedBox(height: 14),
-
-            _section('🆕 New', [
-              'Add Copyable Invite Code in fallback pages for All and Mine expenses when there are no expenses yet',
-              'Add optional card tile for installing Divido as a PWA',
-              'Add Install App guide page for Android, iOS, and Desktop',
+            _section('🌟 New', [
+              'Forgot your password? You can now reset it from the login screen',
+              'Share Divido with friends! Tap the share button on the dashboard to send an invite',
+              'GCash support hints! Helpful nudges to make settling easier',
             ]),
-
             const SizedBox(height: 10),
-
             _section('⚡ Optimized', [
-              'Center vertically all fallback pages on Home',
-              'Add color to balance cards and improve overall UX',
-              'Change background color for Drawer in Home page',
+              'Balance cards are now sorted. Who you owe comes first, then who owes you',
+              'Groups now show a "Settled" badge when everything\'s cleared between you',
+              'Peso sign updated to ₱ throughout the app with proper formatting',
+              'Various UI fixes. Smoother groups page, better snack bar placement, and more',
+            ]),
+            const SizedBox(height: 10),
+            _section('🗑️ Removed', [
+              'Redundant share and note buttons on the groups and balance screens',
             ]),
 
             const SizedBox(height: 16),
