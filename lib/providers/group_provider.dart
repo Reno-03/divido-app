@@ -27,6 +27,15 @@ class GroupProvider extends ChangeNotifier {
 
   String? _lastAvatarUrl;
 
+  // groupId -> net balance (positive = owed to you, negative = you owe)
+  Map<String, double> _groupBalances = {};
+  Map<String, double> get groupBalances => _groupBalances;
+
+  void setGroupBalances(Map<String, double> balances) {
+    _groupBalances = balances;
+    notifyListeners();
+  }
+
   // ── Persistence Helpers ──────────────────────────────────────────
   String? get _prefKey {
     final uid = CurrentUser.instance.id;
@@ -61,7 +70,7 @@ class GroupProvider extends ChangeNotifier {
       final user = e['profiles'];
 
       return {
-        'id': user['id'], // IMPORTANT
+        'id': user['id'],
         'name': '${user['firstname'] ?? ''} ${user['lastname'] ?? ''}'.trim(),
         'avatar_url': user['avatar_url'],
         'color': user['color'],
@@ -112,7 +121,6 @@ class GroupProvider extends ChangeNotifier {
           );
           await _fetchMembers(_selectedGroup!['id'] as String);
         } else {
-          // refresh selected group data (e.g. avatar_url may have changed)
           final refreshed = _groups.firstWhere(
             (g) => g['id'] == currentSelectedId,
           );
@@ -169,7 +177,6 @@ class GroupProvider extends ChangeNotifier {
         .select()
         .single();
 
-    // auto-add creator as member
     await _supabase.from('group_members').insert({
       'group_id': group['id'],
       'user_id': userId,
@@ -183,7 +190,6 @@ class GroupProvider extends ChangeNotifier {
   Future<String?> joinGroup(String inviteCode) async {
     final userId = CurrentUser.instance.id!;
 
-    // find group by invite code
     final group = await _supabase
         .from('groups')
         .select('id, name')
@@ -192,7 +198,6 @@ class GroupProvider extends ChangeNotifier {
 
     if (group == null) return 'Invalid invite code.';
 
-    // check if already a member
     final existing = await _supabase
         .from('group_members')
         .select('id')
@@ -202,7 +207,6 @@ class GroupProvider extends ChangeNotifier {
 
     if (existing != null) return 'You are already in this group.';
 
-    // join
     await _supabase.from('group_members').insert({
       'group_id': group['id'],
       'user_id': userId,
@@ -211,7 +215,7 @@ class GroupProvider extends ChangeNotifier {
     await fetchGroups();
     await selectGroup(group['id'] as String);
 
-    return null; // null = success
+    return null;
   }
 
   // ── leave a group ─────────────────────────────────────────────
@@ -249,7 +253,6 @@ class GroupProvider extends ChangeNotifier {
 
     await fetchGroupMembers(groupId);
 
-    // If you removed current selected member view, refresh selected group members
     if (_selectedGroup?['id'] == groupId) {
       await selectGroup(groupId);
     }
@@ -262,6 +265,7 @@ class GroupProvider extends ChangeNotifier {
     _groups = [];
     _selectedGroup = null;
     _members = [];
+    _groupBalances = {};
     _isLoading = false;
     notifyListeners();
   }

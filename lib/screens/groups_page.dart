@@ -1,6 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:divido_app/screens/group_info_page.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -16,11 +16,7 @@ class GroupsPage extends StatefulWidget {
 
 class _GroupsPageState extends State<GroupsPage> {
   final _supabase = Supabase.instance.client;
-
-  // groupId -> net balance (positive = owed to you, negative = you owe)
-  Map<String, double> _groupBalances = {};
-  bool _isLoadingBalances = false;
-  List<Map<String, dynamic>> _sortedGroups = [];
+  int _balancesRequestId = 0;
 
   @override
   void initState() {
@@ -30,117 +26,106 @@ class _GroupsPageState extends State<GroupsPage> {
       if (groupProvider.groups.isEmpty) {
         await groupProvider.fetchGroups();
       }
-      // pre-populate with unsorted so there's no empty→unsorted→sorted jump
-      setState(() {
-        _sortedGroups = [...groupProvider.groups];
-      });
       _fetchAllGroupBalances();
+    });
+  }
+
+  List<Map<String, dynamic>> _sorted(
+    List<Map<String, dynamic>> groups,
+    Map<String, double> balances,
+  ) {
+    if (balances.isEmpty) return groups;
+
+    int category(double net) {
+      if (net < -0.01) return 0; // You owe
+      if (net > 0.01) return 1; // Owes you
+      return 2; // Settled
+    }
+
+    return [...groups]..sort((a, b) {
+      final aNet = balances[a['id'] as String] ?? 0.0;
+      final bNet = balances[b['id'] as String] ?? 0.0;
+
+      final aCat = category(aNet);
+      final bCat = category(bNet);
+
+      if (aCat != bCat) return aCat.compareTo(bCat);
+      return bNet.abs().compareTo(aNet.abs());
     });
   }
 
   Future<void> _fetchAllGroupBalances() async {
     if (!mounted) return;
-    final groups = Provider.of<GroupProvider>(context, listen: false).groups;
+    final groupProvider = Provider.of<GroupProvider>(context, listen: false);
+    final groups = groupProvider.groups;
     if (groups.isEmpty) return;
 
     final currentUserId = CurrentUser.instance.id;
     if (currentUserId == null) return;
 
-    setState(() => _isLoadingBalances = true);
-
+    final requestId = ++_balancesRequestId;
     final groupIds = groups.map((g) => g['id'] as String).toList();
 
-    // Run all 4 queries in parallel across all groups at once
-    final results = await Future.wait([
-      // Breakdowns on expenses YOU own — others owe you
-      _supabase
-          .from('expense_breakdowns')
-          .select('amount, expenses!inner(owner_id, group_id)')
-          .eq('expenses.owner_id', currentUserId)
-          .neq('payer_id', currentUserId)
-          .filter('expenses.group_id', 'in', groupIds),
+    try {
+      final results = await Future.wait([
+        _supabase
+            .from('expense_breakdowns')
+            .select('amount, expenses!inner(owner_id, group_id)')
+            .eq('expenses.owner_id', currentUserId)
+            .neq('payer_id', currentUserId)
+            .filter('expenses.group_id', 'in', groupIds),
 
-      // Breakdowns where YOU are the payer — you owe the expense owner
-      _supabase
-          .from('expense_breakdowns')
-          .select('amount, expenses!inner(owner_id, group_id)')
-          .eq('payer_id', currentUserId)
-          .neq('expenses.owner_id', currentUserId)
-          .filter('expenses.group_id', 'in', groupIds),
+        _supabase
+            .from('expense_breakdowns')
+            .select('amount, expenses!inner(owner_id, group_id)')
+            .eq('payer_id', currentUserId)
+            .neq('expenses.owner_id', currentUserId)
+            .filter('expenses.group_id', 'in', groupIds),
 
-      // Payments YOU made to others (reduces what you owe)
-      _supabase
-          .from('payments')
-          .select('amount, group_id')
-          .eq('payer_id', currentUserId)
-          .filter('group_id', 'in', groupIds),
+        _supabase
+            .from('payments')
+            .select('amount, group_id')
+            .eq('payer_id', currentUserId)
+            .filter('group_id', 'in', groupIds),
 
-      // Payments others made TO YOU (reduces what they owe)
-      _supabase
-          .from('payments')
-          .select('amount, group_id')
-          .eq('payee_id', currentUserId)
-          .filter('group_id', 'in', groupIds),
-    ]);
+        _supabase
+            .from('payments')
+            .select('amount, group_id')
+            .eq('payee_id', currentUserId)
+            .filter('group_id', 'in', groupIds),
+      ]);
 
-    final Map<String, double> balances = {for (var id in groupIds) id: 0.0};
+      if (!mounted || requestId != _balancesRequestId) return;
 
-    // Others owe you → positive
-    for (final row in results[0] as List) {
-      final gid = row['expenses']['group_id'] as String;
-      balances[gid] = (balances[gid] ?? 0) + (row['amount'] as num).toDouble();
-    }
+      final Map<String, double> balances = {for (var id in groupIds) id: 0.0};
 
-    // You owe others → negative
-    for (final row in results[1] as List) {
-      final gid = row['expenses']['group_id'] as String;
-      balances[gid] = (balances[gid] ?? 0) - (row['amount'] as num).toDouble();
-    }
+      for (final row in results[0] as List) {
+        final gid = row['expenses']['group_id'] as String;
+        balances[gid] = (balances[gid] ?? 0) + (row['amount'] as num).toDouble();
+      }
 
-    // Payments you made → you owed less, so positive adjustment
-    for (final row in results[2] as List) {
-      final gid = row['group_id'] as String;
-      balances[gid] = (balances[gid] ?? 0) + (row['amount'] as num).toDouble();
-    }
+      for (final row in results[1] as List) {
+        final gid = row['expenses']['group_id'] as String;
+        balances[gid] = (balances[gid] ?? 0) - (row['amount'] as num).toDouble();
+      }
 
-    // Payments received → they owed less, so negative adjustment
-    for (final row in results[3] as List) {
-      final gid = row['group_id'] as String;
-      balances[gid] = (balances[gid] ?? 0) - (row['amount'] as num).toDouble();
-    }
+      for (final row in results[2] as List) {
+        final gid = row['group_id'] as String;
+        balances[gid] = (balances[gid] ?? 0) + (row['amount'] as num).toDouble();
+      }
 
-    if (mounted) {
-      final sortedGroups = [...groups]
-        ..sort((a, b) {
-          final aNet = balances[a['id'] as String] ?? 0.0;
-          final bNet = balances[b['id'] as String] ?? 0.0;
+      for (final row in results[3] as List) {
+        final gid = row['group_id'] as String;
+        balances[gid] = (balances[gid] ?? 0) - (row['amount'] as num).toDouble();
+      }
 
-          int category(double net) {
-            if (net < -0.01) return 0; // you owe
-            if (net > 0.01) return 1; // owes you
-            return 2; // settled
-          }
-
-          final aCat = category(aNet);
-          final bCat = category(bNet);
-
-          if (aCat != bCat) return aCat.compareTo(bCat);
-          return bNet.abs().compareTo(aNet.abs());
-        });
-
-      setState(() {
-        _groupBalances = balances;
-        _sortedGroups = sortedGroups; // ← new state variable
-        _isLoadingBalances = false;
-      });
+      groupProvider.setGroupBalances(balances);
+    } catch (e) {
+      debugPrint('balances fetch error: $e');
     }
   }
 
   void _showCreateGroupSheet() {
-    final nameController = TextEditingController();
-    final descController = TextEditingController();
-    bool isSaving = false;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -150,173 +135,13 @@ class _GroupsPageState extends State<GroupsPage> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            0,
-            20,
-            MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 12),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Create Group',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(ctx),
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.grey.withValues(alpha: 0.2),
-                      ),
-                      child: const Icon(Icons.close, size: 16),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: nameController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: 'Group Name',
-                  prefixIcon: const Icon(Icons.group_outlined, size: 20),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Colors.blue,
-                      width: 1.5,
-                    ),
-                  ),
-                  labelStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: descController,
-                decoration: InputDecoration(
-                  labelText: 'Description (optional)',
-                  prefixIcon: const Icon(Icons.edit_note_outlined, size: 20),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Colors.blue,
-                      width: 1.5,
-                    ),
-                  ),
-                  labelStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                          final messenger = ScaffoldMessenger.of(context);
-                          final groupProvider = context.read<GroupProvider>();
-                          final name = nameController.text.trim();
-                          if (name.isEmpty) return;
-                          setModalState(() => isSaving = true);
-                          try {
-                            await groupProvider.createGroup(
-                              name,
-                              description: descController.text.trim().isEmpty
-                                  ? null
-                                  : descController.text.trim(),
-                            );
-                            if (ctx.mounted) Navigator.pop(ctx);
-                            _fetchAllGroupBalances();
-                          } catch (e) {
-                            if (!mounted) return;
-                            messenger.showSnackBar(
-                              SnackBar(content: Text('Error: $e')),
-                            );
-                          } finally {
-                            setModalState(() => isSaving = false);
-                          }
-                        },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF171A3F),
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: isSaving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Color(0xFF171A3F),
-                          ),
-                        )
-                      : const Text(
-                          'Create Group',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      builder: (_) => CreateGroupSheet(
+        onCreated: _fetchAllGroupBalances,
       ),
     );
   }
 
   void _showJoinGroupSheet() {
-    final codeController = TextEditingController();
-    bool isJoining = false;
-    String? errorMessage;
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -326,150 +151,17 @@ class _GroupsPageState extends State<GroupsPage> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Padding(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            0,
-            20,
-            MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(vertical: 12),
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Join Group',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(ctx),
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.grey.withValues(alpha: 0.2),
-                      ),
-                      child: const Icon(Icons.close, size: 16),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: codeController,
-                autofocus: true,
-                textCapitalization: TextCapitalization.characters,
-                decoration: InputDecoration(
-                  labelText: 'Invite Code',
-                  hintText: 'e.g. A1B2C3D4',
-                  prefixIcon: const Icon(Icons.key_outlined, size: 20),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: Colors.blue,
-                      width: 1.5,
-                    ),
-                  ),
-                  labelStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                  ),
-                ),
-              ),
-              if (errorMessage != null) ...[
-                const SizedBox(height: 10),
-                Text(
-                  errorMessage!,
-                  style: const TextStyle(color: Colors.redAccent, fontSize: 13),
-                ),
-              ],
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: isJoining
-                      ? null
-                      : () async {
-                          final code = codeController.text.trim();
-                          if (code.isEmpty) return;
-                          setModalState(() {
-                            isJoining = true;
-                            errorMessage = null;
-                          });
-                          final error = await Provider.of<GroupProvider>(
-                            context,
-                            listen: false,
-                          ).joinGroup(code);
-                          if (error != null) {
-                            setModalState(() {
-                              errorMessage = error;
-                              isJoining = false;
-                            });
-                          } else {
-                            if (ctx.mounted) Navigator.pop(ctx);
-                            _fetchAllGroupBalances();
-                          }
-                        },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF171A3F),
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: isJoining
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Color(0xFF171A3F),
-                          ),
-                        )
-                      : const Text(
-                          'Join Group',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      builder: (_) => JoinGroupSheet(
+        onJoined: _fetchAllGroupBalances,
       ),
     );
   }
 
-  /// The balance pill shown under the group name
-  Widget _buildBalancePill(String groupId) {
-    if (_isLoadingBalances) {
+  Widget _buildBalancePill(
+    String groupId,
+    Map<String, double> cachedBalances,
+  ) {
+    if (!cachedBalances.containsKey(groupId)) {
       return Container(
         margin: const EdgeInsets.only(top: 6),
         width: 80,
@@ -481,9 +173,8 @@ class _GroupsPageState extends State<GroupsPage> {
       );
     }
 
-    final net = _groupBalances[groupId] ?? 0.0;
+    final net = cachedBalances[groupId] ?? 0.0;
 
-    // if balance is close enough to zero, show "Settled" pill instead of "You owe / owed to you"
     if (net.abs() < 0.01) {
       return Container(
         margin: const EdgeInsets.only(top: 6),
@@ -561,10 +252,8 @@ class _GroupsPageState extends State<GroupsPage> {
   Widget build(BuildContext context) {
     return Consumer<GroupProvider>(
       builder: (context, groupProvider, _) {
-        final groups = _sortedGroups.isEmpty
-            ? groupProvider
-                  .groups // fallback while balances are loading
-            : _sortedGroups; // sorted once balances are ready
+        final rawGroups = groupProvider.groups;
+        final groups = _sorted(rawGroups, groupProvider.groupBalances);
         final isLoading = groupProvider.isLoading;
 
         return Scaffold(
@@ -574,7 +263,7 @@ class _GroupsPageState extends State<GroupsPage> {
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ),
-          body: isLoading || _isLoadingBalances
+          body: isLoading && groups.isEmpty
               ? _buildShimmerList()
               : groups.isEmpty
               ? Center(
@@ -664,9 +353,19 @@ class _GroupsPageState extends State<GroupsPage> {
                           groupProvider.selectedGroupId == groupId;
                       final avatarUrl = group['avatar_url'] as String?;
 
+                      Widget fallbackIcon = Icon(
+                        Icons.group,
+                        size: 22,
+                        color: isSelected
+                            ? Colors.blue.shade300
+                            : Colors.white.withValues(alpha: 0.4),
+                      );
+
                       return GestureDetector(
                         onTap: () {
-                          groupProvider.selectGroup(groupId);
+                          if (!isSelected) {
+                            groupProvider.selectGroup(groupId);
+                          }
                           Navigator.pop(context);
                         },
                         child: Container(
@@ -685,7 +384,6 @@ class _GroupsPageState extends State<GroupsPage> {
                           ),
                           child: Row(
                             children: [
-                              // group avatar
                               Container(
                                 width: 48,
                                 height: 48,
@@ -696,35 +394,24 @@ class _GroupsPageState extends State<GroupsPage> {
                                       : Colors.white.withValues(alpha: 0.08),
                                 ),
                                 child: ClipOval(
-                                  child:
-                                      avatarUrl != null && avatarUrl.isNotEmpty
-                                      ? Image.network(
-                                          '$avatarUrl?v=${DateTime.now().millisecondsSinceEpoch}',
+                                  child: avatarUrl != null && avatarUrl.isNotEmpty
+                                      ? CachedNetworkImage(
+                                          imageUrl:
+                                              '$avatarUrl?v=${groupProvider.groupAvatarVersion}',
+                                          width: 48,
+                                          height: 48,
                                           fit: BoxFit.cover,
-                                          errorBuilder: (_, _, _) => Icon(
-                                            Icons.group,
-                                            size: 22,
-                                            color: isSelected
-                                                ? Colors.blue.shade300
-                                                : Colors.white.withValues(
-                                                    alpha: 0.4,
-                                                  ),
-                                          ),
+                                          memCacheWidth: 144,
+                                          memCacheHeight: 144,
+                                          fadeInDuration: Duration.zero,
+                                          errorWidget: (_, _, _) => fallbackIcon,
+                                          placeholder: (_, _) => fallbackIcon,
                                         )
-                                      : Icon(
-                                          Icons.group,
-                                          size: 22,
-                                          color: isSelected
-                                              ? Colors.blue.shade300
-                                              : Colors.white.withValues(
-                                                  alpha: 0.4,
-                                                ),
-                                        ),
+                                      : fallbackIcon,
                                 ),
                               ),
                               const SizedBox(width: 14),
 
-                              // name + description + balance pill
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -748,29 +435,31 @@ class _GroupsPageState extends State<GroupsPage> {
                                         color: Colors.white.withValues(
                                           alpha:
                                               (group['description'] != null &&
-                                                  (group['description']
-                                                          as String)
-                                                      .isNotEmpty)
-                                              ? 0.4
-                                              : 0.2,
+                                                      (group['description']
+                                                              as String)
+                                                          .isNotEmpty)
+                                                  ? 0.4
+                                                  : 0.2,
                                         ),
                                         fontStyle:
                                             (group['description'] != null &&
-                                                (group['description'] as String)
-                                                    .isNotEmpty)
-                                            ? FontStyle.normal
-                                            : FontStyle.italic,
+                                                    (group['description']
+                                                            as String)
+                                                        .isNotEmpty)
+                                                ? FontStyle.normal
+                                                : FontStyle.italic,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                    // ← balance pill lives here
-                                    _buildBalancePill(groupId),
+                                    _buildBalancePill(
+                                      groupId,
+                                      groupProvider.groupBalances,
+                                    ),
                                   ],
                                 ),
                               ),
 
-                              // action buttons
                               GestureDetector(
                                 onTap: () {
                                   Navigator.push(
@@ -874,7 +563,6 @@ class _GroupsPageState extends State<GroupsPage> {
           highlightColor: Colors.grey.shade700,
           child: Row(
             children: [
-              // avatar circle
               Container(
                 width: 48,
                 height: 48,
@@ -884,7 +572,6 @@ class _GroupsPageState extends State<GroupsPage> {
                 ),
               ),
               const SizedBox(width: 14),
-              // name + description + pill
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -921,6 +608,363 @@ class _GroupsPageState extends State<GroupsPage> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class CreateGroupSheet extends StatefulWidget {
+  final VoidCallback onCreated;
+
+  const CreateGroupSheet({super.key, required this.onCreated});
+
+  @override
+  State<CreateGroupSheet> createState() => _CreateGroupSheetState();
+}
+
+class _CreateGroupSheetState extends State<CreateGroupSheet> {
+  final _nameController = TextEditingController();
+  final _descController = TextEditingController();
+  bool _isSaving = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        0,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Create Group',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.grey.withValues(alpha: 0.2),
+                  ),
+                  child: const Icon(Icons.close, size: 16),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _nameController,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: 'Group Name',
+              prefixIcon: const Icon(Icons.group_outlined, size: 20),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.2),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Colors.blue,
+                  width: 1.5,
+                ),
+              ),
+              labelStyle: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _descController,
+            decoration: InputDecoration(
+              labelText: 'Description (optional)',
+              prefixIcon: const Icon(Icons.edit_note_outlined, size: 20),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.2),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Colors.blue,
+                  width: 1.5,
+                ),
+              ),
+              labelStyle: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _isSaving
+                  ? null
+                  : () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      final groupProvider = context.read<GroupProvider>();
+                      final name = _nameController.text.trim();
+                      if (name.isEmpty) return;
+
+                      setState(() => _isSaving = true);
+                      try {
+                        await groupProvider.createGroup(
+                          name,
+                          description: _descController.text.trim().isEmpty
+                              ? null
+                              : _descController.text.trim(),
+                        );
+                        if (mounted) Navigator.pop(context);
+                        widget.onCreated();
+                      } catch (e) {
+                        if (!mounted) return;
+                        messenger.showSnackBar(
+                          SnackBar(content: Text('Error: $e')),
+                        );
+                      } finally {
+                        if (mounted) setState(() => _isSaving = false);
+                      }
+                    },
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF171A3F),
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF171A3F),
+                      ),
+                    )
+                  : const Text(
+                      'Create Group',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class JoinGroupSheet extends StatefulWidget {
+  final VoidCallback onJoined;
+
+  const JoinGroupSheet({super.key, required this.onJoined});
+
+  @override
+  State<JoinGroupSheet> createState() => _JoinGroupSheetState();
+}
+
+class _JoinGroupSheetState extends State<JoinGroupSheet> {
+  final _codeController = TextEditingController();
+  bool _isJoining = false;
+  String? _errorMessage;
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        0,
+        20,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Join Group',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.grey.withValues(alpha: 0.2),
+                  ),
+                  child: const Icon(Icons.close, size: 16),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _codeController,
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              labelText: 'Invite Code',
+              hintText: 'e.g. A1B2C3D4',
+              prefixIcon: const Icon(Icons.key_outlined, size: 20),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.2),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: Colors.blue,
+                  width: 1.5,
+                ),
+              ),
+              labelStyle: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
+            ),
+          ),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              _errorMessage!,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 13),
+            ),
+          ],
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: _isJoining
+                  ? null
+                  : () async {
+                      final code = _codeController.text.trim();
+                      if (code.isEmpty) return;
+                      setState(() {
+                        _isJoining = true;
+                        _errorMessage = null;
+                      });
+                      try {
+                        final error = await Provider.of<GroupProvider>(
+                          context,
+                          listen: false,
+                        ).joinGroup(code);
+
+                        if (error != null) {
+                          if (mounted) {
+                            setState(() {
+                              _errorMessage = error;
+                              _isJoining = false;
+                            });
+                          }
+                        } else {
+                          if (mounted) Navigator.pop(context);
+                          widget.onJoined();
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          setState(() {
+                            _errorMessage = 'Failed to join group: $e';
+                            _isJoining = false;
+                          });
+                        }
+                      }
+                    },
+              style: FilledButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF171A3F),
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _isJoining
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF171A3F),
+                      ),
+                    )
+                  : const Text(
+                      'Join Group',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+            ),
+          ),
+        ],
       ),
     );
   }
