@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/current_user.dart';
 
@@ -25,6 +26,30 @@ class GroupProvider extends ChangeNotifier {
   int get groupAvatarVersion => _groupAvatarVersion;
 
   String? _lastAvatarUrl;
+
+  // ── Persistence Helpers ──────────────────────────────────────────
+  String? get _prefKey {
+    final uid = CurrentUser.instance.id;
+    return uid == null ? null : 'last_group_$uid';
+  }
+
+  Future<String?> _loadSavedGroupId() async {
+    final key = _prefKey;
+    if (key == null) return null;
+    try {
+      return (await SharedPreferences.getInstance()).getString(key);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _saveSelectedGroupId(String groupId) async {
+    final key = _prefKey;
+    if (key == null) return;
+    try {
+      await (await SharedPreferences.getInstance()).setString(key, groupId);
+    } catch (_) {}
+  }
 
   Future<void> fetchGroupMembers(String groupId) async {
     final data = await Supabase.instance.client
@@ -80,8 +105,12 @@ class GroupProvider extends ChangeNotifier {
         final stillExists = _groups.any((g) => g['id'] == currentSelectedId);
 
         if (currentSelectedId == null || !stillExists) {
-          _selectedGroup = _groups.first;
-          await _fetchMembers(_groups.first['id']);
+          final savedId = await _loadSavedGroupId();
+          _selectedGroup = _groups.firstWhere(
+            (g) => g['id'] == savedId,
+            orElse: () => _groups.first,
+          );
+          await _fetchMembers(_selectedGroup!['id'] as String);
         } else {
           // refresh selected group data (e.g. avatar_url may have changed)
           final refreshed = _groups.firstWhere(
@@ -110,6 +139,7 @@ class GroupProvider extends ChangeNotifier {
     _selectedGroup = _groups.firstWhere((g) => g['id'] == groupId);
     await _fetchMembers(groupId);
     notifyListeners();
+    await _saveSelectedGroupId(groupId);
   }
 
   Future<void> _fetchMembers(String groupId) async {
