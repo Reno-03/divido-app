@@ -3,22 +3,22 @@
 import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:divido_app/providers/expense_provider.dart';
+import 'package:divido_app/providers/group_provider.dart';
 import 'package:divido_app/providers/status_provider.dart';
+import 'package:divido_app/screens/balance_page.dart';
+import 'package:divido_app/screens/home.dart';
 import 'package:divido_app/screens/status_chip.dart';
+import 'package:divido_app/services/current_user.dart';
 import 'package:divido_app/utils/dashboard_metrics.dart';
 import 'package:divido_app/widgets/breathing_logo.dart';
+import 'package:divido_app/widgets/dashboard_ui.dart';
 import 'package:divido_app/widgets/gcash_nudge_card.dart';
+import 'package:divido_app/widgets/install_nudge_card.dart';
 import 'package:divido_app/widgets/share_nudge_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:divido_app/services/current_user.dart';
-import 'package:divido_app/providers/expense_provider.dart';
-import 'package:divido_app/providers/group_provider.dart';
-import 'package:divido_app/screens/balance_page.dart';
-import 'package:divido_app/screens/home.dart';
-import 'package:divido_app/widgets/install_nudge_card.dart';
-import 'package:divido_app/widgets/dashboard_ui.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -605,20 +605,20 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   List<Widget> _buildSkeleton() => const [
-    DashSkeleton(height: 330, radius: 28),
-    SizedBox(height: 14),
-    Row(
-      children: [
-        Expanded(child: DashSkeleton(height: 150)),
-        SizedBox(width: 14),
-        Expanded(child: DashSkeleton(height: 150)),
-      ],
-    ),
-    SizedBox(height: 28),
-    DashSkeleton(height: 220),
-    SizedBox(height: 28),
-    DashSkeleton(height: 220),
-  ];
+        DashSkeleton(height: 330, radius: 28),
+        SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(child: DashSkeleton(height: 150)),
+            SizedBox(width: 14),
+            Expanded(child: DashSkeleton(height: 150)),
+          ],
+        ),
+        SizedBox(height: 28),
+        DashSkeleton(height: 220),
+        SizedBox(height: 28),
+        DashSkeleton(height: 220),
+      ];
 
   List<Widget> _buildContent({
     required double groupPct,
@@ -630,12 +630,6 @@ class _DashboardPageState extends State<DashboardPage> {
         youOwe: _totalYouOwe,
         onSettle: _openBalances,
       ),
-      const SizedBox(height: 14),
-      const InstallNudgeCard(),
-      const SizedBox(height: 10),
-      const ShareNudgeCard(),
-      const SizedBox(height: 10),
-      const GcashNudgeCard(),
       const SizedBox(height: 14),
       Row(
         children: [
@@ -658,7 +652,11 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ],
       ),
-      const SizedBox(height: 28),
+      const SizedBox(height: 14),
+      const InstallNudgeCard(),
+      const ShareNudgeCard(),
+      const GcashNudgeCard(),
+      const SizedBox(height: 14),
       DashSection(
         title: 'Summary of balances',
         actionLabel: 'See all',
@@ -784,9 +782,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         ],
                       ),
-
                       const SizedBox(height: 16),
-
                       GestureDetector(
                         onTap: _showStatusEditor,
                         behavior: HitTestBehavior.opaque,
@@ -808,9 +804,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         ),
                       ),
-
                       const SizedBox(height: 20),
-
                       if (loading)
                         ..._buildSkeleton()
                       else
