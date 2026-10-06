@@ -1,12 +1,16 @@
+// lib/screens/dashboard_page.dart
+
+import 'dart:async';
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:divido_app/providers/status_provider.dart';
 import 'package:divido_app/screens/status_chip.dart';
+import 'package:divido_app/utils/dashboard_metrics.dart';
 import 'package:divido_app/widgets/breathing_logo.dart';
 import 'package:divido_app/widgets/gcash_nudge_card.dart';
 import 'package:divido_app/widgets/share_nudge_card.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
-import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:divido_app/providers/expense_provider.dart';
@@ -14,6 +18,7 @@ import 'package:divido_app/providers/group_provider.dart';
 import 'package:divido_app/screens/balance_page.dart';
 import 'package:divido_app/screens/home.dart';
 import 'package:divido_app/widgets/install_nudge_card.dart';
+import 'package:divido_app/widgets/dashboard_ui.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -25,6 +30,9 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   final _supabase = Supabase.instance.client;
 
+  ExpenseProvider? _expenses;
+  GroupProvider? _groups;
+
   bool _isLoadingMetrics = true;
 
   double _totalOwedToYou = 0;
@@ -35,277 +43,283 @@ class _DashboardPageState extends State<DashboardPage> {
 
   List<Map<String, dynamic>> _balanceSummaries = [];
 
-  DateTime? _lastFetch;
-
   double? _totalGroupExpense;
   double? _totalOwnExpense;
   double _thisWeekGroup = 0;
   double _lastWeekGroup = 0;
   List<Map<String, dynamic>> _topExpensesThisWeek = [];
+  List<Map<String, dynamic>> _recentExpenses = [];
+  List<Map<String, dynamic>> _sortedMembers = [];
+  String? _groupName;
+  Object? _createdById;
+
   int _metricsRequestId = 0;
+  Timer? _metricsDebounce;
+  String? _metricsGroupId;
+  String? _cachedPaymentsGroupId;
+  List<Map<String, dynamic>> _paymentsMade = const [];
+  List<Map<String, dynamic>> _paymentsReceived = const [];
+
+  RealtimeChannel? _paymentsChannel;
+  String? _subscribedGroupId;
 
   @override
   void initState() {
     super.initState();
-    // Re-fetch automatically if expenses change
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchMetrics();
-      Provider.of<ExpenseProvider>(
-        context,
-        listen: false,
-      ).addListener(_onExpensesChanged);
+      if (!mounted) return;
+      _expenses = context.read<ExpenseProvider>();
+      _groups = context.read<GroupProvider>();
+      _expenses!.addListener(_onExpensesChanged);
+      _groups!.addListener(_onGroupChanged);
+      _metricsGroupId = _groups!.selectedGroupId;
+      _cacheGroupView(_groups!);
+      _subscribePayments(_groups!.selectedGroupId);
+      _scheduleMetrics();
     });
   }
 
   @override
   void dispose() {
-    Provider.of<ExpenseProvider>(
-      context,
-      listen: false,
-    ).removeListener(_onExpensesChanged);
+    _metricsDebounce?.cancel();
+    _expenses?.removeListener(_onExpensesChanged);
+    _groups?.removeListener(_onGroupChanged);
+    if (_paymentsChannel != null) {
+      _supabase.removeChannel(_paymentsChannel!);
+    }
     super.dispose();
   }
 
-  void _onExpensesChanged() {
-    final expenseProvider = Provider.of<ExpenseProvider>(
-      context,
-      listen: false,
-    );
+  List<Map<String, dynamic>>? _membersSource;
 
-    // While a new group is loading, expenses are intentionally cleared.
-    // Skip recomputing here to avoid flashing/persisting zeros.
-    if (expenseProvider.isLoading) return;
-
-    final now = DateTime.now();
-    if (_lastFetch != null &&
-        now.difference(_lastFetch!).inMilliseconds < 500) {
-      return;
+  void _subscribePayments(String? groupId) {
+    if (groupId == _subscribedGroupId) return;
+    _subscribedGroupId = groupId;
+    if (_paymentsChannel != null) {
+      _supabase.removeChannel(_paymentsChannel!);
+      _paymentsChannel = null;
     }
-    _lastFetch = now;
-    final expenses = expenseProvider.expenses;
-    _computeExpenseMetrics(expenses);
-    _fetchMetrics();
+    if (groupId == null) return;
+    _paymentsChannel = _supabase
+        .channel('dashboard-payments-$groupId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'payments',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'group_id',
+            value: groupId,
+          ),
+          callback: (_) {
+            if (mounted) _scheduleMetrics(forcePaymentsRefresh: true);
+          },
+        )
+        .subscribe();
   }
 
-  void _computeExpenseMetrics(List<Map<String, dynamic>> expenses) {
-    double totalGroup = 0;
-    double totalOwn = 0;
-    double thisWeekGroup = 0;
-    double lastWeekGroup = 0;
-    double thisWeekOwn = 0;
-    double lastWeekOwn = 0;
-    final topExpenses = <Map<String, dynamic>>[];
-
-    final now = DateTime.now();
-    final startOfThisWeek = now.subtract(const Duration(days: 7));
-    final startOfLastWeek = now.subtract(const Duration(days: 14));
-    final currentUserId = CurrentUser.instance.id;
-
-    for (final expense in expenses) {
-      final total = (expense['total'] as num?)?.toDouble() ?? 0.0;
-      totalGroup += total;
-
-      double ownAmt = 0;
-      final breakdowns = expense['expense_breakdowns'] as List<dynamic>? ?? [];
-      for (final b in breakdowns) {
-        if (b['payer_id'] == currentUserId) {
-          ownAmt += (b['amount'] as num?)?.toDouble() ?? 0.0;
-        }
-      }
-      totalOwn += ownAmt;
-
-      final createdAt = expense['created_at'] as String?;
-      if (createdAt != null) {
-        final date = DateTime.parse('${createdAt}Z').toLocal();
-        if (date.isAfter(startOfThisWeek)) {
-          thisWeekGroup += total;
-          thisWeekOwn += ownAmt;
-          if (ownAmt > 0) {
-            topExpenses.add({'expense': expense, 'ownAmt': ownAmt});
-          }
-        } else if (date.isAfter(startOfLastWeek) &&
-            date.isBefore(startOfThisWeek)) {
-          lastWeekGroup += total;
-          lastWeekOwn += ownAmt;
-        }
-      }
+  void _onGroupChanged() {
+    if (!mounted) return;
+    final groupProvider = _groups ?? context.read<GroupProvider>();
+    final groupId = groupProvider.selectedGroupId;
+    if (groupId != _metricsGroupId) {
+      _cachedPaymentsGroupId = null;
+      _metricsGroupId = groupId;
+      _paymentsMade = const [];
+      _paymentsReceived = const [];
+      _subscribePayments(groupId);
+      setState(() {
+        _cacheGroupView(groupProvider);
+        _isLoadingMetrics = true;
+        _totalGroupExpense = null;
+        _totalOwnExpense = null;
+        _recentExpenses = [];
+        _topExpensesThisWeek = [];
+        _balanceSummaries = [];
+      });
+      _scheduleMetrics();
+      return;
     }
+    if (identical(_membersSource, groupProvider.members) &&
+        _groupName == groupProvider.selectedGroupName) {
+      return;
+    }
+    setState(() => _cacheGroupView(groupProvider));
+  }
 
-    topExpenses.sort(
-      (a, b) => (b['ownAmt'] as double).compareTo(a['ownAmt'] as double),
-    );
+  void _cacheGroupView(GroupProvider groupProvider) {
+    _membersSource = groupProvider.members;
+    final members = List<Map<String, dynamic>>.from(groupProvider.members);
+    final createdById = groupProvider.selectedGroup?['created_by'];
+    members.sort((a, b) {
+      if (a['id'] == createdById) return -1;
+      if (b['id'] == createdById) return 1;
+      return 0;
+    });
+    _sortedMembers = members;
+    _createdById = createdById;
+    _groupName = groupProvider.selectedGroupName;
+  }
 
-    setState(() {
-      _totalGroupExpense = totalGroup;
-      _totalOwnExpense = totalOwn;
-      _thisWeekGroup = thisWeekGroup;
-      _lastWeekGroup = lastWeekGroup;
+  void _onExpensesChanged() {
+    if (!mounted) return;
+    final expenseProvider = _expenses ?? context.read<ExpenseProvider>();
 
-      _thisWeekOwn = thisWeekOwn;
-      _lastWeekOwn = lastWeekOwn;
+    if (expenseProvider.isLoading) return;
 
-      _topExpensesThisWeek = topExpenses;
+    _scheduleMetrics();
+  }
+
+  void _scheduleMetrics({bool forcePaymentsRefresh = false}) {
+    _metricsDebounce?.cancel();
+    _metricsDebounce = Timer(const Duration(milliseconds: 180), () {
+      _recomputeMetrics(forcePaymentsRefresh: forcePaymentsRefresh);
     });
   }
 
-  Future<void> _fetchMetrics() async {
+  Future<void> _ensurePayments({
+    required String groupId,
+    required String currentUserId,
+    required bool force,
+  }) async {
+    if (!force && _cachedPaymentsGroupId == groupId) return;
+
+    final results = await Future.wait([
+      _supabase
+          .from('payments')
+          .select('amount, payee_id')
+          .eq('payer_id', currentUserId)
+          .eq('group_id', groupId),
+      _supabase
+          .from('payments')
+          .select('amount, payer_id')
+          .eq('payee_id', currentUserId)
+          .eq('group_id', groupId),
+    ]);
+
+    _paymentsMade = [
+      for (final row in results[0] as List)
+        {
+          'uid': row['payee_id'],
+          'amount': (row['amount'] as num?)?.toDouble() ?? 0.0,
+        },
+    ];
+    _paymentsReceived = [
+      for (final row in results[1] as List)
+        {
+          'uid': row['payer_id'],
+          'amount': (row['amount'] as num?)?.toDouble() ?? 0.0,
+        },
+    ];
+    _cachedPaymentsGroupId = groupId;
+  }
+
+  Future<void> _recomputeMetrics({bool forcePaymentsRefresh = false}) async {
     if (!mounted) return;
 
     final currentUserId = CurrentUser.instance.id;
-    final groupProvider = Provider.of<GroupProvider>(context, listen: false);
+    final groupProvider = _groups ?? context.read<GroupProvider>();
+    final expenseProvider = _expenses ?? context.read<ExpenseProvider>();
     final groupId = groupProvider.selectedGroupId;
-    final requestId = ++_metricsRequestId;
-    setState(() => _isLoadingMetrics = true);
+    if (expenseProvider.isLoading) return;
 
     if (currentUserId == null || groupId == null) {
-      if (mounted && requestId == _metricsRequestId) {
+      if (mounted) {
         setState(() {
           _isLoadingMetrics = false;
           _totalOwedToYou = 0;
           _totalYouOwe = 0;
           _balanceSummaries = [];
+          _recentExpenses = [];
+          _topExpensesThisWeek = [];
+          _totalGroupExpense = 0;
+          _totalOwnExpense = 0;
         });
       }
       return;
     }
 
-    final now = DateTime.now();
-    final startOfThisWeek = now.subtract(const Duration(days: 7));
-    final startOfLastWeek = now.subtract(const Duration(days: 14));
+    if (_totalGroupExpense == null && !_isLoadingMetrics) {
+      setState(() => _isLoadingMetrics = true);
+    }
 
-    // NOTE: Improved performance by running all 4 queries in parallel instead of sequentially,
-    // and processing results in-memory to minimize database calls
-    final results = await Future.wait([
-      _supabase
-          .from('expense_breakdowns')
-          .select('amount, payer_id, expenses!inner(owner_id, created_at)')
-          .eq('expenses.owner_id', currentUserId)
-          .eq('expenses.group_id', groupId)
-          .neq('payer_id', currentUserId),
+    final requestId = ++_metricsRequestId;
 
-      _supabase
-          .from('expense_breakdowns')
-          .select('amount, payer_id, expenses!inner(owner_id, created_at)')
-          .eq('payer_id', currentUserId)
-          .eq('expenses.group_id', groupId)
-          .neq('expenses.owner_id', currentUserId),
+    try {
+      await _ensurePayments(
+        groupId: groupId,
+        currentUserId: currentUserId,
+        force: forcePaymentsRefresh,
+      );
+    } catch (_) {
+      if (!mounted || requestId != _metricsRequestId) return;
+    }
 
-      _supabase
-          .from('payments')
-          .select('amount, created_at, payee_id')
-          .eq('payer_id', currentUserId)
-          .eq('group_id', groupId),
-
-      _supabase
-          .from('payments')
-          .select('amount, created_at, payer_id')
-          .eq('payee_id', currentUserId)
-          .eq('group_id', groupId),
-    ]);
-
-    final ownerBreakdowns = results[0];
-    final payerBreakdowns = results[1];
-    final paymentsMade = results[2];
-    final paymentsReceived = results[3];
-
-    // If user switched groups while this request was in-flight, ignore it.
     if (!mounted ||
         requestId != _metricsRequestId ||
-        Provider.of<GroupProvider>(context, listen: false).selectedGroupId !=
-            groupId) {
+        (_groups?.selectedGroupId ?? groupProvider.selectedGroupId) != groupId) {
       return;
     }
 
-    final Map<String, double> netByUser = {};
-    final Map<String, double> netByUserLastWeek = {};
-    final Map<String, double> netByUserTwoWeeksAgo = {};
+    final expenses = expenseProvider.expenses;
+    final result = await aggregateDashboardMetrics(
+      currentUserId: currentUserId,
+      nowMs: DateTime.now().millisecondsSinceEpoch,
+      expenses: expenses,
+      paymentsMade: _paymentsMade,
+      paymentsReceived: _paymentsReceived,
+    );
 
-    void process(
-      List<dynamic> list,
-      String userKeyField,
-      bool isTheyOweMe,
-      bool isExpenseBreakdown,
-    ) {
-      for (var row in list) {
-        final uid = isExpenseBreakdown
-            ? (userKeyField == 'payer_id'
-                  ? row['payer_id'] as String
-                  : row['expenses']['owner_id'] as String)
-            : row[userKeyField] as String;
-
-        final amount = (row['amount'] as num).toDouble();
-        final dateStr = isExpenseBreakdown
-            ? row['expenses']['created_at']
-            : row['created_at'];
-        final date = DateTime.parse(dateStr).toLocal();
-
-        final val = isTheyOweMe ? amount : -amount;
-
-        netByUser[uid] = (netByUser[uid] ?? 0) + val;
-
-        if (date.isBefore(startOfThisWeek)) {
-          netByUserLastWeek[uid] = (netByUserLastWeek[uid] ?? 0) + val;
-        }
-        if (date.isBefore(startOfLastWeek)) {
-          netByUserTwoWeeksAgo[uid] = (netByUserTwoWeeksAgo[uid] ?? 0) + val;
-        }
-      }
+    if (!mounted ||
+        requestId != _metricsRequestId ||
+        (_groups?.selectedGroupId ?? groupProvider.selectedGroupId) != groupId) {
+      return;
     }
 
-    process(ownerBreakdowns, 'payer_id', true, true);
-    process(payerBreakdowns, 'expenses.owner_id', false, true);
-    process(paymentsMade, 'payee_id', true, false);
-    process(paymentsReceived, 'payer_id', false, false);
+    final memberById = {
+      for (final m in groupProvider.members) m['id'] as String: m,
+    };
+    final nets = result['nets'] as List<dynamic>? ?? const [];
+    final summaries = <Map<String, dynamic>>[];
+    for (final raw in nets) {
+      final row = raw as Map;
+      final uid = row['uid'] as String;
+      final u = memberById[uid];
+      final net = (row['net'] as num).toDouble();
 
-    double calcOwedToYou(Map<String, double> dict) =>
-        dict.values.where((v) => v > 0).fold(0.0, (a, b) => a + b);
-    double calcYouOwe(Map<String, double> dict) =>
-        dict.values.where((v) => v < 0).fold(0.0, (a, b) => a + b.abs());
+      if (u == null && net.abs() < 0.01) continue;
 
-    double currOwedToYou = calcOwedToYou(netByUser);
-    double currYouOwe = calcYouOwe(netByUser);
-
-    final userIds = netByUser.keys.toList();
-    List<Map<String, dynamic>> summaries = [];
-    if (userIds.isNotEmpty) {
-      final users = await _supabase
-          .from('profiles')
-          .select('id, firstname, lastname, color, avatar_url')
-          .filter('id', 'in', userIds);
-
-      final userMap = {for (var u in users) u['id'] as String: u};
-
-      for (var entry in netByUser.entries) {
-        final u = userMap[entry.key];
-        if (u != null) {
-          summaries.add({
-            'uid': entry.key,
-            'name': u['firstname'] != null
-                ? '${u['firstname']} ${u['lastname'] ?? ''}'.trim()
-                : 'Unknown',
-            'avatar_url': u['avatar_url'],
-            'color': u['color'],
-            'net': entry.value,
-          });
-        }
-      }
-
-      summaries.sort(
-        (a, b) =>
-            (b['net'] as double).abs().compareTo((a['net'] as double).abs()),
-      );
-    }
-
-    if (mounted) {
-      setState(() {
-        _totalOwedToYou = currOwedToYou;
-        _totalYouOwe = currYouOwe;
-
-        _balanceSummaries = summaries;
-
-        _isLoadingMetrics = false;
+      summaries.add({
+        'uid': uid,
+        'name': u != null
+            ? '${u['firstname'] ?? 'Unknown'} ${u['lastname'] ?? ''}'.trim()
+            : 'Former member',
+        'avatar_url': u?['avatar_url'],
+        'color': u?['color'],
+        'net': net,
       });
     }
+
+    setState(() {
+      _metricsGroupId = groupId;
+      _cacheGroupView(groupProvider);
+      _totalGroupExpense = (result['totalGroupExpense'] as num).toDouble();
+      _totalOwnExpense = (result['totalOwnExpense'] as num).toDouble();
+      _thisWeekGroup = (result['thisWeekGroup'] as num).toDouble();
+      _lastWeekGroup = (result['lastWeekGroup'] as num).toDouble();
+      _thisWeekOwn = (result['thisWeekOwn'] as num).toDouble();
+      _lastWeekOwn = (result['lastWeekOwn'] as num).toDouble();
+      _totalOwedToYou = (result['totalOwedToYou'] as num).toDouble();
+      _totalYouOwe = (result['totalYouOwe'] as num).toDouble();
+      _topExpensesThisWeek = List<Map<String, dynamic>>.from(
+        result['topExpensesThisWeek'] as List,
+      );
+      _recentExpenses = expenses.length <= 3
+          ? List<Map<String, dynamic>>.from(expenses)
+          : expenses.sublist(0, 3);
+      _balanceSummaries = summaries;
+      _isLoadingMetrics = false;
+    });
   }
 
   String _getFunGreeting(String name) {
@@ -359,7 +373,6 @@ class _DashboardPageState extends State<DashboardPage> {
             statusProvider.setStatus(value.isEmpty ? null : value);
 
             if (ctx.mounted) Navigator.pop(ctx);
-            // setState(() {});
           } finally {
             setSaving(false);
           }
@@ -401,7 +414,6 @@ class _DashboardPageState extends State<DashboardPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // drag handle (MATCH YOUR DESIGN)
                     Center(
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 12),
@@ -413,8 +425,6 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                       ),
                     ),
-
-                    // header (MATCH CREATE EXPENSE STYLE)
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -440,10 +450,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 20),
-
-                    // input (MATCH STYLE)
                     TextField(
                       controller: controller,
                       maxLength: 60,
@@ -475,7 +482,6 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    // Quick suggestions (optional but powerful UX)
                     Wrap(
                       spacing: 8,
                       children: [
@@ -499,8 +505,6 @@ class _DashboardPageState extends State<DashboardPage> {
                       ],
                     ),
                     const SizedBox(height: 20),
-
-                    // buttons (MATCH YOUR PRIMARY CTA STYLE)
                     Row(
                       children: [
                         Expanded(
@@ -571,41 +575,174 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  void _openBalances() {
+    final parentState = context.findAncestorStateOfType<HomePageState>();
+    if (parentState != null) {
+      parentState.switchTab(3);
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const BalancePage()),
+      );
+    }
+  }
+
+  void _openExpenses() {
+    context.findAncestorStateOfType<HomePageState>()?.switchTab(1);
+  }
+
+  String _fullName(Map<String, dynamic>? p) =>
+      '${p?['firstname'] ?? 'Unknown'} ${p?['lastname'] ?? ''}'.trim();
+
+  Widget _expenseRow(Map<String, dynamic> e) {
+    final p = e['profiles'] as Map<String, dynamic>?;
+    return DashExpenseRow(
+      title: e['title'] as String? ?? 'Untitled',
+      ownerName: _fullName(p),
+      avatarUrl: p?['avatar_url'] as String?,
+      total: (e['total'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
+
+  List<Widget> _buildSkeleton() => const [
+    DashSkeleton(height: 330, radius: 28),
+    SizedBox(height: 14),
+    Row(
+      children: [
+        Expanded(child: DashSkeleton(height: 150)),
+        SizedBox(width: 14),
+        Expanded(child: DashSkeleton(height: 150)),
+      ],
+    ),
+    SizedBox(height: 28),
+    DashSkeleton(height: 220),
+    SizedBox(height: 28),
+    DashSkeleton(height: 220),
+  ];
+
+  List<Widget> _buildContent({
+    required double groupPct,
+    required double ownPct,
+  }) {
+    return [
+      DashHeroBalance(
+        owedToYou: _totalOwedToYou,
+        youOwe: _totalYouOwe,
+        onSettle: _openBalances,
+      ),
+      const SizedBox(height: 14),
+      const InstallNudgeCard(),
+      const SizedBox(height: 10),
+      const ShareNudgeCard(),
+      const SizedBox(height: 10),
+      const GcashNudgeCard(),
+      const SizedBox(height: 14),
+      Row(
+        children: [
+          Expanded(
+            child: DashStatTile(
+              icon: Icons.groups_rounded,
+              label: 'Group expenses',
+              value: _totalGroupExpense ?? 0,
+              changePct: groupPct,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: DashStatTile(
+              icon: Icons.person_rounded,
+              label: 'Your expenses',
+              value: _totalOwnExpense ?? 0,
+              changePct: ownPct,
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 28),
+      DashSection(
+        title: 'Summary of balances',
+        actionLabel: 'See all',
+        onAction: _openBalances,
+        child: _balanceSummaries.isEmpty
+            ? const DashEmpty('No balances found.')
+            : DashRows(
+                children: [
+                  for (final s in _balanceSummaries)
+                    DashBalanceRow(
+                      name: s['name'] as String,
+                      avatarUrl: s['avatar_url'] as String?,
+                      net: s['net'] as double,
+                    ),
+                ],
+              ),
+      ),
+      const SizedBox(height: 28),
+      DashSection(
+        title: 'Recent expenses',
+        actionLabel: 'View all',
+        onAction: _openExpenses,
+        child: _recentExpenses.isEmpty
+            ? const DashEmpty('No recent expenses.')
+            : DashRows(children: [for (final e in _recentExpenses) _expenseRow(e)]),
+      ),
+      const SizedBox(height: 28),
+      DashSection(
+        title: 'Your top expenses, last 7 days',
+        child: _topExpensesThisWeek.isEmpty
+            ? const DashEmpty('No expenses this week.')
+            : DashRows(
+                children: [
+                  for (final (i, t) in _topExpensesThisWeek.indexed)
+                    DashTopExpenseRow(
+                      rank: i + 1,
+                      title: t['title'] as String? ?? 'Untitled',
+                      ownerName: t['owner_name'] as String? ?? 'Unknown',
+                      avatarUrl: t['avatar_url'] as String?,
+                      ownAmt: (t['ownAmt'] as num).toDouble(),
+                      total: (t['total'] as num?)?.toDouble() ?? 0.0,
+                    ),
+                ],
+              ),
+      ),
+      const SizedBox(height: 28),
+      DashSection(
+        title: 'Members for ${_groupName ?? "Group"}',
+        child: _sortedMembers.isEmpty
+            ? const DashEmpty('No members found.')
+            : DashRows(
+                children: [
+                  for (final m in _sortedMembers)
+                    DashMemberRow(
+                      name: _fullName(m),
+                      avatarUrl: m['avatar_url'] as String?,
+                      colorHex: m['color'] as String?,
+                      isCreator: m['id'] == _createdById,
+                    ),
+                ],
+              ),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final firstName = CurrentUser.instance.username ?? 'there';
-    final funGreeting = _getFunGreeting(firstName);
+    final loading = _isLoadingMetrics || _totalGroupExpense == null;
 
-    final expenseProvider = Provider.of<ExpenseProvider>(context);
-    final groupProvider = Provider.of<GroupProvider>(context);
-
-    final groupMembers = List<Map<String, dynamic>>.from(groupProvider.members);
-    final selectedGroup = groupProvider.selectedGroup;
-    final createdById = selectedGroup?['created_by'];
-
-    groupMembers.sort((a, b) {
-      if (a['id'] == createdById) return -1;
-      if (b['id'] == createdById) return 1;
-      return 0;
-    });
-
-    double groupPct = _lastWeekGroup > 0
+    final double groupPct = _lastWeekGroup > 0
         ? ((_thisWeekGroup - _lastWeekGroup) / _lastWeekGroup) * 100
         : (_thisWeekGroup > 0 ? 100 : 0);
-    double ownPct = _lastWeekOwn > 0
+    final double ownPct = _lastWeekOwn > 0
         ? ((_thisWeekOwn - _lastWeekOwn) / _lastWeekOwn) * 100
         : (_thisWeekOwn > 0 ? 100 : 0);
-
-    final currencyFormat = NumberFormat('#,##0.00', 'en_US');
 
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: () async {
+          _cachedPaymentsGroupId = null;
           if (mounted) {
-            await Provider.of<ExpenseProvider>(
-              context,
-              listen: false,
-            ).refresh(null);
+            await (_expenses ?? context.read<ExpenseProvider>()).refresh(null);
+            _scheduleMetrics(forcePaymentsRefresh: true);
           }
         },
         child: SingleChildScrollView(
@@ -614,90 +751,35 @@ class _DashboardPageState extends State<DashboardPage> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 720),
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
                 child: SizedBox(
                   width: double.infinity,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 20),
-
-                      Center(child: const BreathingLogo()),
-
-                      const SizedBox(height: 20),
-
-                      Text(
-                        funGreeting,
-                        textAlign: TextAlign.left,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white.withValues(alpha: 0.9),
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // _dashboardStatusBubble(CurrentUser.instance.status),
-                      GestureDetector(
-                        onTap: _showStatusEditor,
-                        behavior: HitTestBehavior
-                            .opaque, // ensures full row is clickable
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              _buildAvatar(),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: _dashboardStatusBubble(
-                                  context.watch<StatusProvider>().status,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Install app nudge card
-                      InstallNudgeCard(),
-
-                      const SizedBox(height: 10),
-
-                      ShareNudgeCard(),
-
-                      const SizedBox(height: 10),
-
-                      GcashNudgeCard(),
-
-                      const SizedBox(height: 20),
-
                       Row(
                         children: [
                           Expanded(
-                            child: _buildCardTile(
-                              'Total group expense',
-                              Icons.group,
-                              '₱ ${currencyFormat.format(_totalGroupExpense ?? 0)}',
-                              groupPct,
-                              isLoading:
-                                  _isLoadingMetrics ||
-                                  _totalGroupExpense == null,
+                            child: Text(
+                              _getFunGreeting(firstName),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _buildCardTile(
-                              'Total own expense',
-                              Icons.person,
-                              '₱ ${currencyFormat.format(_totalOwnExpense ?? 0)}',
-                              ownPct,
-                              isLoading:
-                                  _isLoadingMetrics ||
-                                  _totalGroupExpense == null,
+                          const SizedBox(width: 12),
+                          const SizedBox(
+                            width: 72,
+                            height: 72,
+                            child: RepaintBoundary(
+                              child: FittedBox(
+                                child: BreathingLogo(),
+                              ),
                             ),
                           ),
                         ],
@@ -705,996 +787,40 @@ class _DashboardPageState extends State<DashboardPage> {
 
                       const SizedBox(height: 16),
 
-                      if (_isLoadingMetrics) ...[
-                        Row(
-                          children: [
-                            Expanded(child: _buildShimmerCard()),
-                            const SizedBox(width: 16),
-                            Expanded(child: _buildShimmerCard()),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(child: _buildShimmerCard()),
-                            const SizedBox(width: 16),
-                            Expanded(child: _buildShimmerCard()),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Summary shimmer
-                        ...List.generate(3, (_) => _buildShimmerTile()),
-
-                        const SizedBox(height: 24),
-
-                        // Expenses shimmer
-                        ...List.generate(3, (_) => _buildShimmerTile()),
-                      ] else ...[
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildCardTile(
-                                'Total owes to you',
-                                Icons.arrow_downward,
-                                '₱ ${currencyFormat.format(_totalOwedToYou)}',
-                                null,
-                                iconBgColor: Colors.green.shade400,
-                                iconColor: Colors.white,
-                                amountValue: _totalOwedToYou,
-                                isOweCard: false,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildCardTile(
-                                'Total you owe',
-                                Icons.arrow_upward,
-                                '₱ ${currencyFormat.format(_totalYouOwe)}',
-                                null,
-                                iconBgColor: Colors.red.shade400,
-                                iconColor: Colors.white,
-                                amountValue: _totalYouOwe,
-                                isOweCard: true,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3C3C63),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                offset: const Offset(0, 8),
-                                blurRadius: 16,
-                                spreadRadius: 0,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      GestureDetector(
+                        onTap: _showStatusEditor,
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
                             children: [
-                              const Text(
-                                'Summary of Balances',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              if (_balanceSummaries.isEmpty)
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(20),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF171A3F),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: const Text(
-                                    'No balances found.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(color: Colors.white70),
-                                  ),
-                                )
-                              else
-                                ..._balanceSummaries.map(
-                                  (s) => _buildSummaryTile(s, currencyFormat),
-                                ),
-
-                              const SizedBox(height: 16),
-
-                              SizedBox(
-                                width: double.infinity,
-                                child: FilledButton(
-                                  onPressed: () {
-                                    final parentState = context
-                                        .findAncestorStateOfType<
-                                          HomePageState
-                                        >();
-                                    if (parentState != null) {
-                                      parentState.switchTab(
-                                        3,
-                                      ); // Navigate to the Balance tab
-                                    } else {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const BalancePage(),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: const Color(0xFFEEEEEE),
-                                    foregroundColor: const Color(0xFF171A3F),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Text(
-                                        'Settle Now',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w800,
-                                        ),
+                              _buildAvatar(),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Consumer<StatusProvider>(
+                                  builder: (context, statusProvider, _) =>
+                                      _dashboardStatusBubble(
+                                        statusProvider.status,
                                       ),
-                                      SizedBox(width: 8),
-                                      Icon(Icons.arrow_forward, size: 20, color: const Color(0xFF171A3F)),
-                                    ],
-                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
+                      ),
 
-                        const SizedBox(height: 32),
+                      const SizedBox(height: 20),
 
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3C3C63),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                offset: const Offset(0, 8),
-                                blurRadius: 16,
-                                spreadRadius: 0,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Recent Expenses',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              if (expenseProvider.expenses.isEmpty)
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(20),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF171A3F),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: const Text(
-                                    'No recent expenses.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(color: Colors.white70),
-                                  ),
-                                )
-                              else
-                                ...expenseProvider.expenses
-                                    .take(3)
-                                    .map(
-                                      (e) =>
-                                          _buildExpenseTile(e, currencyFormat),
-                                    ),
-
-                              const SizedBox(height: 16),
-
-                              SizedBox(
-                                width: double.infinity,
-                                child: FilledButton(
-                                  onPressed: () {
-                                    final parentState = context
-                                        .findAncestorStateOfType<
-                                          HomePageState
-                                        >();
-                                    if (parentState != null) {
-                                      parentState.switchTab(
-                                        1,
-                                      ); // Navigate to All Expenses tab
-                                    }
-                                  },
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: const Color(0xFFEEEEEE),
-                                    foregroundColor: const Color(0xFF171A3F),
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 16,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      const Text(
-                                        'View All Expenses',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                      SizedBox(width: 8),
-                                      Icon(Icons.arrow_forward, size: 20, color: const Color(0xFF171A3F)),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3C3C63),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                offset: const Offset(0, 8),
-                                blurRadius: 16,
-                                spreadRadius: 0,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Your top expenses since last 7 days',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              if (_topExpensesThisWeek.isEmpty)
-                                Container(
-                                  width: double.infinity,
-                                  padding: const EdgeInsets.all(20),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF171A3F),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: const Text(
-                                    'No expenses this week.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(color: Colors.white70),
-                                  ),
-                                )
-                              else
-                                ..._topExpensesThisWeek
-                                    .take(3)
-                                    .toList()
-                                    .asMap()
-                                    .entries
-                                    .map(
-                                      (e) => _buildTopExpenseTile(
-                                        e.value,
-                                        e.key + 1,
-                                        currencyFormat,
-                                      ),
-                                    ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 32),
-
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3C3C63),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
-                                offset: const Offset(0, 8),
-                                blurRadius: 16,
-                                spreadRadius: 0,
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Members for ${groupProvider.selectedGroupName ?? "Group"}',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-
-                              if (groupMembers.isEmpty)
-                                const Text(
-                                  'No members found.',
-                                  style: TextStyle(color: Colors.white70),
-                                )
-                              else
-                                ...groupMembers.map(
-                                  (m) => _buildMemberTile(
-                                    m,
-                                    m['id'] == createdById,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(height: 40),
-                      ],
+                      if (loading)
+                        ..._buildSkeleton()
+                      else
+                        ..._buildContent(groupPct: groupPct, ownPct: ownPct),
                     ],
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCardTile(
-    String title,
-    IconData icon,
-    String value,
-    double? pctValue, {
-    Color iconBgColor = Colors.white,
-    Color iconColor = const Color(0xFF3C3C63),
-    bool isLoading = false,
-    final double? amountValue,
-    bool? isOweCard,
-  }) {
-    final bool isZero = amountValue == null || amountValue.abs() < 0.01;
-
-    String? statusText;
-    Color statusColor = Colors.white70;
-
-    if (isOweCard != null) {
-      if (isZero) {
-        statusText = 'All settled. Good job!';
-        statusColor = Colors.white54;
-      } else if (isOweCard) {
-        statusText = 'You need to settle';
-        statusColor = Colors.redAccent;
-      } else {
-        statusText = 'Nudge them to settle';
-        statusColor = Colors.greenAccent;
-      }
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isZero
-            ? const Color(0xFF3C3C63)
-            : (title.contains('Total you owe')
-                  ? Colors.red.withValues(alpha: 0.25)
-                  : Colors.green.withValues(alpha: 0.25)),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            offset: const Offset(0, 8),
-            blurRadius: 16,
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: isLoading
-          ? Shimmer.fromColors(
-              baseColor: Colors.grey.shade700,
-              highlightColor: Colors.grey.shade500,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(width: 100, height: 12, color: Colors.white),
-                  const SizedBox(height: 8),
-                  Container(width: 80, height: 20, color: Colors.white),
-                ],
-              ),
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: iconBgColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(icon, color: iconColor, size: 24),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-
-                    // use this to make the text scale down if it's too long
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        value,
-                        maxLines: 1,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 6),
-
-                    if (statusText != null) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        statusText,
-                        style: TextStyle(
-                          color: statusColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                    if (pctValue != null) ...[
-                      const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            pctValue == 0
-                                ? Icons.trending_flat
-                                : (pctValue > 0
-                                      ? Icons.trending_up
-                                      : Icons.trending_down),
-                            color: pctValue == 0
-                                ? Colors.white70
-                                : (pctValue > 0
-                                      ? Colors.greenAccent
-                                      : Colors.redAccent),
-                            size: 16,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              pctValue == 0
-                                  ? 'Same as last week'
-                                  : '${pctValue.abs().toStringAsFixed(0)}% ${pctValue > 0 ? 'more' : 'less'} than last week',
-                              style: TextStyle(
-                                color: pctValue == 0
-                                    ? Colors.white70
-                                    : (pctValue > 0
-                                          ? Colors.greenAccent
-                                          : Colors.redAccent),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-    );
-  }
-
-  Widget _buildSummaryTile(Map<String, dynamic> summary, NumberFormat format) {
-    final net = summary['net'] as double;
-    final name = summary['name'] as String;
-    final avatarUrl = summary['avatar_url'] as String?;
-
-    final bool isSettled = net.abs() < 0.01;
-    final bool theyOweMe = net > 0;
-
-    final Color amountColor = isSettled
-        ? Colors.white70
-        : (theyOweMe ? Colors.greenAccent : Colors.redAccent);
-
-    final String subtitle = isSettled
-        ? 'settled'
-        : (theyOweMe ? 'owes you' : 'you owe');
-
-    final String amountStr = isSettled ? '0.00' : format.format(net.abs());
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF171A3F),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: avatarUrl != null && avatarUrl.isNotEmpty
-                ? Image.network(
-                    avatarUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) =>
-                        const Icon(Icons.person, color: Color(0xFF3C3C63)),
-                  )
-                : const Icon(Icons.person, color: Color(0xFF3C3C63)),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              name,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                '₱ $amountStr',
-                style: TextStyle(
-                  color: amountColor,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: TextStyle(color: amountColor, fontSize: 12),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExpenseTile(Map<String, dynamic> expense, NumberFormat format) {
-    final title = expense['title'] as String? ?? 'Untitled';
-    final total = (expense['total'] as num?)?.toDouble() ?? 0.0;
-    final profiles = expense['profiles'] as Map<String, dynamic>?;
-    final firstname = profiles?['firstname'] as String? ?? 'Unknown';
-    final lastname = profiles?['lastname'] as String? ?? '';
-    final avatarUrl = profiles?['avatar_url'] as String?;
-    final name = '$firstname $lastname'.trim();
-
-    final formattedTotal = format
-        .format(total)
-        .replaceAll(
-          RegExp(r'\.00$'),
-          '',
-        ); // strip trailing .00 to match mockup cleanly
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF171A3F),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize:
-                        18, // slightly larger, matching mockup title weight
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Container(
-                      width: 16,
-                      height: 16,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: avatarUrl != null && avatarUrl.isNotEmpty
-                          ? Image.network(
-                              avatarUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => const Icon(
-                                Icons.person,
-                                size: 10,
-                                color: Color(0xFF3C3C63),
-                              ),
-                            )
-                          : const Icon(
-                              Icons.person,
-                              size: 10,
-                              color: Color(0xFF3C3C63),
-                            ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Text(
-            '₱ $formattedTotal',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 26, // striking size
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTopExpenseTile(
-    Map<String, dynamic> item,
-    int index,
-    NumberFormat format,
-  ) {
-    final expense = item['expense'] as Map<String, dynamic>;
-    final ownAmt = item['ownAmt'] as double;
-
-    final title = expense['title'] as String? ?? 'Untitled';
-    final total = (expense['total'] as num?)?.toDouble() ?? 0.0;
-    final profiles = expense['profiles'] as Map<String, dynamic>?;
-    final firstname = profiles?['firstname'] as String? ?? 'Unknown';
-    final lastname = profiles?['lastname'] as String? ?? '';
-    final avatarUrl = profiles?['avatar_url'] as String?;
-    final name = '$firstname $lastname'.trim();
-
-    final formattedOwnAmt = format
-        .format(ownAmt)
-        .replaceAll(RegExp(r'\.00$'), ''); // strip trailing .00
-    final formattedTotal = format.format(total); // keep decimals for total
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF171A3F),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                '$index',
-                style: const TextStyle(
-                  color: Color(0xFF171A3F),
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Container(
-                      width: 16,
-                      height: 16,
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: avatarUrl != null && avatarUrl.isNotEmpty
-                          ? Image.network(
-                              avatarUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => const Icon(
-                                Icons.person,
-                                size: 10,
-                                color: Color(0xFF3C3C63),
-                              ),
-                            )
-                          : const Icon(
-                              Icons.person,
-                              size: 10,
-                              color: Color(0xFF3C3C63),
-                            ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                '₱ $formattedOwnAmt',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                'total: ₱ $formattedTotal',
-                style: const TextStyle(color: Colors.white54, fontSize: 12),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMemberTile(Map<String, dynamic> member, bool isCreator) {
-    final firstname = member['firstname'] as String? ?? 'Unknown';
-    final lastname = member['lastname'] as String? ?? '';
-    final name = '$firstname $lastname'.trim();
-    final avatarUrl = member['avatar_url'] as String?;
-
-    final colorStr = member['color'] as String? ?? '#CCCCCC';
-    Color memberColor = Colors.grey;
-    if (colorStr.startsWith('#') && colorStr.length == 7) {
-      try {
-        memberColor = Color(
-          int.parse(colorStr.substring(1), radix: 16) + 0xFF000000,
-        );
-      } catch (_) {}
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF171A3F),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            clipBehavior: Clip.antiAlias,
-            child: avatarUrl != null && avatarUrl.isNotEmpty
-                ? Image.network(
-                    avatarUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) =>
-                        const Icon(Icons.person, color: Color(0xFF3C3C63)),
-                  )
-                : const Icon(Icons.person, color: Color(0xFF3C3C63)),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (isCreator) ...[
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Group Creator',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Container(
-            width: 24, // distinct large circle for color
-            height: 24,
-            decoration: BoxDecoration(
-              color: memberColor,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildShimmerCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF3C3C63),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Shimmer.fromColors(
-        baseColor: Colors.grey.shade700,
-        highlightColor: Colors.grey.shade500,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(width: 100, height: 12, color: Colors.white),
-            const SizedBox(height: 8),
-            Container(width: 80, height: 20, color: Colors.white),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildShimmerTile() {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFF171A3F),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Shimmer.fromColors(
-        baseColor: Colors.grey.shade700,
-        highlightColor: Colors.grey.shade500,
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(child: Container(height: 12, color: Colors.white)),
-            const SizedBox(width: 16),
-            Container(width: 40, height: 12, color: Colors.white),
-          ],
         ),
       ),
     );
@@ -1738,6 +864,28 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  Widget _networkAvatar(
+    String? url, {
+    required double size,
+    required Widget fallback,
+  }) {
+    if (url == null || url.isEmpty) return fallback;
+    final dpr = MediaQuery.maybeOf(context)?.devicePixelRatio ?? 2;
+    final px = (size * dpr).round();
+    return CachedNetworkImage(
+      imageUrl: url,
+      fit: BoxFit.cover,
+      width: size,
+      height: size,
+      memCacheWidth: px,
+      memCacheHeight: px,
+      fadeInDuration: Duration.zero,
+      fadeOutDuration: Duration.zero,
+      errorWidget: (_, _, _) => fallback,
+      placeholder: (_, _) => fallback,
+    );
+  }
+
   Widget _buildAvatar() {
     final avatarUrl = CurrentUser.instance.avatarUrl;
     final bgColor = Color(
@@ -1757,10 +905,10 @@ class _DashboardPageState extends State<DashboardPage> {
       decoration: BoxDecoration(shape: BoxShape.circle, color: bgColor),
       clipBehavior: Clip.antiAlias,
       child: avatarUrl != null && avatarUrl.isNotEmpty
-          ? Image.network(
+          ? _networkAvatar(
               avatarUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Center(
+              size: 36,
+              fallback: Center(
                 child: Text(
                   initials,
                   style: const TextStyle(
