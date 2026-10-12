@@ -3,6 +3,8 @@
 // Presentation-only widgets for DashboardPage. No business logic here.
 // Palette is unchanged from the app: navy 0xFF171A3F, surface 0xFF3C3C63.
 
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -39,6 +41,7 @@ class DashAmount extends StatelessWidget {
     this.color = Colors.white,
     this.weight = FontWeight.w700,
     this.trimZeros = false,
+    this.animate = false,
   });
 
   final double value;
@@ -46,9 +49,9 @@ class DashAmount extends StatelessWidget {
   final Color color;
   final FontWeight weight;
   final bool trimZeros;
+  final bool animate;
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildText(double v) {
     return Text.rich(
       TextSpan(
         children: [
@@ -61,17 +64,33 @@ class DashAmount extends StatelessWidget {
             ),
           ),
           TextSpan(
-            text: dashMoney(value, trimZeros: trimZeros),
+            text: dashMoney(v, trimZeros: trimZeros),
             style: TextStyle(
               fontSize: size,
               fontWeight: weight,
               color: color,
               letterSpacing: -0.3,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ],
       ),
       maxLines: 1,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!animate || MediaQuery.of(context).disableAnimations) {
+      return _buildText(value);
+    }
+    return RepaintBoundary(
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: 0, end: value),
+        duration: const Duration(milliseconds: 1000),
+        curve: Curves.easeOutCubic,
+        builder: (_, v, _) => _buildText(v),
+      ),
     );
   }
 }
@@ -353,6 +372,7 @@ class DashHeroBalance extends StatelessWidget {
               net.abs(),
               size: 40,
               weight: FontWeight.w800,
+              animate: true,
             ),
           ),
           const SizedBox(height: 4),
@@ -544,7 +564,7 @@ class DashStatTile extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
-            child: DashAmount(value, size: 22),
+            child: DashAmount(value, size: 22, animate: true),
           ),
           const SizedBox(height: 10),
           Row(
