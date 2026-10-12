@@ -13,150 +13,193 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final contentHeight = MediaQuery.sizeOf(context).height * 0.55;
+
     return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       backgroundColor: const Color(0xFF171A3F),
+      titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
       title: Row(
         children: [
           const Icon(
             Icons.new_releases_outlined,
-            color: Colors.white,
-            size: 22,
+            color: Color(0xFF8FE3B0),
+            size: 24,
           ),
           const SizedBox(width: 8),
-          const Text(
-            "What's New",
-            style: TextStyle(fontWeight: FontWeight.bold),
+          const Expanded(
+            child: Text(
+              "What's new in Divido",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 19),
+              maxLines: 2,
+            ),
           ),
         ],
       ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Version badge
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(50),
-              ),
-              child: const Text(
-                'v1.2.0 — Share Divido + Forgot Password',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(height: 14),
-            _section('🌟 New', [
-              'Forgot your password? You can now reset it from the login screen',
-              'Share Divido with friends! Tap the share button on the dashboard to send an invite',
-              'GCash support hints! Helpful nudges to make settling easier',
-            ]),
-            const SizedBox(height: 10),
-            _section('⚡ Optimized', [
-              'Balance cards are now sorted. Who you owe comes first, then who owes you',
-              'Groups now show a "Settled" badge when everything\'s cleared between you',
-              'Peso sign updated to ₱ throughout the app with proper formatting',
-              'Various UI fixes. Smoother groups page, better snack bar placement, and more',
-            ]),
-            const SizedBox(height: 10),
-            _section('🗑️ Removed', [
-              'Redundant share and note buttons on the groups and balance screens',
-            ]),
-
-            const SizedBox(height: 16),
-
-            // Don't show again checkbox
-            GestureDetector(
-              onTap: () => setState(() => _dontShowAgain = !_dontShowAgain),
-              child: Row(
-                children: [
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: Checkbox(
-                      value: _dontShowAgain,
-                      onChanged: (v) =>
-                          setState(() => _dontShowAgain = v ?? false),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(4),
-                      ),
+      content: SizedBox(
+        width: 420,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: contentHeight),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Text(
+                    'VERSION 1.3.0',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.white70,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'A clearer view of shared expenses, with a smoother way to keep everything moving.',
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.4,
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                _highlight(
+                  Icons.account_balance_wallet_outlined,
+                  'See who owes whom',
+                  'Balances are clearer, with an indicator when anything is still unsettled.',
+                ),
+                _divider(),
+                _highlight(
+                  Icons.done_all_rounded,
+                  'Collect with fewer taps',
+                  'Mark your expenses as paid together from My Expenses.',
+                ),
+                _divider(),
+                _highlight(
+                  Icons.dashboard_outlined,
+                  'A more helpful dashboard',
+                  'Get a greeting and quick action based on your current balances.',
+                ),
+                _divider(),
+                _highlight(
+                  Icons.bar_chart_rounded,
+                  'Track spending over time',
+                  'Compare your share with group spending by day, week, or month.',
+                ),
+                _divider(),
+                _highlight(
+                  Icons.bolt_outlined,
+                  'Smoother everyday use',
+                  'Expense lists, avatars, group details, and navigation feel more polished.',
+                ),
+                const SizedBox(height: 10),
+                CheckboxListTile(
+                  value: _dontShowAgain,
+                  onChanged: (value) =>
+                      setState(() => _dontShowAgain = value ?? false),
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: Text(
                     "Don't show again",
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: Colors.white.withValues(alpha: 0.7),
                     ),
                   ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        FilledButton(
-          onPressed: () async {
-            if (_dontShowAgain) await ChangelogService.markSeen();
-            if (context.mounted) Navigator.pop(context);
-          },
-          style: FilledButton.styleFrom(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-            backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFF171A3F),
-          ),
-          child: const Text(
-            'Got it!',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _section(String title, List<String> items) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        ),
-        const SizedBox(height: 6),
-        ...items.map(
-          (item) => Padding(
-            padding: const EdgeInsets.only(bottom: 4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '• ',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-                ),
-                Expanded(
-                  child: Text(
-                    item,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.75),
-                    ),
-                  ),
+                  activeColor: const Color(0xFF8FE3B0),
+                  checkColor: const Color(0xFF171A3F),
                 ),
               ],
             ),
           ),
         ),
+      ),
+      actions: [
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: () async {
+              if (_dontShowAgain) await ChangelogService.markSeen();
+              if (context.mounted) Navigator.pop(context);
+            },
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF171A3F),
+            ),
+            child: const Text(
+              'Got it',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
       ],
     );
   }
+
+  Widget _highlight(IconData icon, String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 18, color: const Color(0xFF8FE3B0)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 12,
+                    height: 1.35,
+                    color: Colors.white.withValues(alpha: 0.68),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _divider() => Divider(
+    height: 1,
+    color: Colors.white.withValues(alpha: 0.1),
+  );
 }

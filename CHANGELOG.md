@@ -6,6 +6,24 @@ Divido is a Flutter-based Progressive Web App (PWA) for splitting and tracking s
 
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] — 2026-10-12
+
+### ✨ Added
+- Animated tab selection and an unsettled-balance indicator on the Balance tab.
+- A "Mark all as paid" action and an all-collected status on Mine.
+- A contextual dashboard greeting and hero action.
+- A dashboard spending chart comparing your share with the group total by day, week, or month.
+
+### ⚡ Improved
+- Redesigned Dashboard, All, Mine, and Balance screens for a more consistent experience.
+- Improved balance loading reliability, balance labels, and balance calculations.
+- Added lazy expense lists, shared avatar caching, and smoother navigation transitions.
+- Improved group sorting and throttled group balance fetches.
+- Refined group info screens and expense creation reliability.
+
+### 🧹 Removed
+- Date-divider totals from the Balance screen.
+
 
 ## [0.2.0-beta] — 2026-02-24
 
