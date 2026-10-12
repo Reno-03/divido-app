@@ -89,4 +89,23 @@ class ExpenseProvider extends ChangeNotifier {
 
     notifyListeners();
   }
+
+  void setExpensesPaidLocally(List<String> expenseIds, bool newValue) {
+    final ids = expenseIds.toSet();
+    final paidAt = newValue ? DateTime.now().toIso8601String() : null;
+    var changed = false;
+
+    for (var i = 0; i < _expenses.length; i++) {
+      if (!ids.contains(_expenses[i]['id'])) continue;
+
+      _expenses[i] = {
+        ..._expenses[i],
+        'is_paid': newValue,
+        'paid_at': paidAt,
+      };
+      changed = true;
+    }
+
+    if (changed) notifyListeners();
+  }
 }
