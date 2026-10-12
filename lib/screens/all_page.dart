@@ -358,10 +358,6 @@ class _AllPageState extends State<AllPage> {
     final List<_FeedRow> rows = [];
     for (var dateKey in sortedDates) {
       final expensesForDate = grouped[dateKey]!;
-      double dayTotal = 0;
-      for (var exp in expensesForDate) {
-        dayTotal += _toDouble(exp['total']);
-      }
 
       String dateLabel;
       if (dateKey == todayStr) {
@@ -376,7 +372,7 @@ class _AllPageState extends State<AllPage> {
         }
       }
 
-      rows.add(_FeedRow.header(label: dateLabel, dayTotal: dayTotal));
+      rows.add(_FeedRow.header(label: dateLabel));
 
       for (var expense in expensesForDate) {
         rows.add(_FeedRow.expense(expenseMap: expense));
@@ -711,25 +707,13 @@ class _AllPageState extends State<AllPage> {
                         if (row.isHeader) {
                           return Padding(
                             padding: const EdgeInsets.fromLTRB(4, 20, 4, 10),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  row.headerLabel!,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white.withValues(alpha: 0.65),
-                                  ),
-                                ),
-                                Text(
-                                  dashMoney(row.dayTotal!, trimZeros: true),
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.white.withValues(alpha: 0.4),
-                                  ),
-                                ),
-                              ],
+                            child: Text(
+                              row.headerLabel!,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white.withValues(alpha: 0.65),
+                              ),
                             ),
                           );
                         } else {
@@ -924,21 +908,18 @@ class _AllPageState extends State<AllPage> {
 class _FeedRow {
   final bool isHeader;
   final String? headerLabel;
-  final double? dayTotal;
   final Map<String, dynamic>? expenseMap;
 
   const _FeedRow._({
     required this.isHeader,
     this.headerLabel,
-    this.dayTotal,
     this.expenseMap,
   });
 
-  factory _FeedRow.header({required String label, required double dayTotal}) {
+  factory _FeedRow.header({required String label}) {
     return _FeedRow._(
       isHeader: true,
       headerLabel: label,
-      dayTotal: dayTotal,
     );
   }
 
