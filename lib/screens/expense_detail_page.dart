@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ExpenseDetailPage extends StatelessWidget {
   final Map<String, dynamic> expense;
@@ -26,6 +27,12 @@ class ExpenseDetailPage extends StatelessWidget {
           Center(
             child: Hero(
               tag: 'expense_${expense['id']}',
+              flightShuttleBuilder: (_, _, _, _, _) => DecoratedBox(
+                decoration: BoxDecoration(
+                  color: ownerColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               child: Material(
                 color: Colors.transparent,
                 child: Container(
@@ -120,10 +127,11 @@ class ExpenseDetailPage extends StatelessWidget {
                                 [])
                             .map((b) {
                               final user = b['profiles'];
-                              final initials = [
-                                user?['firstname']?.substring(0, 1) ?? '',
-                                user?['lastname']?.substring(0, 1) ?? '',
-                              ].join().toUpperCase();
+                              final f = (user?['firstname'] ?? '').toString();
+                              final l = (user?['lastname'] ?? '').toString();
+                              final initials =
+                                  '${f.isNotEmpty ? f[0] : ''}${l.isNotEmpty ? l[0] : ''}'
+                                      .toUpperCase();
 
                               final rawColor = user?['color'] ?? '#6366F1';
                               final userColor = Color(
@@ -258,10 +266,18 @@ class UserAvatar extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: avatarUrl != null && avatarUrl!.isNotEmpty
-          ? Image.network(
-              avatarUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => _initialsWidget(),
+          ? ClipOval(
+              child: CachedNetworkImage(
+                imageUrl: avatarUrl!,
+                fit: BoxFit.cover,
+                width: size,
+                height: size,
+                memCacheWidth: 96,
+                fadeInDuration: Duration.zero,
+                fadeOutDuration: Duration.zero,
+                placeholder: (_, _) => _initialsWidget(),
+                errorWidget: (_, _, _) => _initialsWidget(),
+              ),
             )
           : _initialsWidget(),
     );

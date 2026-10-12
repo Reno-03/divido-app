@@ -1,13 +1,16 @@
+import 'dart:async';
+import 'dart:math';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:divido_app/providers/expense_provider.dart';
 import 'package:divido_app/providers/group_provider.dart';
 import 'package:divido_app/screens/expense_detail_page.dart';
+import 'package:divido_app/widgets/dashboard_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart'; // For formatting dates
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:provider/provider.dart';
-import '../providers/expense_provider.dart';
-import 'dart:async';
 
 class AllPage extends StatefulWidget {
   const AllPage({super.key});
@@ -63,9 +66,10 @@ class _AllPageState extends State<AllPage> {
       if ((!_showPaid && isPaid) || (!_showUnpaid && !isPaid)) return false;
 
       // Filter by user involvement
+      // TODO: _onlyMine currently excludes expenses the user owns, which contradicts its label.
       if (_onlyMine) {
         final ownerId = expense['owner_id'] as String?;
-        if (ownerId == currentUserId) return false; // exclude own expenses
+        if (ownerId == currentUserId) return false;
 
         final breakdowns =
             (expense['expense_breakdowns'] as List<dynamic>? ?? []);
@@ -74,13 +78,20 @@ class _AllPageState extends State<AllPage> {
       }
 
       // Filter by search
-      return expense['search_title'].contains(_searchQuery) ||
-          expense['search_date_str'].contains(_searchQuery) ||
-          expense['search_date_key'].contains(_searchQuery);
+      final searchTitle = (expense['search_title'] ?? '').toString().toLowerCase();
+      final searchDateStr = (expense['search_date_str'] ?? '').toString().toLowerCase();
+      final searchDateKey = (expense['search_date_key'] ?? '').toString().toLowerCase();
+
+      return searchTitle.contains(_searchQuery) ||
+          searchDateStr.contains(_searchQuery) ||
+          searchDateKey.contains(_searchQuery);
     }).toList();
   }
 
-  void _openFilterDialog(String currentUserId) {
+  void _openFilterDialog(
+    String currentUserId,
+    List<Map<String, dynamic>> allExpenses,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -91,8 +102,39 @@ class _AllPageState extends State<AllPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) {
+        bool tempShowPaid = _showPaid;
+        bool tempShowUnpaid = _showUnpaid;
+        bool tempOnlyMine = _onlyMine;
+
         return StatefulBuilder(
           builder: (context, setStateSB) {
+            // Live compute count inside sheet
+            final tempFiltered = allExpenses.where((expense) {
+              final isPaid = expense['is_paid'] == true;
+              if ((!tempShowPaid && isPaid) || (!tempShowUnpaid && !isPaid)) {
+                return false;
+              }
+              if (tempOnlyMine) {
+                final ownerId = expense['owner_id'] as String?;
+                if (ownerId == currentUserId) return false;
+                final breakdowns =
+                    (expense['expense_breakdowns'] as List<dynamic>? ?? []);
+                final isPayer = breakdowns.any(
+                  (b) => b['payer_id'] == currentUserId,
+                );
+                if (!isPayer) return false;
+              }
+              final searchTitle =
+                  (expense['search_title'] ?? '').toString().toLowerCase();
+              final searchDateStr =
+                  (expense['search_date_str'] ?? '').toString().toLowerCase();
+              final searchDateKey =
+                  (expense['search_date_key'] ?? '').toString().toLowerCase();
+              return searchTitle.contains(_searchQuery) ||
+                  searchDateStr.contains(_searchQuery) ||
+                  searchDateKey.contains(_searchQuery);
+            }).toList();
+
             return Padding(
               padding: EdgeInsets.fromLTRB(
                 20,
@@ -104,7 +146,6 @@ class _AllPageState extends State<AllPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Drag handle
                   Center(
                     child: Container(
                       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -116,8 +157,6 @@ class _AllPageState extends State<AllPage> {
                       ),
                     ),
                   ),
-
-                  // Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -136,65 +175,60 @@ class _AllPageState extends State<AllPage> {
                           height: 28,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.grey.withValues(alpha: 0.2),
+                            color: Colors.white.withValues(alpha: 0.1),
                           ),
-                          child: const Icon(Icons.close, size: 16),
+                          child: const Icon(
+                            Icons.close,
+                            size: 16,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
-
-                  // Paid/unpaid toggles
                   _buildFilterOption(
                     title: 'Show Paid',
-                    value: _showPaid,
-                    onChanged: (v) => setStateSB(() => _showPaid = v),
+                    value: tempShowPaid,
+                    onChanged: (v) => setStateSB(() => tempShowPaid = v),
                   ),
                   _buildFilterOption(
                     title: 'Show Unpaid',
-                    value: _showUnpaid,
-                    onChanged: (v) => setStateSB(() => _showUnpaid = v),
+                    value: tempShowUnpaid,
+                    onChanged: (v) => setStateSB(() => tempShowUnpaid = v),
                   ),
                   _buildFilterOption(
                     title: 'Only Show Expenses I\'m Involved In',
-                    value: _onlyMine,
-                    onChanged: (v) => setStateSB(() => _onlyMine = v),
+                    value: tempOnlyMine,
+                    onChanged: (v) => setStateSB(() => tempOnlyMine = v),
                   ),
-
                   const SizedBox(height: 24),
-
-                  // Buttons
                   Row(
                     children: [
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
                             setStateSB(() {
-                              _showPaid = true;
-                              _showUnpaid = true;
-                              _onlyMine = false;
+                              tempShowPaid = true;
+                              tempShowUnpaid = true;
+                              tempOnlyMine = false;
                             });
-
-                            setState(() {});
-
-                            Navigator.pop(context);
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.04),
+                              color: Colors.transparent,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.1),
+                                color: Colors.white.withValues(alpha: 0.2),
                               ),
                             ),
-                            child: Center(
+                            child: const Center(
                               child: Text(
                                 'Reset',
                                 style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white.withValues(alpha: 0.65),
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
                                   fontSize: 16,
                                 ),
                               ),
@@ -206,7 +240,11 @@ class _AllPageState extends State<AllPage> {
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
-                            setState(() {}); // refresh main UI
+                            setState(() {
+                              _showPaid = tempShowPaid;
+                              _showUnpaid = tempShowUnpaid;
+                              _onlyMine = tempOnlyMine;
+                            });
                             Navigator.pop(context);
                           },
                           child: Container(
@@ -214,18 +252,11 @@ class _AllPageState extends State<AllPage> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.white.withValues(alpha: 0.3),
-                                  offset: const Offset(0, 4),
-                                  blurRadius: 8,
-                                ),
-                              ],
                             ),
-                            child: const Center(
+                            child: Center(
                               child: Text(
-                                'Apply Filters',
-                                style: TextStyle(
+                                'Show ${tempFiltered.length} expenses',
+                                style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Color(0xFF171A3F),
                                   fontSize: 16,
@@ -246,7 +277,6 @@ class _AllPageState extends State<AllPage> {
     );
   }
 
-  // Custom reusable row with animated checkmark for filter
   Widget _buildFilterOption({
     required String title,
     required bool value,
@@ -259,33 +289,35 @@ class _AllPageState extends State<AllPage> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: value
-              ? Colors.blue.withValues(alpha: 0.1)
+              ? Colors.white.withValues(alpha: 0.1)
               : Colors.white.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: value
-                ? Colors.blue.withValues(alpha: 0.3)
+                ? Colors.white.withValues(alpha: 0.3)
                 : Colors.white.withValues(alpha: 0.1),
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: Colors.white,
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
               ),
             ),
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
               child: value
-                  ? Icon(
+                  ? const Icon(
                       Icons.check_circle,
-                      key: const ValueKey('checked'),
-                      color: Colors.blue.shade300,
+                      key: ValueKey('checked'),
+                      color: Colors.white,
                     )
                   : Icon(
                       Icons.circle_outlined,
@@ -301,6 +333,59 @@ class _AllPageState extends State<AllPage> {
 
   bool get _isFiltered => !(_showPaid && _showUnpaid && !_onlyMine);
 
+  List<_FeedRow> _buildRows(
+    List<Map<String, dynamic>> expenses,
+    String currentUserId,
+  ) {
+    final Map<String, List<Map<String, dynamic>>> grouped = {};
+    for (var expense in expenses) {
+      final dynamic rawDate = expense['created_at_local'];
+      final DateTime createdAt = rawDate is DateTime
+          ? rawDate
+          : (DateTime.tryParse('$rawDate') ?? DateTime.now());
+      final dateKey = DateFormat('yyyy-MM-dd').format(createdAt);
+      grouped.putIfAbsent(dateKey, () => []);
+      grouped[dateKey]!.add(expense);
+    }
+
+    final sortedDates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
+    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+    final yesterdayStr = DateFormat('yyyy-MM-dd').format(
+      DateTime.now().subtract(const Duration(days: 1)),
+    );
+    final dateFormat = DateFormat('MMMM d, yyyy');
+
+    final List<_FeedRow> rows = [];
+    for (var dateKey in sortedDates) {
+      final expensesForDate = grouped[dateKey]!;
+      double dayTotal = 0;
+      for (var exp in expensesForDate) {
+        dayTotal += _toDouble(exp['total']);
+      }
+
+      String dateLabel;
+      if (dateKey == todayStr) {
+        dateLabel = 'Today';
+      } else if (dateKey == yesterdayStr) {
+        dateLabel = 'Yesterday';
+      } else {
+        try {
+          dateLabel = dateFormat.format(DateTime.parse(dateKey));
+        } catch (_) {
+          dateLabel = dateKey;
+        }
+      }
+
+      rows.add(_FeedRow.header(label: dateLabel, dayTotal: dayTotal));
+
+      for (var expense in expensesForDate) {
+        rows.add(_FeedRow.expense(expenseMap: expense));
+      }
+    }
+
+    return rows;
+  }
+
   @override
   Widget build(BuildContext context) {
     final expenseProvider = Provider.of<ExpenseProvider>(context);
@@ -309,715 +394,971 @@ class _AllPageState extends State<AllPage> {
 
     final expenses = _applyFilters(allExpenses, currentUserId);
 
+    double totalSum = 0;
+    double myShareSum = 0;
+    for (var exp in expenses) {
+      final t = _toDouble(exp['total']);
+      totalSum += t;
+      final breakdowns = exp['expense_breakdowns'] as List<dynamic>? ?? [];
+      for (var b in breakdowns) {
+        if (b['payer_id'] == currentUserId) {
+          myShareSum += _toDouble(b['amount']);
+          break;
+        }
+      }
+    }
+
     if (expenseProvider.isLoading) {
-      return Shimmer.fromColors(
-        baseColor: Colors.white.withValues(alpha: 0.06),
-        highlightColor: Colors.white.withValues(alpha: 0.15),
-        child: ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: 5,
-          itemBuilder: (_, _) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: Shimmer.fromColors(
+            baseColor: Colors.white.withValues(alpha: 0.06),
+            highlightColor: Colors.white.withValues(alpha: 0.15),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
               children: [
-                // date divider skeleton
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Row(
-                    children: [
-                      const Expanded(child: Divider()),
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 12),
-                        width: 120,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      const Expanded(child: Divider()),
-                    ],
-                  ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    DashSkeleton(height: 28, radius: 6),
+                    SizedBox(height: 6),
+                    DashSkeleton(height: 16, radius: 4),
+                  ],
                 ),
-                // expense card skeleton
-                Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  height: 160,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                const SizedBox(height: 16),
+                Row(
+                  children: const [
+                    Expanded(child: DashSkeleton(height: 110, radius: 20)),
+                    SizedBox(width: 14),
+                    Expanded(child: DashSkeleton(height: 110, radius: 20)),
+                  ],
                 ),
+                const SizedBox(height: 16),
+                const DashSkeleton(height: 48, radius: 12),
+                const SizedBox(height: 16),
+                const DashSkeleton(height: 130, radius: 16),
+                const SizedBox(height: 12),
+                const DashSkeleton(height: 130, radius: 16),
+                const SizedBox(height: 12),
+                const DashSkeleton(height: 130, radius: 16),
               ],
-            );
-          },
+            ),
+          ),
         ),
       );
     }
 
-    // if (expenses.isEmpty) {
-    //   return const Center(child: Text('No expenses found'));
-    // }
-
-    // Group by date
-    final Map<String, List<Map<String, dynamic>>> grouped = {};
-
-    for (var expense in expenses) {
-      final createdAt = expense['created_at_local'] as DateTime;
-      final dateKey = DateFormat('yyyy-MM-dd').format(createdAt);
-
-      grouped.putIfAbsent(dateKey, () => []);
-      grouped[dateKey]!.add(expense);
-    }
-
-    final sortedDates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
-
-    // Get invite code from group provider
     final selectedGroup = Provider.of<GroupProvider>(
       context,
       listen: false,
     ).selectedGroup;
     final inviteCode = selectedGroup?['invite_code'] as String?;
+    final feedRows = _buildRows(expenses, currentUserId);
+    final groupId = Provider.of<GroupProvider>(context, listen: false).selectedGroupId;
 
     return Scaffold(
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // search bar
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search by title or date...',
-                      hintStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.35),
-                        fontSize: 14,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.search,
-                        color: Colors.white.withValues(alpha: 0.35),
-                        size: 20,
-                      ),
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.06),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    style: const TextStyle(fontSize: 14),
-                  ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: RefreshIndicator(
+            onRefresh: () async {
+              if (groupId != null) {
+                await expenseProvider.refresh(groupId);
+              }
+            },
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // HEADER
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'All expenses',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${expenses.length} expenses',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.white60,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
 
-                  // Filter indicator
-                  if (_isFiltered)
-                    Positioned(
-                      right: -5,
-                      top: -5,
-                      child: Container(
+                        // SUMMARY TILES
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _SummaryTile(
+                                icon: Icons.account_balance_wallet_outlined,
+                                label: 'Total',
+                                amount: totalSum,
+                                caption: '${expenses.length} expenses',
+                                amountColor: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: _SummaryTile(
+                                icon: Icons.person_outline,
+                                label: 'Your share',
+                                amount: myShareSum,
+                                caption: 'your portion',
+                                amountColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
+                        // SEARCH AND FILTER ROW
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextField(
+                                controller: _searchController,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.white,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Search by title or date...',
+                                  hintStyle: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.35),
+                                    fontSize: 14,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.search,
+                                    color: Colors.white.withValues(alpha: 0.35),
+                                    size: 20,
+                                  ),
+                                  suffixIcon: _searchController.text.isNotEmpty
+                                      ? IconButton(
+                                          icon: Icon(
+                                            Icons.clear,
+                                            color: Colors.white.withValues(
+                                              alpha: 0.5,
+                                            ),
+                                            size: 18,
+                                          ),
+                                          onPressed: () {
+                                            _searchController.clear();
+                                          },
+                                        )
+                                      : null,
+                                  filled: true,
+                                  fillColor: Colors.white.withValues(
+                                    alpha: 0.06,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  GestureDetector(
+                                    onTap: () => _openFilterDialog(
+                                      currentUserId,
+                                      allExpenses,
+                                    ),
+                                    child: Container(
+                                      width: 48,
+                                      height: 48,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.06,
+                                        ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Icon(
+                                        Icons.filter_list,
+                                        color: Colors.white.withValues(
+                                          alpha: 0.85,
+                                        ),
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                  if (_isFiltered)
+                                    Positioned(
+                                      top: -2,
+                                      right: -2,
+                                      child: Container(
+                                        width: 10,
+                                        height: 10,
+                                        decoration: BoxDecoration(
+                                          color: kDashNavy,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // QUICK FILTER CHIPS
+                        SizedBox(
+                          height: 36,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              _buildChip(
+                                label: 'All',
+                                selected:
+                                    _showPaid && _showUnpaid && !_onlyMine,
+                                onTap: () {
+                                  setState(() {
+                                    _showPaid = true;
+                                    _showUnpaid = true;
+                                    _onlyMine = false;
+                                  });
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              _buildChip(
+                                label: 'Unpaid',
+                                selected: !_showPaid && _showUnpaid,
+                                onTap: () {
+                                  setState(() {
+                                    _showPaid = false;
+                                    _showUnpaid = true;
+                                  });
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              _buildChip(
+                                label: 'Paid',
+                                selected: _showPaid && !_showUnpaid,
+                                onTap: () {
+                                  setState(() {
+                                    _showPaid = true;
+                                    _showUnpaid = false;
+                                  });
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              _buildChip(
+                                label: 'Involving me',
+                                selected: _onlyMine,
+                                onTap: () {
+                                  setState(() {
+                                    _onlyMine = !_onlyMine;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ),
+                  ),
+                ),
+                if (allExpenses.isEmpty)
+                  SliverToBoxAdapter(
+                    child: _buildNoExpensesState(inviteCode),
+                  )
+                else if (expenses.isEmpty &&
+                    (_searchQuery.isNotEmpty || _isFiltered))
+                  SliverToBoxAdapter(child: _buildNoResultsState())
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final row = feedRows[index];
+                        if (row.isHeader) {
+                          return Padding(
+                            padding: const EdgeInsets.fromLTRB(4, 20, 4, 10),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  row.headerLabel!,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white.withValues(alpha: 0.65),
+                                  ),
+                                ),
+                                Text(
+                                  dashMoney(row.dayTotal!, trimZeros: true),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.white.withValues(alpha: 0.4),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        } else {
+                          final expense = row.expenseMap!;
+                          return RepaintBoundary(
+                            key: ValueKey(expense['id']),
+                            child: _ExpenseCard(
+                              expense: expense,
+                              currentUserId: currentUserId,
+                            ),
+                          );
+                        }
+                      }, childCount: feedRows.length),
+                    ),
+                  ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: MediaQuery.of(context).padding.bottom + 110,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? Colors.white : Colors.white.withValues(alpha: 0.07),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: selected
+                ? Colors.transparent
+                : Colors.white.withValues(alpha: 0.12),
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected ? kDashNavy : Colors.white.withValues(alpha: 0.65),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoExpensesState(String? inviteCode) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 64,
+              color: Colors.white.withValues(alpha: 0.2),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No expenses yet',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Create an expense using the add button below to see it here',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
+            ),
+            if (inviteCode != null) ...[
+              const SizedBox(height: 24),
+              GestureDetector(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: inviteCode));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Invite code copied!'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.07),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.copy,
+                        size: 14,
+                        color: Colors.white.withValues(alpha: 0.5),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Invite Code: $inviteCode',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoResultsState() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off,
+              size: 64,
+              color: Colors.white.withValues(alpha: 0.2),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _searchQuery.isNotEmpty
+                  ? 'No results for "$_searchQuery"'
+                  : 'No expenses match the selected filters',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.65),
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _searchController.clear();
+                  _searchQuery = '';
+                  _showPaid = true;
+                  _showUnpaid = true;
+                  _onlyMine = false;
+                });
+              },
+              child: const Text(
+                'Clear filters',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FeedRow {
+  final bool isHeader;
+  final String? headerLabel;
+  final double? dayTotal;
+  final Map<String, dynamic>? expenseMap;
+
+  const _FeedRow._({
+    required this.isHeader,
+    this.headerLabel,
+    this.dayTotal,
+    this.expenseMap,
+  });
+
+  factory _FeedRow.header({required String label, required double dayTotal}) {
+    return _FeedRow._(
+      isHeader: true,
+      headerLabel: label,
+      dayTotal: dayTotal,
+    );
+  }
+
+  factory _FeedRow.expense({required Map<String, dynamic> expenseMap}) {
+    return _FeedRow._(
+      isHeader: false,
+      expenseMap: expenseMap,
+    );
+  }
+}
+
+class _SummaryTile extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final double amount;
+  final String caption;
+  final Color amountColor;
+
+  const _SummaryTile({
+    required this.icon,
+    required this.label,
+    required this.amount,
+    required this.caption,
+    required this.amountColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: kDashGlass,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: Colors.white, size: 18),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: Colors.white70,
+            ),
+          ),
+          const SizedBox(height: 4),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: DashAmount(
+              amount,
+              size: 22,
+              color: amountColor,
+              weight: FontWeight.w800,
+              trimZeros: true,
+              animate: true,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            caption,
+            style: const TextStyle(fontSize: 11, color: Colors.white54),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExpenseCard extends StatefulWidget {
+  final Map<String, dynamic> expense;
+  final String currentUserId;
+
+  const _ExpenseCard({required this.expense, required this.currentUserId});
+
+  @override
+  State<_ExpenseCard> createState() => _ExpenseCardState();
+}
+
+class _ExpenseCardState extends State<_ExpenseCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final expense = widget.expense;
+    final currentUserId = widget.currentUserId;
+    final isPaid = expense['is_paid'] == true;
+    final owner = expense['profiles'];
+    final ownerId = owner?['id'];
+    final breakdowns = expense['expense_breakdowns'] as List<dynamic>? ?? [];
+
+    final ownerName = owner != null
+        ? '${owner['firstname'] ?? ''} ${owner['lastname'] ?? ''}'.trim()
+        : 'Unknown';
+
+    final filteredBreakdowns = breakdowns
+        .where((b) => b['payer_id'] != ownerId)
+        .toList();
+
+    final ownerRawColor = owner?['color'] as String? ?? '#6366F1';
+    final ownerColor = dashParseColor(ownerRawColor);
+
+    double? myShare;
+    for (var b in breakdowns) {
+      if (b['payer_id'] == currentUserId) {
+        myShare = _toDouble(b['amount']);
+        break;
+      }
+    }
+
+    return Hero(
+      tag: 'expense_${expense['id']}',
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            PageRouteBuilder(
+              transitionDuration: const Duration(milliseconds: 300),
+              reverseTransitionDuration: const Duration(milliseconds: 250),
+              pageBuilder: (_, _, _) => ExpenseDetailPage(
+                expense: expense,
+                ownerColor: ownerColor,
+              ),
+              transitionsBuilder: (_, animation, _, child) {
+                final curved = animation.drive(
+                  CurveTween(curve: Curves.easeOut),
+                );
+                return FadeTransition(
+                  opacity: curved,
+                  child: ColoredBox(
+                    color: kDashNavy,
+                    child: child,
+                  ),
+                );
+              },
+            ),
+          );
+        },
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 300),
+          opacity: isPaid ? 0.45 : 1.0,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: ownerColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(16),
+              border: Border(left: BorderSide(color: ownerColor, width: 5)),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top row
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _PayerAvatar(
+                        user: owner,
+                        size: 38,
+                        fontSize: 12,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              expense['title'] ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                                color: Colors.white,
+                                decoration: isPaid
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                                decorationColor: Colors.white54,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              ownerName,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Colors.white60,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      DashAmount(
+                        _toDouble(expense['total']),
+                        size: 22,
+                        weight: FontWeight.w800,
+                        trimZeros: true,
+                        animate: false,
+                        color: Colors.white,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Divider(
+                    color: Colors.white.withValues(alpha: 0.07),
+                    height: 1,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Footer row
+                  Row(
+                    children: [
+                      _buildAvatarStack(filteredBreakdowns),
+                      if (filteredBreakdowns.isNotEmpty) const SizedBox(width: 10),
+                      Text(
+                        filteredBreakdowns.length == 1
+                            ? '1 payer'
+                            : '${filteredBreakdowns.length} payers',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withValues(alpha: 0.65),
+                        ),
+                      ),
+                      const Spacer(),
+                      Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
+                          color: isPaid
+                              ? kDashPositive.withValues(alpha: 0.15)
+                              : Colors.amber.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Text(
-                          'Filtered',
+                        child: Text(
+                          isPaid ? 'Paid' : 'Unpaid',
                           style: TextStyle(
-                            color: Color(0xFF171A3F),
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isPaid
+                                ? kDashPositive
+                                : Colors.amber.shade300,
                           ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-            ),
-          ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () {
+                          setState(() {
+                            _expanded = !_expanded;
+                          });
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: AnimatedRotation(
+                            turns: _expanded ? 0.5 : 0.0,
+                            duration: const Duration(milliseconds: 200),
+                            child: Icon(
+                              Icons.expand_more,
+                              color: Colors.white.withValues(alpha: 0.65),
+                              size: 20,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
 
-          // empty states
-          if (allExpenses.isEmpty)
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  final groupId = Provider.of<GroupProvider>(
-                    context,
-                    listen: false,
-                  ).selectedGroupId;
-                  if (groupId != null) await expenseProvider.refresh(groupId);
-                },
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      minHeight: MediaQuery.of(context).size.height * 0.7,
+                  if (myShare != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Your share: ₱${dashMoney(myShare, trimZeros: true)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
                     ),
-                    child: Center(
-                      child: Container(
-                        height: MediaQuery.of(context).size.height * 0.5,
-                        alignment: Alignment.center,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.receipt_long_outlined,
-                              size: 64,
-                              color: Colors.white.withValues(alpha: 0.2),
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No expenses yet',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white.withValues(alpha: 0.4),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Create an expense to see it here',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.white.withValues(alpha: 0.3),
-                              ),
-                            ),
+                  ],
 
-                            if (inviteCode != null) ...[
-                              const SizedBox(height: 24),
-                              GestureDetector(
-                                onTap: () {
-                                  Clipboard.setData(
-                                    ClipboardData(text: inviteCode),
-                                  );
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Invite code copied!'),
-                                      behavior: SnackBarBehavior.floating,
-                                      margin: EdgeInsets.only(
-                                        bottom: 0,
-                                        left: 16,
-                                        right: 16,
-                                      ),
-                                    ),
-                                  );
-                                },
-                                child: Container(
+                  // Expandable payer details
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 200),
+                    child: _expanded
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: Column(
+                              children: filteredBreakdowns.map((b) {
+                                final user = b['profiles'];
+                                final fName = user?['firstname'] ?? '';
+                                final lName = user?['lastname'] ?? '';
+                                final pName = user != null
+                                    ? '$fName $lName'
+                                    : 'Unknown';
+                                final amount = _toDouble(b['amount']);
+
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 10,
+                                    horizontal: 10,
+                                    vertical: 8,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.07),
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.15,
-                                      ),
+                                    color: Colors.white.withValues(
+                                      alpha: 0.04,
                                     ),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Row(
-                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(
-                                        Icons.copy,
-                                        size: 14,
-                                        color: Colors.white.withValues(
-                                          alpha: 0.5,
+                                      _PayerAvatar(
+                                        user: user,
+                                        size: 32,
+                                        fontSize: 12,
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          pName,
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.white,
+                                          ),
                                         ),
                                       ),
-                                      const SizedBox(width: 8),
                                       Text(
-                                        'Invite Code: $inviteCode',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          letterSpacing: 1.2,
+                                        '₱${dashMoney(amount, trimZeros: true)}',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white.withValues(
+                                            alpha: 0.65,
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            )
-          else if (expenses.isEmpty && (_searchQuery.isNotEmpty || _isFiltered))
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  final groupId = Provider.of<GroupProvider>(
-                    context,
-                    listen: false,
-                  ).selectedGroupId;
-                  if (groupId != null) await expenseProvider.refresh(groupId);
-                },
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  child: Container(
-                    height: MediaQuery.of(context).size.height * 0.5,
-                    alignment: Alignment.center,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.search_off,
-                          size: 64,
-                          color: Colors.white.withValues(alpha: 0.2),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _searchQuery.isNotEmpty
-                              ? 'No results for "$_searchQuery"'
-                              : 'No expenses match the selected filters',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.35),
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            )
-          else
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  final groupId = Provider.of<GroupProvider>(
-                    context,
-                    listen: false,
-                  ).selectedGroupId;
-                  await expenseProvider.refresh(groupId);
-                },
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 720),
-                    child: ListView.builder(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.all(16),
-                      itemCount: sortedDates.length,
-                      itemBuilder: (context, index) {
-                        final dateKey = sortedDates[index];
-                        final expensesForDate = grouped[dateKey]!;
-
-                        final formattedDate = DateFormat(
-                          'MMMM d, yyyy',
-                        ).format(DateTime.parse(dateKey));
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              child: Row(
-                                children: [
-                                  const Expanded(child: Divider()),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                    ),
-                                    child: Text(
-                                      formattedDate,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  const Expanded(child: Divider()),
-                                ],
-                              ),
+                                );
+                              }).toList(),
                             ),
-                            ...expensesForDate.map((expense) {
-                              final isPaid = expense['is_paid'] == true;
-                              final owner = expense['profiles'];
-                              final ownerId = owner?['id'];
-                              final breakdowns =
-                                  expense['expense_breakdowns']
-                                      as List<dynamic>? ??
-                                  [];
-
-                              final ownerName = owner != null
-                                  ? '${owner['firstname']} ${owner['lastname']}'
-                                  : 'Unknown';
-
-                              final filteredBreakdowns = breakdowns
-                                  .where((b) => b['payer_id'] != ownerId)
-                                  .toList();
-
-                              // Get owner color
-                              final ownerRawColor =
-                                  expense['profiles']?['color'] as String? ??
-                                  '#6366F1';
-                              final ownerColor = Color(
-                                int.parse(
-                                  'FF${ownerRawColor.replaceAll('#', '')}',
-                                  radix: 16,
-                                ),
-                              );
-
-                              return Hero(
-                                tag: 'expense_${expense['id']}',
-                                child: GestureDetector(
-                                  onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      PageRouteBuilder(
-                                        transitionDuration: const Duration(
-                                          milliseconds: 400,
-                                        ),
-                                        reverseTransitionDuration:
-                                            const Duration(milliseconds: 300),
-                                        pageBuilder: (_, animation, _) =>
-                                            ExpenseDetailPage(
-                                              expense: expense,
-                                              ownerColor: ownerColor,
-                                            ),
-                                        transitionsBuilder: (_, animation, _, child) {
-                                          final fade = CurvedAnimation(
-                                            parent: animation,
-                                            curve: Curves.easeOut,
-                                          );
-
-                                          final scale =
-                                              Tween<double>(
-                                                begin: 0.95,
-                                                end: 1.0,
-                                              ).animate(
-                                                CurvedAnimation(
-                                                  parent: animation,
-                                                  curve: Curves.easeOutCubic,
-                                                ),
-                                              );
-
-                                          return FadeTransition(
-                                            opacity: fade,
-                                            child: ScaleTransition(
-                                              scale: scale,
-                                              child: Material(
-                                                color: Colors
-                                                    .transparent, // ensures smooth Hero
-                                                child: ClipRRect(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                  child: Container(
-                                                    color: Color(
-                                                      0xFF171A3F,
-                                                    ), // matches detail page bg
-                                                    child:
-                                                        child, // your card content
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    );
-                                  },
-                                  child: AnimatedOpacity(
-                                    duration: const Duration(milliseconds: 300),
-                                    opacity: isPaid ? 0.45 : 1.0,
-                                    child: Card(
-                                      margin: const EdgeInsets.only(bottom: 12),
-                                      color: ownerColor.withValues(
-                                        alpha: 0.1,
-                                      ), // subtle tint
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          border: Border(
-                                            left: BorderSide(
-                                              color: ownerColor,
-                                              width: 5,
-                                            ),
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(25),
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: [
-                                                  Expanded(
-                                                    child: Column(
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text(
-                                                          expense['title'] ??
-                                                              '',
-                                                          style: TextStyle(
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                            fontSize: 20,
-                                                            decoration: isPaid
-                                                                ? TextDecoration
-                                                                      .lineThrough
-                                                                : null, // 👈
-                                                            decorationColor:
-                                                                Colors.white54,
-                                                          ),
-                                                        ),
-                                                        Text(
-                                                          ownerName,
-                                                          style: const TextStyle(
-                                                            fontSize: 14,
-                                                            color:
-                                                                Color.fromARGB(
-                                                                  137,
-                                                                  255,
-                                                                  255,
-                                                                  255,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    '₱ ${expense['total']}',
-                                                    style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      fontSize: 33,
-                                                      decoration: isPaid
-                                                          ? TextDecoration
-                                                                .lineThrough
-                                                          : null, // 👈
-                                                      decorationColor:
-                                                          Colors.white54,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                              const SizedBox(height: 8),
-                                              const Text(
-                                                'Payers:',
-                                                style: TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              ...filteredBreakdowns.map((b) {
-                                                final user = b['profiles'];
-                                                final firstName =
-                                                    user?['firstname'] ?? '';
-                                                final lastName =
-                                                    user?['lastname'] ?? '';
-                                                final payerName = user != null
-                                                    ? '$firstName $lastName'
-                                                    : 'Unknown';
-
-                                                // Generate initials
-                                                final initials = [
-                                                  firstName.isNotEmpty
-                                                      ? firstName[0]
-                                                      : '',
-                                                  lastName.isNotEmpty
-                                                      ? lastName[0]
-                                                      : '',
-                                                ].join().toUpperCase();
-
-                                                final rawColor =
-                                                    user?['color'] as String? ??
-                                                    '#6366F1';
-                                                final userColor = Color(
-                                                  int.parse(
-                                                    'FF${rawColor.replaceAll('#', '')}',
-                                                    radix: 16,
-                                                  ),
-                                                );
-
-                                                return Padding(
-                                                  padding:
-                                                      const EdgeInsets.only(
-                                                        top: 6,
-                                                      ),
-                                                  child: Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 8,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.white
-                                                          .withValues(
-                                                            alpha: 0.04,
-                                                          ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            10,
-                                                          ),
-                                                    ),
-                                                    child: Row(
-                                                      children: [
-                                                        // Use a lambda function here,  which evaluates if the avatar_url is available or not
-                                                        // prio: use custom image circle avatar
-                                                        // fallback: use user's initials and a the chosen color as bg gradient of the circle avatar
-                                                        () {
-                                                          final avatarUrl =
-                                                              user?['avatar_url']
-                                                                  as String?;
-                                                          return Container(
-                                                            width: 32,
-                                                            height: 32,
-                                                            decoration: BoxDecoration(
-                                                              shape: BoxShape
-                                                                  .circle,
-                                                              gradient: LinearGradient(
-                                                                begin: Alignment
-                                                                    .topLeft,
-                                                                end: Alignment
-                                                                    .bottomRight,
-                                                                colors: [
-                                                                  userColor,
-                                                                  userColor
-                                                                      .withValues(
-                                                                        alpha:
-                                                                            0.7,
-                                                                      ),
-                                                                ],
-                                                              ),
-                                                            ),
-                                                            clipBehavior:
-                                                                Clip.antiAlias,
-                                                            child:
-                                                                avatarUrl !=
-                                                                        null &&
-                                                                    avatarUrl
-                                                                        .isNotEmpty
-                                                                ? Image.network(
-                                                                    avatarUrl,
-                                                                    fit: BoxFit
-                                                                        .cover,
-                                                                    errorBuilder: (_, _, _) => Center(
-                                                                      child: Text(
-                                                                        initials,
-                                                                        style: const TextStyle(
-                                                                          fontSize:
-                                                                              12,
-                                                                          fontWeight:
-                                                                              FontWeight.bold,
-                                                                          color:
-                                                                              Colors.white,
-                                                                        ),
-                                                                      ),
-                                                                    ),
-                                                                  )
-                                                                : Center(
-                                                                    child: Text(
-                                                                      initials,
-                                                                      style: const TextStyle(
-                                                                        fontSize:
-                                                                            12,
-                                                                        fontWeight:
-                                                                            FontWeight.bold,
-                                                                        color: Colors
-                                                                            .white,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                          );
-                                                        }(),
-                                                        const SizedBox(
-                                                          width: 10,
-                                                        ),
-                                                        Expanded(
-                                                          child: Text(
-                                                            payerName,
-                                                            style:
-                                                                const TextStyle(
-                                                                  fontSize: 14,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w500,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                        Text(
-                                                          '₱${b['amount']}',
-                                                          style: TextStyle(
-                                                            fontSize: 14,
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                            color: Colors.white
-                                                                .withValues(
-                                                                  alpha: 0.65,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                );
-                                              }),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          ],
-                        );
-                      },
-                    ),
+                          )
+                        : const SizedBox.shrink(),
                   ),
-                ),
+                ],
               ),
             ),
-        ],
+          ),
+        ),
       ),
+    );
+  }
 
-      floatingActionButton: Stack(
+  Widget _buildAvatarStack(List<dynamic> breakdowns) {
+    if (breakdowns.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    const int maxVisible = 3;
+    final int count = breakdowns.length;
+    final int visible = min(count, maxVisible);
+    final int slots = visible + (count > maxVisible ? 1 : 0);
+    const double size = 22.0;
+    const double step = 14.0;
+    final double totalWidth = size + (slots - 1) * step;
+
+    return SizedBox(
+      width: totalWidth,
+      height: size,
+      child: Stack(
         clipBehavior: Clip.none,
         children: [
-          FloatingActionButton(
-            heroTag: 'all_page_filter_fab',
-            onPressed: () => _openFilterDialog(currentUserId),
-            child: const Icon(Icons.filter_list),
-          ),
-
-          // Filter indicator dot
-          if (_isFiltered)
+          for (int i = 0; i < visible; i++)
             Positioned(
-              top: -5,
-              right: -5,
+              left: i * step,
+              child: _PayerAvatar(
+                user: breakdowns[i]['profiles'],
+                size: size,
+                fontSize: 8,
+                borderColor: kDashNavy,
+              ),
+            ),
+          if (count > maxVisible)
+            Positioned(
+              left: maxVisible * step,
               child: Container(
-                width: 18,
-                height: 18,
+                width: size,
+                height: size,
                 decoration: BoxDecoration(
-                  color: Color(0xFF171A3F),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white, // optional white border
-                    width: 1.5,
+                  border: Border.all(color: kDashNavy, width: 1.5),
+                  color: Colors.white.withValues(alpha: 0.1),
+                ),
+                child: Center(
+                  child: Text(
+                    '+${count - maxVisible}',
+                    style: const TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -1027,3 +1368,78 @@ class _AllPageState extends State<AllPage> {
     );
   }
 }
+
+class _PayerAvatar extends StatelessWidget {
+  final Map? user;
+  final double size;
+  final double fontSize;
+  final Color? borderColor;
+
+  const _PayerAvatar({
+    this.user,
+    required this.size,
+    this.fontSize = 12,
+    this.borderColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final rawColor = user?['color'] as String? ?? '#6366F1';
+    final userColor = dashParseColor(rawColor);
+    final avatarUrl = user?['avatar_url'] as String?;
+    final f = (user?['firstname'] ?? '').toString();
+    final l = (user?['lastname'] ?? '').toString();
+    final initials =
+        '${f.isNotEmpty ? f[0] : ''}${l.isNotEmpty ? l[0] : ''}'.toUpperCase();
+
+    Widget initialsWidget() {
+      return Center(
+        child: Text(
+          initials,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: borderColor != null
+              ? Border.all(color: borderColor!, width: 1.5)
+              : null,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [userColor, userColor.withValues(alpha: 0.7)],
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: avatarUrl != null && avatarUrl.isNotEmpty
+            ? ClipOval(
+                child: CachedNetworkImage(
+                  imageUrl: avatarUrl,
+                  fit: BoxFit.cover,
+                  width: size,
+                  height: size,
+                  memCacheWidth: 96,
+                  fadeInDuration: Duration.zero,
+                  fadeOutDuration: Duration.zero,
+                  placeholder: (_, _) => initialsWidget(),
+                  errorWidget: (_, _, _) => initialsWidget(),
+                ),
+              )
+            : initialsWidget(),
+      ),
+    );
+  }
+}
+
+double _toDouble(dynamic v) =>
+    v is num ? v.toDouble() : double.tryParse('$v') ?? 0.0;
