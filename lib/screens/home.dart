@@ -588,46 +588,77 @@ class _HomeBottomBar extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: SizedBox(
         height: 60,
-        child: Row(
-          children: [
-            Expanded(
-              child: _HomeBottomBarItem(
-                icon: Icons.dashboard_rounded,
-                label: 'Dashboard',
-                index: 0,
-                currentIndex: currentIndex,
-                onSelect: onSelect,
-              ),
-            ),
-            Expanded(
-              child: _HomeBottomBarItem(
-                icon: Icons.list,
-                label: 'All',
-                index: 1,
-                currentIndex: currentIndex,
-                onSelect: onSelect,
-              ),
-            ),
-            const SizedBox(width: 48),
-            Expanded(
-              child: _HomeBottomBarItem(
-                icon: Icons.person,
-                label: 'Mine',
-                index: 2,
-                currentIndex: currentIndex,
-                onSelect: onSelect,
-              ),
-            ),
-            Expanded(
-              child: _HomeBottomBarItem(
-                icon: Icons.account_balance_wallet,
-                label: 'Balance',
-                index: 3,
-                currentIndex: currentIndex,
-                onSelect: onSelect,
-              ),
-            ),
-          ],
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final itemWidth = (constraints.maxWidth - 48) / 4;
+            final indicatorWidth = itemWidth < 96 ? itemWidth - 12 : 84.0;
+            final indicatorLeft =
+                currentIndex * itemWidth + (currentIndex >= 2 ? 48 : 0);
+            final duration = MediaQuery.of(context).disableAnimations
+                ? Duration.zero
+                : const Duration(milliseconds: 260);
+
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                AnimatedPositioned(
+                  left: indicatorLeft + (itemWidth - indicatorWidth) / 2,
+                  top: 6,
+                  bottom: 6,
+                  width: indicatorWidth,
+                  duration: duration,
+                  curve: Curves.easeInOutCubic,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _HomeBottomBarItem(
+                        icon: Icons.dashboard_rounded,
+                        label: 'Dashboard',
+                        index: 0,
+                        currentIndex: currentIndex,
+                        onSelect: onSelect,
+                      ),
+                    ),
+                    Expanded(
+                      child: _HomeBottomBarItem(
+                        icon: Icons.list,
+                        label: 'All',
+                        index: 1,
+                        currentIndex: currentIndex,
+                        onSelect: onSelect,
+                      ),
+                    ),
+                    const SizedBox(width: 48),
+                    Expanded(
+                      child: _HomeBottomBarItem(
+                        icon: Icons.person,
+                        label: 'Mine',
+                        index: 2,
+                        currentIndex: currentIndex,
+                        onSelect: onSelect,
+                      ),
+                    ),
+                    Expanded(
+                      child: _HomeBottomBarItem(
+                        icon: Icons.account_balance_wallet,
+                        label: 'Balance',
+                        index: 3,
+                        currentIndex: currentIndex,
+                        onSelect: onSelect,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -653,7 +684,7 @@ class _HomeBottomBarItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final isSelected = currentIndex == index;
     final color = isSelected
-        ? Colors.white
+      ? const Color(0xFF0F1128)
         : Colors.white.withValues(alpha: 0.4);
 
     return Semantics(
@@ -666,33 +697,23 @@ class _HomeBottomBarItem extends StatelessWidget {
           onTap: isSelected ? null : () => onSelect(index),
           radius: 16,
           child: Center(
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(icon, color: color),
-                  const SizedBox(height: 2),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: color,
-                      fontSize: 10,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(icon, color: color),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 10,
+                    fontWeight: isSelected
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
