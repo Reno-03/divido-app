@@ -313,6 +313,11 @@ class HomePageState extends State<HomePage> {
             return _HomeBottomBar(
               currentIndex: _currentIndex,
               onSelect: switchTab,
+              hasUnsettledBalance:
+                  groupProvider.groupUnsettledBalances[
+                    groupProvider.selectedGroupId
+                  ] ??
+                  false,
             );
           },
         ),
@@ -574,10 +579,15 @@ class _NoGroupSelected extends StatelessWidget {
 }
 
 class _HomeBottomBar extends StatelessWidget {
-  const _HomeBottomBar({required this.currentIndex, required this.onSelect});
+  const _HomeBottomBar({
+    required this.currentIndex,
+    required this.onSelect,
+    required this.hasUnsettledBalance,
+  });
 
   final int currentIndex;
   final ValueChanged<int> onSelect;
+  final bool hasUnsettledBalance;
 
   @override
   Widget build(BuildContext context) {
@@ -652,6 +662,7 @@ class _HomeBottomBar extends StatelessWidget {
                         index: 3,
                         currentIndex: currentIndex,
                         onSelect: onSelect,
+                        showUnsettledDot: hasUnsettledBalance,
                       ),
                     ),
                   ],
@@ -672,6 +683,7 @@ class _HomeBottomBarItem extends StatelessWidget {
     required this.index,
     required this.currentIndex,
     required this.onSelect,
+    this.showUnsettledDot = false,
   });
 
   final IconData icon;
@@ -679,6 +691,7 @@ class _HomeBottomBarItem extends StatelessWidget {
   final int index;
   final int currentIndex;
   final ValueChanged<int> onSelect;
+  final bool showUnsettledDot;
 
   @override
   Widget build(BuildContext context) {
@@ -690,7 +703,7 @@ class _HomeBottomBarItem extends StatelessWidget {
     return Semantics(
       button: true,
       selected: isSelected,
-      label: '$label tab',
+      label: '$label tab${showUnsettledDot ? ', unsettled' : ''}',
       child: SizedBox(
         height: 48,
         child: InkResponse(
@@ -701,7 +714,31 @@ class _HomeBottomBarItem extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: color),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(icon, color: color),
+                    if (showUnsettledDot)
+                      Positioned(
+                        top: -2,
+                        right: -4,
+                        child: Container(
+                          width: 9,
+                          height: 9,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE53935),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? Colors.white
+                                  : const Color(0xFF0F1128),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 2),
                 Text(
                   label,

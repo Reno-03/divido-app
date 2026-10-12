@@ -76,6 +76,7 @@ class _BalancePageState extends State<BalancePage>
 
   ExpenseProvider? _expenseProvider;
   GroupProvider? _groupProvider;
+  List<Map<String, dynamic>>? _lastExpenses;
   String? _selectedGroupId;
   List<Map<String, dynamic>>? _lastMembers;
   Timer? _debounceTimer;
@@ -106,6 +107,7 @@ class _BalancePageState extends State<BalancePage>
 
       _selectedGroupId = _groupProvider?.selectedGroupId;
       _lastMembers = _groupProvider?.members;
+      _lastExpenses = _expenseProvider?.expenses;
       _setupPaymentsChannel(_selectedGroupId);
       _reload(forceSkeleton: true);
     });
@@ -151,11 +153,14 @@ class _BalancePageState extends State<BalancePage>
     if (!mounted) return;
     final newGroupId = _groupProvider?.selectedGroupId;
     final newMembers = _groupProvider?.members;
+    final newExpenses = _expenseProvider?.expenses;
 
     bool groupChanged = newGroupId != _selectedGroupId;
     bool membersChanged = !identical(newMembers, _lastMembers);
+    bool expensesChanged = !identical(newExpenses, _lastExpenses);
+    _lastExpenses = newExpenses;
 
-    if (groupChanged || membersChanged) {
+    if (groupChanged || membersChanged || expensesChanged) {
       _selectedGroupId = newGroupId;
       _lastMembers = newMembers;
       _setupPaymentsChannel(newGroupId);
@@ -362,6 +367,12 @@ class _BalancePageState extends State<BalancePage>
         });
 
       if (!mounted || currentRequestId != _requestId) return;
+      groupProvider.setGroupUnsettledBalance(
+        groupId,
+        computedBalances.any(
+          (balance) => (balance['net'] as double).abs() >= 0.01,
+        ),
+      );
       setState(() {
         _balances = computedBalances;
         _isFirstLoad = false;

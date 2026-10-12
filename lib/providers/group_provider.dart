@@ -31,8 +31,17 @@ class GroupProvider extends ChangeNotifier {
   Map<String, double> _groupBalances = {};
   Map<String, double> get groupBalances => _groupBalances;
 
+  final Map<String, bool> _groupUnsettledBalances = {};
+  Map<String, bool> get groupUnsettledBalances => _groupUnsettledBalances;
+
   void setGroupBalances(Map<String, double> balances) {
     _groupBalances = balances;
+    notifyListeners();
+  }
+
+  void setGroupUnsettledBalance(String groupId, bool isUnsettled) {
+    if (_groupUnsettledBalances[groupId] == isUnsettled) return;
+    _groupUnsettledBalances[groupId] = isUnsettled;
     notifyListeners();
   }
 
@@ -229,6 +238,7 @@ class GroupProvider extends ChangeNotifier {
         .eq('user_id', userId);
 
     _groups.removeWhere((g) => g['id'] == groupId);
+    _groupUnsettledBalances.remove(groupId);
 
     if (_selectedGroup?['id'] == groupId) {
       _selectedGroup = null;
@@ -271,6 +281,7 @@ class GroupProvider extends ChangeNotifier {
     _selectedGroup = null;
     _members = [];
     _groupBalances = {};
+    _groupUnsettledBalances.clear();
     _isLoading = false;
     notifyListeners();
   }
