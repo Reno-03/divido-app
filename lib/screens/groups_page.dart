@@ -17,24 +17,40 @@ class GroupsPage extends StatefulWidget {
 class _GroupsPageState extends State<GroupsPage> {
   final _supabase = Supabase.instance.client;
   int _balancesRequestId = 0;
+  bool _balancesReady = false;
+  List<String> _order = [];
+  static DateTime? _lastFetchAt;
+  static List<String> _lastGroupIds = [];
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final groupProvider = Provider.of<GroupProvider>(context, listen: false);
+      final groupProvider = context.read<GroupProvider>();
       if (groupProvider.groups.isEmpty) {
         await groupProvider.fetchGroups();
+      }
+      if (groupProvider.groupBalances.isNotEmpty) {
+        _balancesReady = true;
+        _updateOrder(groupProvider.groups, groupProvider.groupBalances);
       }
       _fetchAllGroupBalances();
     });
   }
 
-  List<Map<String, dynamic>> _sorted(
+  void _updateOrder(
     List<Map<String, dynamic>> groups,
     Map<String, double> balances,
   ) {
-    if (balances.isEmpty) return groups;
+    final groupMap = {for (var g in groups) g['id'] as String: g};
+    final currentIds = groupMap.keys.toSet();
+
+    final newOrder = _order.where((id) => currentIds.contains(id)).toList();
+    for (final id in currentIds) {
+      if (!newOrder.contains(id)) {
+        newOrder.add(id);
+      }
+    }
 
     int category(double net) {
       if (net < -0.01) return 0; // You owe
@@ -42,29 +58,85 @@ class _GroupsPageState extends State<GroupsPage> {
       return 2; // Settled
     }
 
-    return [...groups]..sort((a, b) {
-      final aNet = balances[a['id'] as String] ?? 0.0;
-      final bNet = balances[b['id'] as String] ?? 0.0;
+    newOrder.sort((aId, bId) {
+      final aGroup = groupMap[aId]!;
+      final bGroup = groupMap[bId]!;
+      final aNet = balances[aId] ?? 0.0;
+      final bNet = balances[bId] ?? 0.0;
 
       final aCat = category(aNet);
       final bCat = category(bNet);
 
       if (aCat != bCat) return aCat.compareTo(bCat);
-      return bNet.abs().compareTo(aNet.abs());
+
+      final netCompare = bNet.abs().compareTo(aNet.abs());
+      if (netCompare != 0) return netCompare;
+
+      final aName = (aGroup['name'] as String).toLowerCase();
+      final bName = (bGroup['name'] as String).toLowerCase();
+      final nameCompare = aName.compareTo(bName);
+      if (nameCompare != 0) return nameCompare;
+
+      return aId.compareTo(bId);
     });
+
+    _order = newOrder;
   }
 
-  Future<void> _fetchAllGroupBalances() async {
+  void _accumulateBalances(
+    List rows,
+    Map<String, double> balances,
+    double sign,
+    String Function(Map<String, dynamic>) extractor,
+  ) {
+    for (final row in rows) {
+      final map = row as Map<String, dynamic>;
+      final gid = extractor(map);
+      final amount = (map['amount'] as num).toDouble();
+      balances[gid] = (balances[gid] ?? 0.0) + sign * amount;
+    }
+  }
+
+  Future<void> _fetchAllGroupBalances({bool force = false}) async {
     if (!mounted) return;
-    final groupProvider = Provider.of<GroupProvider>(context, listen: false);
+    final groupProvider = context.read<GroupProvider>();
     final groups = groupProvider.groups;
-    if (groups.isEmpty) return;
+    if (groups.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _balancesReady = true;
+        });
+      }
+      return;
+    }
 
     final currentUserId = CurrentUser.instance.id;
-    if (currentUserId == null) return;
+    if (currentUserId == null) {
+      if (mounted) {
+        setState(() {
+          _balancesReady = true;
+        });
+      }
+      return;
+    }
+
+    final groupIds = groups.map((g) => g['id'] as String).toList();
+
+    if (!force &&
+        _lastFetchAt != null &&
+        _lastGroupIds.length == groupIds.length &&
+        _lastGroupIds.every(groupIds.contains)) {
+      if (DateTime.now().difference(_lastFetchAt!) < const Duration(seconds: 30)) {
+        if (mounted) {
+          setState(() {
+            _balancesReady = true;
+          });
+        }
+        return;
+      }
+    }
 
     final requestId = ++_balancesRequestId;
-    final groupIds = groups.map((g) => g['id'] as String).toList();
 
     try {
       final results = await Future.wait([
@@ -74,20 +146,17 @@ class _GroupsPageState extends State<GroupsPage> {
             .eq('expenses.owner_id', currentUserId)
             .neq('payer_id', currentUserId)
             .filter('expenses.group_id', 'in', groupIds),
-
         _supabase
             .from('expense_breakdowns')
             .select('amount, expenses!inner(owner_id, group_id)')
             .eq('payer_id', currentUserId)
             .neq('expenses.owner_id', currentUserId)
             .filter('expenses.group_id', 'in', groupIds),
-
         _supabase
             .from('payments')
             .select('amount, group_id')
             .eq('payer_id', currentUserId)
             .filter('group_id', 'in', groupIds),
-
         _supabase
             .from('payments')
             .select('amount, group_id')
@@ -99,151 +168,71 @@ class _GroupsPageState extends State<GroupsPage> {
 
       final Map<String, double> balances = {for (var id in groupIds) id: 0.0};
 
-      for (final row in results[0] as List) {
-        final gid = row['expenses']['group_id'] as String;
-        balances[gid] = (balances[gid] ?? 0) + (row['amount'] as num).toDouble();
-      }
-
-      for (final row in results[1] as List) {
-        final gid = row['expenses']['group_id'] as String;
-        balances[gid] = (balances[gid] ?? 0) - (row['amount'] as num).toDouble();
-      }
-
-      for (final row in results[2] as List) {
-        final gid = row['group_id'] as String;
-        balances[gid] = (balances[gid] ?? 0) + (row['amount'] as num).toDouble();
-      }
-
-      for (final row in results[3] as List) {
-        final gid = row['group_id'] as String;
-        balances[gid] = (balances[gid] ?? 0) - (row['amount'] as num).toDouble();
-      }
+      _accumulateBalances(
+        results[0] as List,
+        balances,
+        1.0,
+        (r) => (r['expenses'] as Map)['group_id'] as String,
+      );
+      _accumulateBalances(
+        results[1] as List,
+        balances,
+        -1.0,
+        (r) => (r['expenses'] as Map)['group_id'] as String,
+      );
+      _accumulateBalances(
+        results[2] as List,
+        balances,
+        1.0,
+        (r) => r['group_id'] as String,
+      );
+      _accumulateBalances(
+        results[3] as List,
+        balances,
+        -1.0,
+        (r) => r['group_id'] as String,
+      );
 
       groupProvider.setGroupBalances(balances);
+      _lastFetchAt = DateTime.now();
+      _lastGroupIds = groupIds;
+      _updateOrder(groupProvider.groups, groupProvider.groupBalances);
     } catch (e) {
       debugPrint('balances fetch error: $e');
+    } finally {
+      if (mounted && requestId == _balancesRequestId) {
+        _balancesReady = true;
+        setState(() {});
+      }
     }
   }
 
   void _showCreateGroupSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      barrierColor: Colors.black.withValues(alpha: 0.85),
-      backgroundColor: const Color(0xFF171A3F),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => CreateGroupSheet(
-        onCreated: _fetchAllGroupBalances,
+    _showAppSheet(
+      context,
+      (_) => CreateGroupSheet(
+        onCreated: () {
+          _updateOrder(
+            context.read<GroupProvider>().groups,
+            context.read<GroupProvider>().groupBalances,
+          );
+          _fetchAllGroupBalances(force: true);
+        },
       ),
     );
   }
 
   void _showJoinGroupSheet() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      barrierColor: Colors.black.withValues(alpha: 0.85),
-      backgroundColor: const Color(0xFF171A3F),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => JoinGroupSheet(
-        onJoined: _fetchAllGroupBalances,
-      ),
-    );
-  }
-
-  Widget _buildBalancePill(
-    String groupId,
-    Map<String, double> cachedBalances,
-  ) {
-    if (!cachedBalances.containsKey(groupId)) {
-      return Container(
-        margin: const EdgeInsets.only(top: 6),
-        width: 80,
-        height: 18,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(20),
-        ),
-      );
-    }
-
-    final net = cachedBalances[groupId] ?? 0.0;
-
-    if (net.abs() < 0.01) {
-      return Container(
-        margin: const EdgeInsets.only(top: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 6,
-              height: 6,
-              decoration: const BoxDecoration(
-                color: Colors.white54,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 5),
-            const Text(
-              'Settled',
-              style: TextStyle(
-                color: Colors.white54,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final bool youOwe = net < 0;
-    final color = youOwe ? Colors.redAccent : Colors.greenAccent;
-    final bgColor = youOwe
-        ? Colors.red.withValues(alpha: 0.15)
-        : Colors.green.withValues(alpha: 0.15);
-    final label = youOwe
-        ? 'You owe ₱${net.abs().toStringAsFixed(2)}'
-        : '₱${net.toStringAsFixed(2)} owed to you';
-
-    return Container(
-      margin: const EdgeInsets.only(top: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 6,
-            height: 6,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
+    _showAppSheet(
+      context,
+      (_) => JoinGroupSheet(
+        onJoined: () {
+          _updateOrder(
+            context.read<GroupProvider>().groups,
+            context.read<GroupProvider>().groupBalances,
+          );
+          _fetchAllGroupBalances(force: true);
+        },
       ),
     );
   }
@@ -253,8 +242,24 @@ class _GroupsPageState extends State<GroupsPage> {
     return Consumer<GroupProvider>(
       builder: (context, groupProvider, _) {
         final rawGroups = groupProvider.groups;
-        final groups = _sorted(rawGroups, groupProvider.groupBalances);
-        final isLoading = groupProvider.isLoading;
+        final groupMap = {for (var g in rawGroups) g['id'] as String: g};
+
+        if (_order.isEmpty && rawGroups.isNotEmpty) {
+          _updateOrder(rawGroups, groupProvider.groupBalances);
+        } else {
+          final currentIds = groupMap.keys.toSet();
+          final orderIds = _order.toSet();
+          if (currentIds.difference(orderIds).isNotEmpty ||
+              orderIds.difference(currentIds).isNotEmpty) {
+            _updateOrder(rawGroups, groupProvider.groupBalances);
+          }
+        }
+
+        final showSkeleton =
+            (groupProvider.isLoading && rawGroups.isEmpty) ||
+            (rawGroups.isNotEmpty &&
+                !_balancesReady &&
+                groupProvider.groupBalances.isEmpty);
 
         return Scaffold(
           appBar: AppBar(
@@ -263,9 +268,9 @@ class _GroupsPageState extends State<GroupsPage> {
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
           ),
-          body: isLoading && groups.isEmpty
+          body: showSkeleton
               ? _buildShimmerList()
-              : groups.isEmpty
+              : rawGroups.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -337,157 +342,58 @@ class _GroupsPageState extends State<GroupsPage> {
                 )
               : RefreshIndicator(
                   onRefresh: () async {
-                    await Provider.of<GroupProvider>(
-                      context,
-                      listen: false,
-                    ).fetchGroups();
-                    await _fetchAllGroupBalances();
+                    await context.read<GroupProvider>().fetchGroups();
+                    _updateOrder(
+                      context.read<GroupProvider>().groups,
+                      context.read<GroupProvider>().groupBalances,
+                    );
+                    await _fetchAllGroupBalances(force: true);
                   },
                   child: ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: groups.length,
+                    itemCount: _order.length,
+                    addAutomaticKeepAlives: false,
+                    findChildIndexCallback: (Key key) {
+                      if (key is ValueKey<String>) {
+                        final index = _order.indexOf(key.value);
+                        return index == -1 ? null : index;
+                      }
+                      return null;
+                    },
                     itemBuilder: (context, index) {
-                      final group = groups[index];
-                      final groupId = group['id'] as String;
+                      final groupId = _order[index];
+                      final group = groupMap[groupId];
+                      if (group == null) return const SizedBox.shrink();
+
                       final isSelected =
                           groupProvider.selectedGroupId == groupId;
-                      final avatarUrl = group['avatar_url'] as String?;
+                      final net = groupProvider.groupBalances[groupId];
 
-                      Widget fallbackIcon = Icon(
-                        Icons.group,
-                        size: 22,
-                        color: isSelected
-                            ? Colors.blue.shade300
-                            : Colors.white.withValues(alpha: 0.4),
-                      );
-
-                      return GestureDetector(
+                      return _GroupTile(
+                        key: ValueKey(groupId),
+                        group: group,
+                        isSelected: isSelected,
+                        net: net,
+                        avatarVersion: groupProvider.groupAvatarVersion,
                         onTap: () {
                           if (!isSelected) {
                             groupProvider.selectGroup(groupId);
                           }
                           Navigator.pop(context);
                         },
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? Colors.blue.withValues(alpha: 0.1)
-                                : Colors.white.withValues(alpha: 0.05),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: isSelected
-                                  ? Colors.blue.withValues(alpha: 0.4)
-                                  : Colors.white.withValues(alpha: 0.1),
+                        onInfoTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => GroupInfoPage(group: group),
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: isSelected
-                                      ? Colors.blue.withValues(alpha: 0.2)
-                                      : Colors.white.withValues(alpha: 0.08),
-                                ),
-                                child: ClipOval(
-                                  child: avatarUrl != null && avatarUrl.isNotEmpty
-                                      ? CachedNetworkImage(
-                                          imageUrl:
-                                              '$avatarUrl?v=${groupProvider.groupAvatarVersion}',
-                                          width: 48,
-                                          height: 48,
-                                          fit: BoxFit.cover,
-                                          memCacheWidth: 144,
-                                          memCacheHeight: 144,
-                                          fadeInDuration: Duration.zero,
-                                          errorWidget: (_, _, _) => fallbackIcon,
-                                          placeholder: (_, _) => fallbackIcon,
-                                        )
-                                      : fallbackIcon,
-                                ),
-                              ),
-                              const SizedBox(width: 14),
-
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      group['name'] as String,
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      (group['description'] != null &&
-                                              (group['description'] as String)
-                                                  .isNotEmpty)
-                                          ? group['description'] as String
-                                          : 'No description',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.white.withValues(
-                                          alpha:
-                                              (group['description'] != null &&
-                                                      (group['description']
-                                                              as String)
-                                                          .isNotEmpty)
-                                                  ? 0.4
-                                                  : 0.2,
-                                        ),
-                                        fontStyle:
-                                            (group['description'] != null &&
-                                                    (group['description']
-                                                            as String)
-                                                        .isNotEmpty)
-                                                ? FontStyle.normal
-                                                : FontStyle.italic,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    _buildBalancePill(
-                                      groupId,
-                                      groupProvider.groupBalances,
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              GestureDetector(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          GroupInfoPage(group: group),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: const BoxDecoration(),
-                                  child: Icon(
-                                    Icons.arrow_forward_ios,
-                                    size: 16,
-                                    color: Colors.white.withValues(alpha: 0.4),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                          );
+                        },
                       );
                     },
                   ),
                 ),
-          bottomNavigationBar: groups.isEmpty
+          bottomNavigationBar: rawGroups.isEmpty
               ? null
               : Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -547,20 +453,20 @@ class _GroupsPageState extends State<GroupsPage> {
   }
 
   Widget _buildShimmerList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: 7,
-      itemBuilder: (_, __) => Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        ),
-        child: Shimmer.fromColors(
-          baseColor: Colors.grey.shade800,
-          highlightColor: Colors.grey.shade700,
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade800,
+      highlightColor: Colors.grey.shade700,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: 7,
+        itemBuilder: (_, __) => Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          ),
           child: Row(
             children: [
               Container(
@@ -613,6 +519,317 @@ class _GroupsPageState extends State<GroupsPage> {
   }
 }
 
+void _showAppSheet(BuildContext context, WidgetBuilder builder) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    barrierColor: Colors.black.withValues(alpha: 0.85),
+    backgroundColor: const Color(0xFF171A3F),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: builder,
+  );
+}
+
+class _SheetHeader extends StatelessWidget {
+  final String title;
+
+  const _SheetHeader({required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.grey.withValues(alpha: 0.2),
+                ),
+                child: const Icon(Icons.close, size: 16),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+InputDecoration _fieldDecoration(String label, IconData icon, {String? hint}) {
+  return InputDecoration(
+    labelText: label,
+    hintText: hint,
+    prefixIcon: Icon(icon, size: 20),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(
+        color: Colors.white.withValues(alpha: 0.2),
+      ),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(
+        color: Colors.blue,
+        width: 1.5,
+      ),
+    ),
+    labelStyle: TextStyle(
+      color: Colors.white.withValues(alpha: 0.5),
+    ),
+  );
+}
+
+class _BalancePill extends StatelessWidget {
+  final double? net;
+
+  const _BalancePill({required this.net});
+
+  @override
+  Widget build(BuildContext context) {
+    if (net == null) {
+      return Container(
+        margin: const EdgeInsets.only(top: 6),
+        width: 80,
+        height: 18,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(20),
+        ),
+      );
+    }
+
+    final val = net!;
+    if (val.abs() < 0.01) {
+      return Container(
+        margin: const EdgeInsets.only(top: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 6,
+              height: 6,
+              decoration: const BoxDecoration(
+                color: Colors.white54,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 5),
+            const Text(
+              'Settled',
+              style: TextStyle(
+                color: Colors.white54,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final bool youOwe = val < 0;
+    final color = youOwe ? Colors.redAccent : Colors.greenAccent;
+    final bgColor = youOwe
+        ? Colors.red.withValues(alpha: 0.15)
+        : Colors.green.withValues(alpha: 0.15);
+    final label = youOwe
+        ? 'You owe ₱${val.abs().toStringAsFixed(2)}'
+        : '₱${val.toStringAsFixed(2)} owed to you';
+
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GroupTile extends StatelessWidget {
+  final Map<String, dynamic> group;
+  final bool isSelected;
+  final double? net;
+  final int avatarVersion;
+  final VoidCallback onTap;
+  final VoidCallback onInfoTap;
+
+  const _GroupTile({
+    super.key,
+    required this.group,
+    required this.isSelected,
+    required this.net,
+    required this.avatarVersion,
+    required this.onTap,
+    required this.onInfoTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final name = group['name'] as String? ?? '';
+    final description = group['description'] as String? ?? '';
+    final hasDescription = description.isNotEmpty;
+    final avatarUrl = group['avatar_url'] as String?;
+    final fullAvatarUrl = avatarUrl != null && avatarUrl.isNotEmpty
+        ? '$avatarUrl?v=$avatarVersion'
+        : null;
+
+    final fallbackIcon = Icon(
+      Icons.group,
+      size: 22,
+      color: isSelected
+          ? Colors.blue.shade300
+          : Colors.white.withValues(alpha: 0.4),
+    );
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Colors.blue.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? Colors.blue.withValues(alpha: 0.4)
+                : Colors.white.withValues(alpha: 0.1),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isSelected
+                    ? Colors.blue.withValues(alpha: 0.2)
+                    : Colors.white.withValues(alpha: 0.08),
+              ),
+              child: ClipOval(
+                child: fullAvatarUrl != null
+                    ? CachedNetworkImage(
+                        imageUrl: fullAvatarUrl,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 144,
+                        memCacheHeight: 144,
+                        maxWidthDiskCache: 144,
+                        fadeInDuration: Duration.zero,
+                        errorWidget: (_, _, _) => fallbackIcon,
+                        placeholder: (_, _) => fallbackIcon,
+                      )
+                    : fallbackIcon,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    hasDescription ? description : 'No description',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withValues(
+                        alpha: hasDescription ? 0.4 : 0.2,
+                      ),
+                      fontStyle:
+                          hasDescription ? FontStyle.normal : FontStyle.italic,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  _BalancePill(net: net),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: onInfoTap,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                child: Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: Colors.white.withValues(alpha: 0.4),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class CreateGroupSheet extends StatefulWidget {
   final VoidCallback onCreated;
 
@@ -647,91 +864,19 @@ class _CreateGroupSheetState extends State<CreateGroupSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Create Group',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.grey.withValues(alpha: 0.2),
-                  ),
-                  child: const Icon(Icons.close, size: 16),
-                ),
-              ),
-            ],
-          ),
+          const _SheetHeader(title: 'Create Group'),
           const SizedBox(height: 20),
           TextField(
             controller: _nameController,
             autofocus: true,
-            decoration: InputDecoration(
-              labelText: 'Group Name',
-              prefixIcon: const Icon(Icons.group_outlined, size: 20),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.2),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Colors.blue,
-                  width: 1.5,
-                ),
-              ),
-              labelStyle: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
-              ),
-            ),
+            decoration: _fieldDecoration('Group Name', Icons.group_outlined),
           ),
           const SizedBox(height: 14),
           TextField(
             controller: _descController,
-            decoration: InputDecoration(
-              labelText: 'Description (optional)',
-              prefixIcon: const Icon(Icons.edit_note_outlined, size: 20),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.2),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Colors.blue,
-                  width: 1.5,
-                ),
-              ),
-              labelStyle: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
-              ),
+            decoration: _fieldDecoration(
+              'Description (optional)',
+              Icons.edit_note_outlined,
             ),
           ),
           const SizedBox(height: 24),
@@ -830,66 +975,16 @@ class _JoinGroupSheetState extends State<JoinGroupSheet> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Join Group',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              GestureDetector(
-                onTap: () => Navigator.pop(context),
-                child: Container(
-                  width: 28,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.grey.withValues(alpha: 0.2),
-                  ),
-                  child: const Icon(Icons.close, size: 16),
-                ),
-              ),
-            ],
-          ),
+          const _SheetHeader(title: 'Join Group'),
           const SizedBox(height: 20),
           TextField(
             controller: _codeController,
             autofocus: true,
             textCapitalization: TextCapitalization.characters,
-            decoration: InputDecoration(
-              labelText: 'Invite Code',
-              hintText: 'e.g. A1B2C3D4',
-              prefixIcon: const Icon(Icons.key_outlined, size: 20),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.2),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(
-                  color: Colors.blue,
-                  width: 1.5,
-                ),
-              ),
-              labelStyle: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
-              ),
+            decoration: _fieldDecoration(
+              'Invite Code',
+              Icons.key_outlined,
+              hint: 'e.g. A1B2C3D4',
             ),
           ),
           if (_errorMessage != null) ...[
@@ -913,10 +1008,8 @@ class _JoinGroupSheetState extends State<JoinGroupSheet> {
                         _errorMessage = null;
                       });
                       try {
-                        final error = await Provider.of<GroupProvider>(
-                          context,
-                          listen: false,
-                        ).joinGroup(code);
+                        final error =
+                            await context.read<GroupProvider>().joinGroup(code);
 
                         if (error != null) {
                           if (mounted) {
