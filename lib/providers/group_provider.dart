@@ -260,6 +260,11 @@ class GroupProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void bumpGroupAvatarVersion() {
+    _groupAvatarVersion++;
+    notifyListeners();
+  }
+
   // ── clear (on logout) ─────────────────────────────────────────
   void clear() {
     _groups = [];

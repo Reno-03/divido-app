@@ -3,8 +3,6 @@
 // Presentation-only widgets for DashboardPage. No business logic here.
 // Palette is unchanged from the app: navy 0xFF171A3F, surface 0xFF3C3C63.
 
-import 'dart:ui';
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -89,7 +87,7 @@ class DashAmount extends StatelessWidget {
     return RepaintBoundary(
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(begin: 0, end: value),
-        duration: const Duration(milliseconds: 600),
+        duration: const Duration(milliseconds: 800),
         curve: Curves.easeOutCubic,
         builder: (_, v, _) => _buildText(v),
       ),
@@ -168,12 +166,14 @@ class DashSection extends StatelessWidget {
     super.key,
     required this.title,
     required this.child,
+    this.subtitle,
     this.actionLabel,
     this.onAction,
   });
 
   final String title;
   final Widget child;
+  final String? subtitle;
   final String? actionLabel;
   final VoidCallback? onAction;
 
@@ -184,18 +184,33 @@ class DashSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(4, 0, 4, 4),
+          padding: EdgeInsets.fromLTRB(4, 0, 4, subtitle == null ? 4 : 8),
           child: Row(
             children: [
               Expanded(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                    color: Colors.white,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.2,
+                        color: Colors.white,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        subtitle!,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.white.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               if (actionLabel != null && onAction != null)
