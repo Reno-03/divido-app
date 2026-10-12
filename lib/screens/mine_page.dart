@@ -27,21 +27,34 @@ class _MinePageState extends State<MinePage> {
   bool _metricsLoading = true;
   double _totalOwedToYou = 0.0;
   int _requestId = 0;
+  late ExpenseProvider _expenseProvider;
+  bool _expensesWereLoading = false;
   RealtimeChannel? _paymentsSubscription;
   Timer? _metricsDebounce;
 
   @override
   void initState() {
     super.initState();
+    _expenseProvider = context.read<ExpenseProvider>();
+    _expensesWereLoading = _expenseProvider.isLoading;
+    _expenseProvider.addListener(_onExpenseProviderChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _fetchDashboardMetrics();
+      if (!_expenseProvider.isLoading) _fetchDashboardMetrics();
       _setupRealtimeSubscription();
     });
+  }
+
+  void _onExpenseProviderChanged() {
+    final isLoading = _expenseProvider.isLoading;
+    final fetchCompleted = _expensesWereLoading && !isLoading;
+    _expensesWereLoading = isLoading;
+    if (fetchCompleted) _fetchDashboardMetrics();
   }
 
   @override
   void dispose() {
     _metricsDebounce?.cancel();
+    _expenseProvider.removeListener(_onExpenseProviderChanged);
     final paymentsSubscription = _paymentsSubscription;
     if (paymentsSubscription != null) {
       unawaited(supabase.removeChannel(paymentsSubscription));
@@ -104,49 +117,48 @@ class _MinePageState extends State<MinePage> {
       final paymentsData = responses[0] as List<dynamic>;
       final expensesData = responses[1] as List<dynamic>;
 
-      double paidToYou = 0;
-      double paidByYou = 0;
+      final netByUser = <String, double>{};
 
-      for (var payment in paymentsData) {
-        final payerId = payment['payer_id'];
-        final payeeId = payment['payee_id'];
-        final amount = _toDouble(payment['amount']);
-
-        if (payeeId == currentUserId) {
-          paidToYou += amount;
-        }
-        if (payerId == currentUserId) {
-          paidByYou += amount;
-        }
+      void addNet(String? userId, double amount) {
+        if (userId == null || userId == currentUserId) return;
+        netByUser[userId] = (netByUser[userId] ?? 0) + amount;
       }
 
-      double totalOwedToOthers = 0;
-      double computedOwedToYou = 0;
-
       for (var expense in expensesData) {
-        final ownerId = expense['owner_id'];
+        final ownerId = expense['owner_id'] as String?;
         final breakdowns = expense['expense_breakdowns'] as List<dynamic>? ?? [];
 
         if (ownerId == currentUserId) {
           for (var b in breakdowns) {
             if (b['payer_id'] != currentUserId) {
-              computedOwedToYou += _toDouble(b['amount']);
+              addNet(b['payer_id'] as String?, _toDouble(b['amount']));
             }
           }
         } else {
           for (var b in breakdowns) {
             if (b['payer_id'] == currentUserId) {
-              totalOwedToOthers += _toDouble(b['amount']);
+              addNet(ownerId, -_toDouble(b['amount']));
             }
           }
         }
       }
 
-      final netOwedToYou = (computedOwedToYou - paidToYou) - (totalOwedToOthers - paidByYou);
+      for (var payment in paymentsData) {
+        final payerId = payment['payer_id'] as String?;
+        final payeeId = payment['payee_id'] as String?;
+        final amount = _toDouble(payment['amount']);
+
+        if (payerId == currentUserId) addNet(payeeId, amount);
+        if (payeeId == currentUserId) addNet(payerId, -amount);
+      }
+
+      final owedToYou = netByUser.values
+          .where((net) => net > 0)
+          .fold<double>(0, (total, net) => total + net);
 
       if (mounted && currentRequestId == _requestId) {
         setState(() {
-          _totalOwedToYou = netOwedToYou;
+          _totalOwedToYou = owedToYou;
           _metricsLoading = false;
         });
       }
