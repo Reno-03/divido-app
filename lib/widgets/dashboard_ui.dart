@@ -12,6 +12,8 @@ import 'package:shimmer/shimmer.dart';
 
 const Color kDashNavy = Color(0xFF171A3F);
 const Color kDashSurface = Color(0xFF3C3C63);
+const Color kDashGlass = Color(0x0FFFFFFF);      // white at ~6% alpha
+const Color kDashHeroGlass = Color(0x1AFFFFFF);  // white at ~10% alpha
 const Color kDashPositive = Colors.greenAccent;
 const Color kDashNegative = Colors.redAccent;
 
@@ -87,7 +89,7 @@ class DashAmount extends StatelessWidget {
     return RepaintBoundary(
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(begin: 0, end: value),
-        duration: const Duration(milliseconds: 1000),
+        duration: const Duration(milliseconds: 600),
         curve: Curves.easeOutCubic,
         builder: (_, v, _) => _buildText(v),
       ),
@@ -144,8 +146,8 @@ class DashSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Shimmer.fromColors(
-      baseColor: kDashSurface,
-      highlightColor: const Color(0xFF55557F),
+      baseColor: const Color(0xFF23264F),
+      highlightColor: const Color(0xFF30346A),
       child: Container(
         height: height,
         decoration: BoxDecoration(
@@ -224,9 +226,9 @@ class DashSection extends StatelessWidget {
           width: double.infinity,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            color: kDashSurface,
+            color: kDashGlass,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
           child: child,
         ),
@@ -333,7 +335,7 @@ class DashHeroBalance extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Color.alphaBlend(accent.withValues(alpha: tint), kDashSurface),
+        color: Color.alphaBlend(accent.withValues(alpha: tint), kDashHeroGlass),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(
           color: accent.withValues(alpha: (settled || even) ? 0.12 : 0.28),
@@ -535,9 +537,9 @@ class DashStatTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: kDashSurface,
+        color: kDashGlass,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

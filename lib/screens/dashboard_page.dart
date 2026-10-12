@@ -764,9 +764,8 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final firstName = (CurrentUser.instance.firstname?.isNotEmpty == true)
-        ? CurrentUser.instance.firstname!
-        : 'there';
+    final rawName = (CurrentUser.instance.firstname ?? '').trim();
+    final firstName = rawName.isEmpty ? 'there' : rawName.split(' ').first;
     final loading = _isLoadingMetrics || _totalGroupExpense == null;
 
     final double? groupPct = _lastWeekGroup > 0
