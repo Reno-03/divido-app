@@ -269,11 +269,13 @@ class DashHeroBalance extends StatelessWidget {
     required this.owedToYou,
     required this.youOwe,
     required this.onSettle,
+    this.actionLabel,
   });
 
   final double owedToYou;
   final double youOwe;
   final VoidCallback onSettle;
+  final String? actionLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -290,7 +292,7 @@ class DashHeroBalance extends StatelessWidget {
     final IconData icon;
     if (settled) {
       label = 'All settled';
-      hint = 'Good job!';
+      hint = 'No pending balances in this group';
       icon = Icons.check_rounded;
     } else if (even) {
       label = 'Even overall';
@@ -310,7 +312,7 @@ class DashHeroBalance extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Color.alphaBlend(accent.withValues(alpha: tint), kDashSurface),
         borderRadius: BorderRadius.circular(28),
@@ -362,7 +364,7 @@ class DashHeroBalance extends StatelessWidget {
               color: accent,
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
@@ -413,11 +415,15 @@ class DashHeroBalance extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(
-                    youOwe >= 0.01 ? 'Settle up' : 'View balances',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
+                  Flexible(
+                    child: Text(
+                      actionLabel ?? (youOwe >= 0.01 ? 'Settle up' : 'View balances'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -494,15 +500,17 @@ class DashStatTile extends StatelessWidget {
   final IconData icon;
   final String label;
   final double value;
-  final double changePct;
+  final double? changePct;
 
   @override
   Widget build(BuildContext context) {
-    final up = changePct > 0;
-    final flat = changePct == 0;
-    final trendColor = flat
+    final isNew = changePct == null;
+    final pct = changePct ?? 0;
+    final up = pct > 0;
+    final flat = pct == 0 && !isNew;
+    final trendColor = isNew
         ? Colors.white70
-        : (up ? kDashPositive : kDashNegative);
+        : (flat ? Colors.white70 : (up ? kDashPositive : kDashNegative));
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -542,20 +550,24 @@ class DashStatTile extends StatelessWidget {
           Row(
             children: [
               Icon(
-                flat
-                    ? Icons.trending_flat_rounded
-                    : (up
-                          ? Icons.trending_up_rounded
-                          : Icons.trending_down_rounded),
+                isNew
+                    ? Icons.fiber_new_rounded
+                    : (flat
+                          ? Icons.trending_flat_rounded
+                          : (up
+                                ? Icons.trending_up_rounded
+                                : Icons.trending_down_rounded)),
                 size: 16,
                 color: trendColor,
               ),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  flat
-                      ? 'Same as last week'
-                      : '${changePct.abs().toStringAsFixed(0)}% vs last week',
+                  isNew
+                      ? 'New this week'
+                      : (flat
+                            ? 'Same as last week'
+                            : '${pct.abs().toStringAsFixed(0)}% vs last week'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(

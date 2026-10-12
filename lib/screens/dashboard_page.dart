@@ -322,16 +322,55 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
-  String _getFunGreeting(String name) {
-    final hour = DateTime.now().hour;
+  String _greeting(String name) {
+    final h = DateTime.now().hour;
+    final part = h < 12 ? 'Good morning' : (h < 17 ? 'Good afternoon' : 'Good evening');
+    return '$part, $name';
+  }
 
-    if (hour < 12) {
-      return 'Rise and shine, $name!';
-    } else if (hour < 17) {
-      return 'Check your balance, $name!';
-    } else {
-      return 'Chill time, $name!';
+  String _firstWord(String s) => s.trim().split(' ').first;
+
+  Map<String, dynamic>? get _topDebtor {
+    Map<String, dynamic>? best;
+    for (final s in _balanceSummaries) {
+      final n = s['net'] as double;
+      if (n < -0.01 && (best == null || n < (best['net'] as double))) best = s;
     }
+    return best;
+  }
+
+  Map<String, dynamic>? get _topCreditor {
+    Map<String, dynamic>? best;
+    for (final s in _balanceSummaries) {
+      final n = s['net'] as double;
+      if (n > 0.01 && (best == null || n > (best['net'] as double))) best = s;
+    }
+    return best;
+  }
+
+  String? get _heroActionLabel {
+    final d = _topDebtor;
+    if (_totalYouOwe >= 0.01 && d != null) {
+      return 'Pay ${_firstWord(d['name'] as String)} ₱${dashMoney((d['net'] as double).abs(), trimZeros: true)}';
+    }
+    final c = _topCreditor;
+    if (_totalOwedToYou >= 0.01 && c != null) {
+      return 'Nudge ${_firstWord(c['name'] as String)}';
+    }
+    return null;
+  }
+
+  String get _greetingSubtitle {
+    final c = _topCreditor;
+    if (_totalYouOwe >= 0.01) return 'You owe ₱${dashMoney(_totalYouOwe, trimZeros: true)}';
+    if (_totalOwedToYou >= 0.01 && c != null) {
+      final creditorCount = _balanceSummaries.where((s) => (s['net'] as double) > 0.01).length;
+      if (creditorCount > 1) {
+        return 'People owe you ₱${dashMoney(_totalOwedToYou, trimZeros: true)}';
+      }
+      return '${_firstWord(c['name'] as String)} owes you ₱${dashMoney(_totalOwedToYou, trimZeros: true)}';
+    }
+    return "You're all settled up";
   }
 
   void _showStatusEditor() {
@@ -499,7 +538,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                         StatusChip(text: "💤 Offline", controller: controller),
                         StatusChip(
-                          text: "🚫 Not enough money!",
+                          text: "📉 Not enough money!",
                           controller: controller,
                         ),
                       ],
@@ -621,13 +660,14 @@ class _DashboardPageState extends State<DashboardPage> {
       ];
 
   List<Widget> _buildContent({
-    required double groupPct,
-    required double ownPct,
+    required double? groupPct,
+    required double? ownPct,
   }) {
     return [
       DashHeroBalance(
         owedToYou: _totalOwedToYou,
         youOwe: _totalYouOwe,
+        actionLabel: _heroActionLabel,
         onSettle: _openBalances,
       ),
       const SizedBox(height: 14),
@@ -724,15 +764,17 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   Widget build(BuildContext context) {
-    final firstName = CurrentUser.instance.username ?? 'there';
+    final firstName = (CurrentUser.instance.firstname?.isNotEmpty == true)
+        ? CurrentUser.instance.firstname!
+        : 'there';
     final loading = _isLoadingMetrics || _totalGroupExpense == null;
 
-    final double groupPct = _lastWeekGroup > 0
+    final double? groupPct = _lastWeekGroup > 0
         ? ((_thisWeekGroup - _lastWeekGroup) / _lastWeekGroup) * 100
-        : (_thisWeekGroup > 0 ? 100 : 0);
-    final double ownPct = _lastWeekOwn > 0
+        : (_thisWeekGroup > 0 ? null : 0);
+    final double? ownPct = _lastWeekOwn > 0
         ? ((_thisWeekOwn - _lastWeekOwn) / _lastWeekOwn) * 100
-        : (_thisWeekOwn > 0 ? 100 : 0);
+        : (_thisWeekOwn > 0 ? null : 0);
 
     return Scaffold(
       body: RefreshIndicator(
@@ -749,7 +791,12 @@ class _DashboardPageState extends State<DashboardPage> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 720),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                padding: EdgeInsets.fromLTRB(
+                  20,
+                  20,
+                  20,
+                  MediaQuery.of(context).padding.bottom + 110,
+                ),
                 child: SizedBox(
                   width: double.infinity,
                   child: Column(
@@ -758,22 +805,37 @@ class _DashboardPageState extends State<DashboardPage> {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              _getFunGreeting(firstName),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
-                                color: Colors.white,
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _greeting(firstName),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.5,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                loading
+                                    ? const SizedBox.shrink()
+                                    : Text(
+                                        _greetingSubtitle,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.white60,
+                                        ),
+                                      ),
+                              ],
                             ),
                           ),
                           const SizedBox(width: 12),
                           const SizedBox(
-                            width: 72,
-                            height: 72,
+                            width: 44,
+                            height: 44,
                             child: RepaintBoundary(
                               child: FittedBox(
                                 child: BreathingLogo(),
