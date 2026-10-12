@@ -1,6 +1,7 @@
 // lib/screens/dashboard_page.dart
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:divido_app/providers/expense_provider.dart';
@@ -17,6 +18,8 @@ import 'package:divido_app/widgets/gcash_nudge_card.dart';
 import 'package:divido_app/widgets/install_nudge_card.dart';
 import 'package:divido_app/widgets/share_nudge_card.dart';
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -693,6 +696,11 @@ class _DashboardPageState extends State<DashboardPage> {
         ],
       ),
       const SizedBox(height: 14),
+      _SpendingTrendChart(
+        expenses: _expenses?.expenses ?? const [],
+        currentUserId: CurrentUser.instance.id,
+      ),
+      const SizedBox(height: 14),
       const InstallNudgeCard(),
       const ShareNudgeCard(),
       const GcashNudgeCard(),
@@ -984,6 +992,300 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ),
             ),
+    );
+  }
+}
+
+enum _SpendPeriod { day, week, month }
+
+class _SpendBucket {
+  const _SpendBucket({
+    required this.label,
+    required this.groupTotal,
+    required this.yourShare,
+  });
+
+  final String label;
+  final double groupTotal;
+  final double yourShare;
+}
+
+class _SpendingTrendChart extends StatefulWidget {
+  const _SpendingTrendChart({
+    required this.expenses,
+    required this.currentUserId,
+  });
+
+  final List<Map<String, dynamic>> expenses;
+  final String? currentUserId;
+
+  @override
+  State<_SpendingTrendChart> createState() => _SpendingTrendChartState();
+}
+
+class _SpendingTrendChartState extends State<_SpendingTrendChart> {
+  _SpendPeriod _period = _SpendPeriod.week;
+
+  List<_SpendBucket> _buildBuckets() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    late final DateTime start;
+    late final int count;
+
+    switch (_period) {
+      case _SpendPeriod.day:
+        start = today.subtract(const Duration(days: 6));
+        count = 7;
+      case _SpendPeriod.week:
+        final monday = today.subtract(Duration(days: today.weekday - 1));
+        start = monday.subtract(const Duration(days: 49));
+        count = 8;
+      case _SpendPeriod.month:
+        start = DateTime(today.year, today.month - 5);
+        count = 6;
+    }
+
+    final buckets = List.generate(count, (index) {
+      final date = switch (_period) {
+        _SpendPeriod.day => start.add(Duration(days: index)),
+        _SpendPeriod.week => start.add(Duration(days: index * 7)),
+        _SpendPeriod.month => DateTime(start.year, start.month + index),
+      };
+      final label = switch (_period) {
+        _SpendPeriod.day => DateFormat('E').format(date),
+        _SpendPeriod.week => DateFormat('MMM d').format(date),
+        _SpendPeriod.month => DateFormat('MMM').format(date),
+      };
+      return _SpendBucket(label: label, groupTotal: 0, yourShare: 0);
+    });
+    final groupTotals = List<double>.filled(count, 0);
+    final ownShares = List<double>.filled(count, 0);
+
+    for (final expense in widget.expenses) {
+      final createdAtMs = expenseCreatedAtMs(expense);
+      if (createdAtMs == 0) continue;
+      final createdAt = DateTime.fromMillisecondsSinceEpoch(createdAtMs);
+      final date = DateTime(createdAt.year, createdAt.month, createdAt.day);
+
+      late final int index;
+      switch (_period) {
+        case _SpendPeriod.day:
+          index = date.difference(start).inDays;
+        case _SpendPeriod.week:
+          final monday = date.subtract(Duration(days: date.weekday - 1));
+          index = monday.difference(start).inDays ~/ 7;
+        case _SpendPeriod.month:
+          index = (date.year - start.year) * 12 + date.month - start.month;
+      }
+      if (index < 0 || index >= count) continue;
+
+      groupTotals[index] += (expense['total'] as num?)?.toDouble() ?? 0;
+      final breakdowns = expense['expense_breakdowns'] as List<dynamic>? ?? [];
+      for (final breakdown in breakdowns) {
+        if (breakdown['payer_id'] == widget.currentUserId) {
+          ownShares[index] +=
+              (breakdown['amount'] as num?)?.toDouble() ?? 0;
+        }
+      }
+    }
+
+    return [
+      for (var index = 0; index < count; index++)
+        _SpendBucket(
+          label: buckets[index].label,
+          groupTotal: groupTotals[index],
+          yourShare: ownShares[index],
+        ),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final buckets = _buildBuckets();
+    final highestAmount = buckets.fold<double>(
+      0,
+      (highest, bucket) => math.max(
+        highest,
+        math.max(bucket.groupTotal, bucket.yourShare),
+      ).toDouble(),
+    );
+    final hasSpending = highestAmount > 0;
+    final maxY = hasSpending ? highestAmount * 1.2 : 1.0;
+    final animationDuration = MediaQuery.of(context).disableAnimations
+        ? Duration.zero
+        : const Duration(milliseconds: 180);
+
+    return DashSection(
+      title: 'Spending over time',
+      subtitle: 'Your share compared with the group',
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 14, 14, 10),
+        child: Column(
+          children: [
+            SegmentedButton<_SpendPeriod>(
+              expandedInsets: EdgeInsets.zero,
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(value: _SpendPeriod.day, label: Text('Day')),
+                ButtonSegment(value: _SpendPeriod.week, label: Text('Week')),
+                ButtonSegment(value: _SpendPeriod.month, label: Text('Month')),
+              ],
+              selected: {_period},
+              onSelectionChanged: (selection) {
+                setState(() => _period = selection.first);
+              },
+              style: ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                foregroundColor: const WidgetStatePropertyAll(Colors.white),
+                backgroundColor: WidgetStateProperty.resolveWith((states) {
+                  return states.contains(WidgetState.selected)
+                      ? Colors.white.withValues(alpha: 0.14)
+                      : Colors.transparent;
+                }),
+                side: WidgetStatePropertyAll(
+                  BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _legendItem('Group total', const Color(0xFF84B8FF)),
+                const SizedBox(width: 20),
+                _legendItem('Your share', const Color(0xFF8FE3B0)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (hasSpending)
+              SizedBox(
+                height: 180,
+                child: BarChart(
+                  BarChartData(
+                    minY: 0,
+                    maxY: maxY,
+                    alignment: BarChartAlignment.spaceAround,
+                    groupsSpace: 8,
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: maxY / 3,
+                      getDrawingHorizontalLine: (_) => FlLine(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        strokeWidth: 1,
+                      ),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    titlesData: FlTitlesData(
+                      leftTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 28,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            if (value != index.toDouble() ||
+                                index < 0 ||
+                                index >= buckets.length) {
+                              return const SizedBox.shrink();
+                            }
+                            return SideTitleWidget(
+                              meta: meta,
+                              child: Text(
+                                buckets[index].label,
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.white.withValues(alpha: 0.55),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    barTouchData: BarTouchData(
+                      touchTooltipData: BarTouchTooltipData(
+                        getTooltipColor: (_) => const Color(0xFF23264F),
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          final series = rodIndex == 0 ? 'Group' : 'Your share';
+                          return BarTooltipItem(
+                            '${buckets[groupIndex].label}\n$series: ₱${dashMoney(rod.toY, trimZeros: true)}',
+                            const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    barGroups: [
+                      for (var index = 0; index < buckets.length; index++)
+                        BarChartGroupData(
+                          x: index,
+                          barsSpace: 4,
+                          barRods: [
+                            BarChartRodData(
+                              toY: buckets[index].groupTotal,
+                              color: const Color(0xFF84B8FF),
+                              width: _period == _SpendPeriod.day ? 7 : 11,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            BarChartRodData(
+                              toY: buckets[index].yourShare,
+                              color: const Color(0xFF8FE3B0),
+                              width: _period == _SpendPeriod.day ? 7 : 11,
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                  duration: animationDuration,
+                ),
+              )
+            else
+              const SizedBox(
+                height: 180,
+                child: Center(
+                  child: Text(
+                    'No expenses in this period',
+                    style: TextStyle(color: Colors.white54, fontSize: 13),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _legendItem(String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.white.withValues(alpha: 0.65),
+          ),
+        ),
+      ],
     );
   }
 }
