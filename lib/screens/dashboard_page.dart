@@ -941,7 +941,7 @@ class _DashboardPageState extends State<DashboardPage> {
             _scheduleMetrics(forcePaymentsRefresh: true);
           }
         },
-        child: ListView(
+        child: SingleChildScrollView(
           controller: _scrollController,
           primary: false,
           physics: const AlwaysScrollableScrollPhysics(),
@@ -951,100 +951,102 @@ class _DashboardPageState extends State<DashboardPage> {
             20,
             MediaQuery.of(context).padding.bottom + 110,
           ),
-          children: [
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 720),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            children: [
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _greeting(firstName),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.5,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                loading
+                                    ? const SizedBox.shrink()
+                                    : Text(
+                                        _greetingSubtitle,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.white60,
+                                        ),
+                                      ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const SizedBox(
+                            width: 44,
+                            height: 44,
+                            child: RepaintBoundary(
+                              child: FittedBox(child: BreathingLogo()),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      GestureDetector(
+                        onTap: _showStatusEditor,
+                        behavior: HitTestBehavior.opaque,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Row(
                             children: [
-                              Text(
-                                _greeting(firstName),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.5,
-                                  color: Colors.white,
+                              _buildAvatar(),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Consumer<StatusProvider>(
+                                  builder: (context, statusProvider, _) =>
+                                      _dashboardStatusBubble(
+                                        statusProvider.status,
+                                      ),
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              loading
-                                  ? const SizedBox.shrink()
-                                  : Text(
-                                      _greetingSubtitle,
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.white60,
-                                      ),
-                                    ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        const SizedBox(
-                          width: 44,
-                          height: 44,
-                          child: RepaintBoundary(
-                            child: FittedBox(child: BreathingLogo()),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    GestureDetector(
-                      onTap: _showStatusEditor,
-                      behavior: HitTestBehavior.opaque,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          children: [
-                            _buildAvatar(),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Consumer<StatusProvider>(
-                                builder: (context, statusProvider, _) =>
-                                    _dashboardStatusBubble(
-                                      statusProvider.status,
-                                    ),
-                              ),
-                            ),
-                          ],
-                        ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            if (loading)
-              for (final child in _buildSkeleton())
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 720),
-                    child: child,
+              if (loading)
+                for (final child in _buildSkeleton())
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 720),
+                      child: child,
+                    ),
+                  )
+              else
+                for (final child in _buildContent(
+                  groupPct: groupPct,
+                  ownPct: ownPct,
+                ))
+                  Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 720),
+                      child: child,
+                    ),
                   ),
-                )
-            else
-              for (final child in _buildContent(
-                groupPct: groupPct,
-                ownPct: ownPct,
-              ))
-                Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 720),
-                    child: child,
-                  ),
-                ),
-          ],
+            ],
+          ),
         ),
       ),
     );
