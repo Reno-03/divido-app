@@ -1,17 +1,16 @@
 import 'package:divido_app/constants/color_options.dart';
 import 'package:divido_app/providers/expense_provider.dart';
 import 'package:divido_app/providers/group_provider.dart';
+import 'package:divido_app/providers/status_provider.dart';
+import 'package:divido_app/screens/status_chip.dart';
+import 'package:divido_app/services/current_user.dart';
+import 'package:divido_app/utils/avatar_image_picker.dart';
 import 'package:divido_app/widgets/gcash_tap_hint.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:divido_app/services/current_user.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:divido_app/providers/status_provider.dart';
-import 'package:divido_app/screens/status_chip.dart';
-import 'package:web/web.dart' as web;
-import 'dart:js_interop';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -590,7 +589,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
       await Supabase.instance.client
           .from('profiles')
-          .update({'avatar_url': rawUrl})
+          .update({'avatar_url': url})
           .eq('id', userId);
 
       CurrentUser.instance.avatarUrl = url;
@@ -615,32 +614,26 @@ class _ProfilePageState extends State<ProfilePage> {
   // Add _pickAndUploadAvatar method to ProfilePage:
   Future<void> _pickAndUploadAvatar() async {
     if (kIsWeb) {
-      final input = web.HTMLInputElement()
-        ..type = 'file'
-        ..accept = 'image/*';
-
-      input.click();
-
-      await input.onChange.first;
-
-      final files = input.files;
-      if (files == null || files.length == 0) return;
-
-      final file = files.item(0)!;
-      final arrayBuffer = await file.arrayBuffer().toDart;
-      final bytes = Uint8List.view(arrayBuffer.toDart);
-
-      await _uploadBytes(bytes, file.type);
+      try {
+        final image = await pickWebAvatar();
+        if (image == null) return;
+        await _uploadBytes(image.bytes, image.contentType);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not process image: $e')),
+          );
+        }
+      }
       return;
     }
 
-    // native
     final picker = ImagePicker();
     final picked = await picker.pickImage(
       source: ImageSource.gallery,
-      maxWidth: 512,
-      maxHeight: 512,
-      imageQuality: 80,
+      maxWidth: AvatarImageData.maxDimension.toDouble(),
+      maxHeight: AvatarImageData.maxDimension.toDouble(),
+      imageQuality: (AvatarImageData.quality * 100).round(),
     );
     if (picked == null) return;
     final bytes = await picked.readAsBytes();

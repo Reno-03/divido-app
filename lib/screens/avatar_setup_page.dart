@@ -1,10 +1,9 @@
 import 'package:divido_app/services/current_user.dart';
+import 'package:divido_app/utils/avatar_image_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:web/web.dart' as web;
-import 'dart:js_interop';
 
 class AvatarSetupPage extends StatefulWidget {
   const AvatarSetupPage({super.key});
@@ -28,29 +27,30 @@ class _AvatarSetupPageState extends State<AvatarSetupPage> {
 
   Future<void> _pickAndUpload() async {
     if (kIsWeb) {
-      final input = web.HTMLInputElement()
-        ..type = 'file'
-        ..accept = 'image/*';
-      input.click();
-      await input.onChange.first;
-      final files = input.files;
-      if (files == null || files.length == 0) return;
-      final file = files.item(0)!;
-      final arrayBuffer = await file.arrayBuffer().toDart;
-      final bytes = Uint8List.view(arrayBuffer.toDart);
-      await _upload(bytes, file.type);
-    } else {
-      final picker = ImagePicker();
-      final picked = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 512,
-        maxHeight: 512,
-        imageQuality: 80,
-      );
-      if (picked == null) return;
-      final bytes = await picked.readAsBytes();
-      await _upload(bytes, null);
+      try {
+        final image = await pickWebAvatar();
+        if (image == null) return;
+        await _upload(image.bytes, image.contentType);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Could not process image: $e')),
+          );
+        }
+      }
+      return;
     }
+
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: AvatarImageData.maxDimension.toDouble(),
+      maxHeight: AvatarImageData.maxDimension.toDouble(),
+      imageQuality: (AvatarImageData.quality * 100).round(),
+    );
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    await _upload(bytes, null);
   }
 
   Future<void> _upload(Uint8List bytes, String? mimeType) async {
@@ -92,7 +92,7 @@ class _AvatarSetupPageState extends State<AvatarSetupPage> {
 
       await Supabase.instance.client
           .from('profiles')
-          .update({'avatar_url': rawUrl})
+          .update({'avatar_url': url})
           .eq('id', userId);
 
       CurrentUser.instance.avatarUrl = url;
