@@ -1770,24 +1770,11 @@ class _BalancePageState extends State<BalancePage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Balances',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitleText,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: Colors.white60,
-                          ),
+                        DashPageHeader(
+                          icon: Icons.account_balance_wallet_rounded,
+                          title: 'Balances',
+                          subtitle: subtitleText,
+                          count: _balances.length,
                         ),
                         if (_showingSavedBalances) ...[
                           const SizedBox(height: 10),
@@ -1907,22 +1894,24 @@ class _BalancePageState extends State<BalancePage>
                         Row(
                           children: [
                             Expanded(
-                              child: _SummaryTile(
+                              child: DashMetricTile(
                                 icon: Icons.arrow_downward_rounded,
                                 label: 'Owed to you',
                                 amount: totalOwedToYou,
                                 caption: '$owedCount people',
                                 amountColor: totalOwedToYou > 0 ? kDashPositive : Colors.white,
+                                trimZeros: false,
                               ),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
-                              child: _SummaryTile(
+                              child: DashMetricTile(
                                 icon: Icons.arrow_upward_rounded,
                                 label: 'You owe',
                                 amount: totalYouOwe,
                                 caption: '$oweCount people',
                                 amountColor: totalYouOwe > 0 ? kDashNegative : Colors.white,
+                                trimZeros: false,
                               ),
                             ),
                           ],
@@ -2084,75 +2073,6 @@ class _BalanceRowItem {
   factory _BalanceRowItem.card(Map<String, dynamic> entry) => _BalanceRowItem._(isHeader: false, entry: entry);
 }
 
-class _SummaryTile extends StatelessWidget {
-  const _SummaryTile({
-    required this.icon,
-    required this.label,
-    required this.amount,
-    required this.caption,
-    required this.amountColor,
-  });
-
-  final IconData icon;
-  final String label;
-  final double amount;
-  final String caption;
-  final Color amountColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: kDashGlass,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: Colors.white, size: 18),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Colors.white70,
-            ),
-          ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: DashAmount(
-              amount,
-              size: 22,
-              color: amountColor,
-              weight: FontWeight.w800,
-              trimZeros: false,
-              animate: true,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            caption,
-            style: const TextStyle(fontSize: 11, color: Colors.white54),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _BalanceCard extends StatelessWidget {
   const _BalanceCard({
     required this.entry,
@@ -2215,13 +2135,21 @@ class _BalanceCard extends StatelessWidget {
     }
 
     final bool isNudgeDisabled = isNudgeOnCooldown || nudgeCount >= 3;
-    final Color balanceColor = isZero ? Colors.grey : (isPositive ? Colors.green : Colors.red);
+    final Color balanceColor = isZero
+        ? Colors.white70
+        : (isPositive ? kDashPositive : kDashNegative);
 
     Widget cardWidget = Card(
       color: const Color(0xFF0F1128),
-      elevation: 10,
-      shadowColor: Colors.black.withValues(alpha: 0.8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      elevation: 4,
+      shadowColor: Colors.black.withValues(alpha: 0.28),
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: balanceColor.withValues(alpha: isZero ? 0.12 : 0.24),
+        ),
+      ),
       child: Column(
         children: [
           if (status.isNotEmpty) ...[
@@ -2229,20 +2157,27 @@ class _BalanceCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
+                color: userColor.withValues(alpha: 0.14),
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
                 ),
               ),
               child: Row(
                 children: [
+                  Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    size: 14,
+                    color: userColor.withValues(alpha: 0.95),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       status,
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.8),
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white.withValues(alpha: 0.88),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -2259,14 +2194,14 @@ class _BalanceCard extends StatelessWidget {
                   child: Container(
                     width: 12,
                     height: 8,
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: userColor.withValues(alpha: 0.14),
                   ),
                 ),
               ],
             ),
           ],
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -2278,10 +2213,10 @@ class _BalanceCard extends StatelessWidget {
                       _BalanceAvatar(
                         url: avatarUrl,
                         color: userColor,
-                        size: 40,
+                        size: 46,
                         initials: _safeInitials(name, lastname),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 11),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -2336,26 +2271,36 @@ class _BalanceCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    DashAmount(
-                      net.abs(),
-                      size: 24,
-                      weight: FontWeight.w800,
-                      color: balanceColor,
-                      trimZeros: false,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      isZero ? 'settled' : (isPositive ? 'owes you' : 'you owe'),
-                      textAlign: TextAlign.right,
-                      style: TextStyle(
-                        color: balanceColor.withValues(alpha: 0.75),
-                        fontSize: 12,
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 150),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: DashAmount(
+                          net.abs(),
+                          size: 22,
+                          weight: FontWeight.w800,
+                          color: balanceColor,
+                          trimZeros: false,
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 3),
+                      Text(
+                        isZero
+                            ? 'settled'
+                            : (isPositive ? 'owes you' : 'you owe'),
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          color: balanceColor.withValues(alpha: 0.82),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -2376,7 +2321,7 @@ class _BalanceCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.red.withValues(alpha: 0.15),
                         borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(16),
+                          bottomLeft: Radius.circular(20),
                         ),
                         border: Border(
                           top: BorderSide(
@@ -2426,7 +2371,7 @@ class _BalanceCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.blue.withValues(alpha: 0.10),
                         borderRadius: const BorderRadius.only(
-                          bottomRight: Radius.circular(16),
+                          bottomRight: Radius.circular(20),
                         ),
                         border: Border(
                           top: BorderSide(
@@ -2478,7 +2423,7 @@ class _BalanceCard extends StatelessWidget {
                             ? Colors.white.withValues(alpha: 0.04)
                             : _getNudgeColor(nudgeCount).withValues(alpha: 0.15),
                         borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(16),
+                          bottomLeft: Radius.circular(20),
                         ),
                         border: Border(
                           top: BorderSide(
@@ -2544,7 +2489,7 @@ class _BalanceCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Colors.blue.withValues(alpha: 0.10),
                         borderRadius: const BorderRadius.only(
-                          bottomRight: Radius.circular(16),
+                          bottomRight: Radius.circular(20),
                         ),
                         border: Border(
                           top: BorderSide(
@@ -2592,8 +2537,8 @@ class _BalanceCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.blue.withValues(alpha: 0.10),
                   borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(16),
-                    bottomRight: Radius.circular(16),
+                    bottomLeft: Radius.circular(20),
+                    bottomRight: Radius.circular(20),
                   ),
                   border: Border(
                     top: BorderSide(
@@ -2631,7 +2576,7 @@ class _BalanceCard extends StatelessWidget {
         animation: nudgeAnimation,
         builder: (context, child) => Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(17),
+            borderRadius: BorderRadius.circular(22),
             border: Border.all(
               color: _getNudgeGlowColor(nudgedCountReceived).withValues(
                 alpha: nudgeAnimation.value,

@@ -475,30 +475,11 @@ class _AllPageState extends State<AllPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // HEADER
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'All expenses',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${expenses.length} expenses',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.white60,
-                              ),
-                            ),
-                          ],
+                        DashPageHeader(
+                          icon: Icons.receipt_long_rounded,
+                          title: 'All expenses',
+                          subtitle: 'Shared activity in this group',
+                          count: expenses.length,
                         ),
                         const SizedBox(height: 16),
 
@@ -506,7 +487,7 @@ class _AllPageState extends State<AllPage> {
                         Row(
                           children: [
                             Expanded(
-                              child: _SummaryTile(
+                              child: DashMetricTile(
                                 icon: Icons.account_balance_wallet_outlined,
                                 label: 'Total',
                                 amount: totalSum,
@@ -516,7 +497,7 @@ class _AllPageState extends State<AllPage> {
                             ),
                             const SizedBox(width: 14),
                             Expanded(
-                              child: _SummaryTile(
+                              child: DashMetricTile(
                                 icon: Icons.person_outline,
                                 label: 'Your share',
                                 amount: myShareSum,
@@ -564,12 +545,29 @@ class _AllPageState extends State<AllPage> {
                                         )
                                       : null,
                                   filled: true,
-                                  fillColor: Colors.white.withValues(
-                                    alpha: 0.06,
-                                  ),
+                                  fillColor: const Color(0xFF20234A),
                                   border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                    borderSide: BorderSide.none,
+                                    borderRadius: BorderRadius.circular(15),
+                                    borderSide: BorderSide(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                    borderSide: BorderSide(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFB8B9FF),
+                                      width: 1.2,
+                                    ),
                                   ),
                                   contentPadding: const EdgeInsets.symmetric(
                                     vertical: 12,
@@ -593,13 +591,11 @@ class _AllPageState extends State<AllPage> {
                                       width: 48,
                                       height: 48,
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.06,
-                                        ),
-                                        borderRadius: BorderRadius.circular(12),
+                                        color: const Color(0xFF20234A),
+                                        borderRadius: BorderRadius.circular(15),
                                         border: Border.all(
                                           color: Colors.white.withValues(
-                                            alpha: 0.1,
+                                            alpha: 0.08,
                                           ),
                                         ),
                                       ),
@@ -635,7 +631,6 @@ class _AllPageState extends State<AllPage> {
                           ],
                         ),
                         const SizedBox(height: 12),
-
                         // QUICK FILTER CHIPS
                         SizedBox(
                           height: 36,
@@ -690,6 +685,10 @@ class _AllPageState extends State<AllPage> {
                           ),
                         ),
                         const SizedBox(height: 12),
+                        DashListHeading(
+                          title: 'EXPENSE ACTIVITY',
+                          count: expenses.length,
+                        ),
                       ],
                     ),
                   ),
@@ -1022,80 +1021,6 @@ class _AllPagePreparationKey {
       showPaid == other.showPaid &&
       showUnpaid == other.showUnpaid &&
       onlyMine == other.onlyMine;
-}
-
-class _SummaryTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final double amount;
-  final String caption;
-  final Color amountColor;
-
-  const _SummaryTile({
-    required this.icon,
-    required this.label,
-    required this.amount,
-    required this.caption,
-    required this.amountColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: kDashGlass,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: Colors.white, size: 18),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Colors.white70,
-            ),
-          ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: DashAmount(
-              amount,
-              size: 22,
-              color: amountColor,
-              weight: FontWeight.w800,
-              trimZeros: true,
-              animate: true,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            caption,
-            style: const TextStyle(fontSize: 11, color: Colors.white54),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _ExpenseCard extends StatefulWidget {

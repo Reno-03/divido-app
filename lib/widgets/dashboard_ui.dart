@@ -149,6 +149,219 @@ class DashSkeleton extends StatelessWidget {
   }
 }
 
+class DashPageHeader extends StatelessWidget {
+  const DashPageHeader({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.count,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final int? count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: const Color(0xFFB8B9FF).withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: const Color(0xFFB8B9FF).withValues(alpha: 0.18),
+            ),
+          ),
+          child: Icon(icon, color: const Color(0xFFB8B9FF), size: 23),
+        ),
+        const SizedBox(width: 13),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12, color: Colors.white60),
+              ),
+            ],
+          ),
+        ),
+        if (count != null) ...[
+          const SizedBox(width: 8),
+          Container(
+            constraints: const BoxConstraints(minWidth: 34),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            ),
+            child: Text(
+              '$count',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class DashListHeading extends StatelessWidget {
+  const DashListHeading({super.key, required this.title, required this.count});
+
+  final String title;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.1,
+              ),
+            ),
+          ),
+          Text(
+            '$count ${count == 1 ? 'item' : 'items'}',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.45),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DashMetricTile extends StatelessWidget {
+  const DashMetricTile({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.amount,
+    required this.caption,
+    required this.amountColor,
+    this.trimZeros = true,
+  });
+
+  final IconData icon;
+  final String label;
+  final double amount;
+  final String caption;
+  final Color amountColor;
+  final bool trimZeros;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF25284F), Color(0xFF1E2144)],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: amountColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: amountColor, size: 17),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white70,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: DashAmount(
+              amount,
+              size: 32,
+              color: amountColor,
+              weight: FontWeight.w800,
+              trimZeros: trimZeros,
+              animate: true,
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(
+            caption,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, color: Colors.white54),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ------------------------------------------------------------------ sections
 
 /// Title sits outside the surface; rows inside are separated by hairlines
@@ -336,129 +549,201 @@ class DashHeroBalance extends StatelessWidget {
       icon = Icons.arrow_upward_rounded;
     }
 
-    final tint = (settled || even) ? 0.0 : 0.14;
+    final accentTint = (settled || even) ? 0.0 : 0.12;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Color.alphaBlend(accent.withValues(alpha: tint), kDashHeroGlass),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color: accent.withValues(alpha: (settled || even) ? 0.12 : 0.28),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.alphaBlend(
+              accent.withValues(alpha: accentTint),
+              const Color(0xFF282C5A),
+            ),
+            const Color(0xFF1C1F43),
+          ],
         ),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(
+          color: accent.withValues(alpha: (settled || even) ? 0.14 : 0.3),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: (settled || even) ? 0.04 : 0.1),
+            blurRadius: 28,
+            offset: const Offset(0, 12),
+          ),
+        ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 28,
-                height: 28,
+          Positioned(
+            top: -54,
+            right: -44,
+            child: IgnorePointer(
+              child: Container(
+                width: 160,
+                height: 160,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: accent.withValues(alpha: 0.2),
-                ),
-                child: Icon(icon, size: 16, color: accent),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.white70,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: DashAmount(
-              net.abs(),
-              size: 40,
-              weight: FontWeight.w800,
-              animate: true,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            hint,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: accent,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            decoration: BoxDecoration(
-              color: kDashNavy.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _HeroLeg(
-                    label: 'Owed to you',
-                    value: owedToYou,
-                    color: kDashPositive,
-                    icon: Icons.arrow_downward_rounded,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.035),
+                    width: 26,
                   ),
                 ),
-                Container(
-                  width: 1,
-                  height: 36,
-                  color: Colors.white.withValues(alpha: 0.12),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(icon, size: 18, color: accent),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'GROUP BALANCE',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            label,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      Icons.account_balance_wallet_outlined,
+                      size: 19,
+                      color: Colors.white.withValues(alpha: 0.45),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _HeroLeg(
-                    label: 'You owe',
-                    value: youOwe,
-                    color: kDashNegative,
-                    icon: Icons.arrow_upward_rounded,
+                const SizedBox(height: 18),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: DashAmount(
+                    net.abs(),
+                    size: 40,
+                    weight: FontWeight.w800,
+                    animate: true,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  hint,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: accent,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: kDashNavy.withValues(alpha: 0.48),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.06),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _HeroLeg(
+                          label: 'Owed to you',
+                          value: owedToYou,
+                          color: kDashPositive,
+                          icon: Icons.arrow_downward_rounded,
+                        ),
+                      ),
+                      Container(
+                        width: 1,
+                        height: 36,
+                        color: Colors.white.withValues(alpha: 0.12),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: _HeroLeg(
+                          label: 'You owe',
+                          value: youOwe,
+                          color: kDashNegative,
+                          icon: Icons.arrow_upward_rounded,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: onSettle,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: kDashNavy,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            actionLabel ??
+                                (youOwe >= 0.01
+                                    ? 'Settle up'
+                                    : 'View balances'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.arrow_forward_rounded, size: 18),
+                      ],
+                    ),
                   ),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: onSettle,
-              style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: kDashNavy,
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      actionLabel ?? (youOwe >= 0.01 ? 'Settle up' : 'View balances'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.arrow_forward_rounded, size: 18),
-                ],
-              ),
             ),
           ),
         ],
@@ -542,71 +827,100 @@ class DashStatTile extends StatelessWidget {
         : (flat ? Colors.white70 : (up ? kDashPositive : kDashNegative));
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
-        color: kDashGlass,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF25284F), Color(0xFF1E2144)],
+        ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 7),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, size: 18, color: Colors.white),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Colors.white70,
-            ),
-          ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: DashAmount(value, size: 22, animate: true),
-          ),
-          const SizedBox(height: 10),
           Row(
             children: [
-              Icon(
-                isNew
-                    ? Icons.fiber_new_rounded
-                    : (flat
-                          ? Icons.trending_flat_rounded
-                          : (up
-                                ? Icons.trending_up_rounded
-                                : Icons.trending_down_rounded)),
-                size: 16,
-                color: trendColor,
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB8B9FF).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 17, color: const Color(0xFFB8B9FF)),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  isNew
-                      ? 'New this week'
-                      : (flat
-                            ? 'Same as last week'
-                            : '${pct.abs().toStringAsFixed(0)}% vs last week'),
-                  maxLines: 1,
+                  label,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: trendColor,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    height: 1.15,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white70,
                   ),
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: DashAmount(value, size: 23, animate: true),
+          ),
+          const SizedBox(height: 13),
+          Container(
+            constraints: const BoxConstraints(minHeight: 28),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: trendColor.withValues(alpha: isNew || flat ? 0.08 : 0.12),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isNew
+                      ? Icons.fiber_new_rounded
+                      : (flat
+                            ? Icons.trending_flat_rounded
+                            : (up
+                                  ? Icons.trending_up_rounded
+                                  : Icons.trending_down_rounded)),
+                  size: 15,
+                  color: trendColor,
+                ),
+                const SizedBox(width: 5),
+                Flexible(
+                  child: Text(
+                    isNew
+                        ? 'New this week'
+                        : (flat
+                              ? 'Same as last week'
+                              : '${pct.abs().toStringAsFixed(0)}% vs last week'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: trendColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -687,29 +687,11 @@ class _MinePageState extends State<MinePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // HEADER
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'My expenses',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${myExpenses.length} expenses, $unpaidCount to collect',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.white60,
-                              ),
-                            ),
-                          ],
+                        DashPageHeader(
+                          icon: Icons.receipt_long_rounded,
+                          title: 'My expenses',
+                          subtitle: '$unpaidCount unpaid to collect',
+                          count: myExpenses.length,
                         ),
                         const SizedBox(height: 16),
 
@@ -717,7 +699,7 @@ class _MinePageState extends State<MinePage> {
                         Row(
                           children: [
                             Expanded(
-                              child: _SummaryTile(
+                              child: DashMetricTile(
                                 icon: Icons.account_balance_wallet_outlined,
                                 label: 'Total',
                                 amount: totalSum,
@@ -727,7 +709,7 @@ class _MinePageState extends State<MinePage> {
                             ),
                             const SizedBox(width: 14),
                             Expanded(
-                              child: _SummaryTile(
+                              child: DashMetricTile(
                                 icon: Icons.request_quote_outlined,
                                 label: 'Left to collect',
                                 amount: leftToCollect,
@@ -785,6 +767,10 @@ class _MinePageState extends State<MinePage> {
                                       )
                                     : const SizedBox.shrink(key: ValueKey('empty')),
                           ),
+                        ),
+                        DashListHeading(
+                          title: 'EXPENSES YOU CREATED',
+                          count: myExpenses.length,
                         ),
                       ],
                     ),
@@ -950,80 +936,6 @@ class _FeedRow {
     return _FeedRow._(
       isHeader: false,
       expenseMap: expenseMap,
-    );
-  }
-}
-
-class _SummaryTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final double amount;
-  final String caption;
-  final Color amountColor;
-
-  const _SummaryTile({
-    required this.icon,
-    required this.label,
-    required this.amount,
-    required this.caption,
-    required this.amountColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: kDashGlass,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: Colors.white, size: 18),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: Colors.white70,
-            ),
-          ),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: DashAmount(
-              amount,
-              size: 22,
-              color: amountColor,
-              weight: FontWeight.w800,
-              trimZeros: true,
-              animate: true,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            caption,
-            style: const TextStyle(fontSize: 11, color: Colors.white54),
-          ),
-        ],
-      ),
     );
   }
 }

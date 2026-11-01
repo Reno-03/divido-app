@@ -789,6 +789,39 @@ class _DashboardPageState extends State<DashboardPage> {
         onSettle: _openBalances,
       ),
       const SizedBox(height: 14),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+        child: Row(
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Spending snapshot',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'Totals with this week’s trend',
+                    style: TextStyle(fontSize: 12, color: Colors.white60),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.insights_rounded,
+              size: 20,
+              color: Colors.white.withValues(alpha: 0.45),
+            ),
+          ],
+        ),
+      ),
       Row(
         children: [
           Expanded(

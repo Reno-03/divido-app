@@ -44,12 +44,11 @@ void main() {
 
     expect(find.text('Group expenses'), findsOneWidget);
     expect(find.text('Your expenses'), findsOneWidget);
-    expect(find.text('12%'), findsNWidgets(2));
-    expect(find.byTooltip('12% vs last week'), findsNWidgets(2));
+    expect(find.text('12% vs last week'), findsNWidgets(2));
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('hero settle ring displays 0, 50, and 100 percent', (
+  testWidgets('balance hero shows the owed amount and keeps its action', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(360, 800);
@@ -57,8 +56,9 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    Widget hero(double settledAmount) {
-      return MaterialApp(
+    var actionPressed = false;
+    await tester.pumpWidget(
+      MaterialApp(
         home: MediaQuery(
           data: const MediaQueryData(disableAnimations: true),
           child: Scaffold(
@@ -67,48 +67,47 @@ void main() {
               child: DashHeroBalance(
                 owedToYou: 327,
                 youOwe: 0,
-                settledAmount: settledAmount,
-                totalGroupAmount: 100,
-                onSettle: () {},
+                actionLabel: 'View balances',
+                onSettle: () => actionPressed = true,
               ),
             ),
-          ),
-        ),
-      );
-    }
-
-    await tester.pumpWidget(hero(0));
-    expect(find.text('0%'), findsOneWidget);
-    expect(find.text('Owed to you'), findsNothing);
-    expect(tester.takeException(), isNull);
-
-    await tester.pumpWidget(hero(50));
-    expect(find.text('50%'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-
-    await tester.pumpWidget(hero(100));
-    expect(find.text('100%'), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('settled hero shows the empty state instead of an amount', (
-    tester,
-  ) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
-          body: DashHeroBalance(
-            owedToYou: 0,
-            youOwe: 0,
-            settledAmount: 100,
-            totalGroupAmount: 100,
-            onSettle: _noop,
           ),
         ),
       ),
     );
 
-    expect(find.text('All settled up!'), findsOneWidget);
+    expect(find.text('GROUP BALANCE'), findsOneWidget);
+    expect(find.text("You're owed"), findsOneWidget);
+    expect(find.text('Nudge them to settle'), findsOneWidget);
+    expect(find.textContaining('327'), findsNWidgets(2));
+    await tester.tap(find.text('View balances'));
+    expect(actionPressed, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('settled hero shows its settled state', (tester) async {
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(disableAnimations: true),
+          child: Scaffold(
+            body: Padding(
+              padding: const EdgeInsets.all(16),
+              child: DashHeroBalance(owedToYou: 0, youOwe: 0, onSettle: _noop),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('All settled'), findsOneWidget);
+    expect(find.text('No pending balances in this group'), findsOneWidget);
+    expect(find.text('View balances'), findsOneWidget);
     expect(find.textContaining('327'), findsNothing);
     expect(tester.takeException(), isNull);
   });
