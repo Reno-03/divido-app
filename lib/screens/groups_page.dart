@@ -338,7 +338,7 @@ class _GroupsPageState extends State<GroupsPage> {
           bottomNavigationBar: rawGroups.isEmpty
               ? null
               : Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
                   child: Row(
                     children: [
                       Expanded(
