@@ -4,6 +4,7 @@ import 'package:divido_app/providers/group_provider.dart';
 import 'package:divido_app/providers/status_provider.dart';
 import 'package:divido_app/screens/status_chip.dart';
 import 'package:divido_app/services/current_user.dart';
+import 'package:divido_app/services/offline_cache.dart';
 import 'package:divido_app/utils/avatar_image_picker.dart';
 import 'package:divido_app/widgets/gcash_tap_hint.dart';
 import 'package:flutter/foundation.dart';
@@ -1152,7 +1153,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     context,
                     listen: false,
                   );
+                  final userId = CurrentUser.instance.id;
                   await Supabase.instance.client.auth.signOut();
+                  if (userId != null) await OfflineCache.clearUser(userId);
                   CurrentUser.instance.clear();
                   groupProvider.clear();
                   if (!context.mounted) return;

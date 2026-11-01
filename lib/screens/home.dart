@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:divido_app/providers/status_provider.dart';
 import 'package:divido_app/screens/create_expense_modal.dart';
 import 'package:divido_app/screens/dashboard_page.dart';
 import 'package:divido_app/services/changelog_service.dart';
+import 'package:divido_app/services/offline_cache.dart';
 import 'package:divido_app/widgets/changelog_dialog.dart';
 import 'package:divido_app/widgets/avatar_image.dart';
 import 'package:flutter/material.dart';
@@ -79,6 +82,7 @@ class HomePageState extends State<HomePage> {
           return;
         }
 
+        unawaited(_refreshProfile(session.user.id));
         await _groupProvider.fetchGroups();
       } catch (error) {
         debugPrint('HomePage initialization error: $error');
@@ -95,6 +99,24 @@ class HomePageState extends State<HomePage> {
         );
       }
     });
+  }
+
+  Future<void> _refreshProfile(String userId) async {
+    try {
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select()
+          .eq('id', userId)
+          .single();
+      if (profile['id'] != userId) {
+        throw StateError('The fetched profile does not match the active user.');
+      }
+      CurrentUser.instance.setFromMap(profile);
+      await OfflineCache.write(OfflineCache.profileKey(userId), profile);
+      if (mounted) setState(() {});
+    } catch (error) {
+      debugPrint('Profile refresh failed; using saved profile when available: $error');
+    }
   }
 
   @override
@@ -282,7 +304,7 @@ class HomePageState extends State<HomePage> {
         ),
         body: Consumer<GroupProvider>(
           builder: (context, groupProvider, _) {
-            if (groupProvider.isLoading) {
+            if (groupProvider.isLoading && groupProvider.groups.isEmpty) {
               return const Center(child: CircularProgressIndicator());
             }
             if (groupProvider.groups.isEmpty) {

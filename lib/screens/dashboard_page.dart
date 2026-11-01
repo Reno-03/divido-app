@@ -10,6 +10,7 @@ import 'package:divido_app/screens/balance_page.dart';
 import 'package:divido_app/screens/home.dart';
 import 'package:divido_app/screens/status_chip.dart';
 import 'package:divido_app/services/current_user.dart';
+import 'package:divido_app/services/offline_cache.dart';
 import 'package:divido_app/utils/dashboard_metrics.dart';
 import 'package:divido_app/widgets/breathing_logo.dart';
 import 'package:divido_app/widgets/avatar_image.dart';
@@ -37,6 +38,9 @@ class _DashboardPageState extends State<DashboardPage> {
   GroupProvider? _groups;
 
   bool _isLoadingMetrics = true;
+  bool _isRestoringOfflineSnapshot = true;
+  bool _showingSavedData = false;
+  DateTime? _savedDataAt;
 
   double _totalOwedToYou = 0;
   double _totalYouOwe = 0;
@@ -60,6 +64,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Timer? _metricsDebounce;
   String? _metricsGroupId;
   String? _cachedPaymentsGroupId;
+  bool _paymentsFromNetwork = false;
   List<Map<String, dynamic>> _paymentsMade = const [];
   List<Map<String, dynamic>> _paymentsReceived = const [];
 
@@ -78,7 +83,7 @@ class _DashboardPageState extends State<DashboardPage> {
       _metricsGroupId = _groups!.selectedGroupId;
       _cacheGroupView(_groups!);
       _subscribePayments(_groups!.selectedGroupId);
-      _scheduleMetrics();
+      unawaited(_restoreOfflineSnapshot(_groups!.selectedGroupId));
     });
   }
 
@@ -91,6 +96,56 @@ class _DashboardPageState extends State<DashboardPage> {
       _supabase.removeChannel(_paymentsChannel!);
     }
     super.dispose();
+  }
+
+  Future<void> _restoreOfflineSnapshot(String? groupId) async {
+    final userId = CurrentUser.instance.id;
+    try {
+      if (userId == null || groupId == null) return;
+      final cached = await OfflineCache.readMap(
+        OfflineCache.dashboardKey(userId, groupId),
+      );
+      if (!mounted ||
+          cached == null ||
+          cached['group_id'] != groupId ||
+          _groups?.selectedGroupId != groupId) {
+        return;
+      }
+
+      final paymentsMade = cached['payments_made'];
+      final paymentsReceived = cached['payments_received'];
+      setState(() {
+        _totalGroupExpense = (cached['total_group_expense'] as num?)
+            ?.toDouble();
+        _totalOwnExpense = (cached['total_own_expense'] as num?)?.toDouble();
+        _thisWeekGroup = (cached['this_week_group'] as num?)?.toDouble() ?? 0;
+        _lastWeekGroup = (cached['last_week_group'] as num?)?.toDouble() ?? 0;
+        _thisWeekOwn = (cached['this_week_own'] as num?)?.toDouble() ?? 0;
+        _lastWeekOwn = (cached['last_week_own'] as num?)?.toDouble() ?? 0;
+        _totalOwedToYou = (cached['total_owed_to_you'] as num?)?.toDouble() ?? 0;
+        _totalYouOwe = (cached['total_you_owe'] as num?)?.toDouble() ?? 0;
+        _topExpensesThisWeek = _cachedMaps(cached['top_expenses_this_week']);
+        _recentExpenses = _cachedMaps(cached['recent_expenses']);
+        _balanceSummaries = _cachedMaps(cached['balance_summaries']);
+        _paymentsMade = _cachedMaps(paymentsMade);
+        _paymentsReceived = _cachedMaps(paymentsReceived);
+        _paymentsFromNetwork = false;
+        _showingSavedData = true;
+        _savedDataAt = DateTime.tryParse(cached['saved_at'] as String? ?? '');
+        _isLoadingMetrics = false;
+      });
+    } finally {
+      _isRestoringOfflineSnapshot = false;
+      if (mounted) _scheduleMetrics();
+    }
+  }
+
+  List<Map<String, dynamic>> _cachedMaps(dynamic value) {
+    if (value is! List) return [];
+    return value
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
   }
 
   List<Map<String, dynamic>>? _membersSource;
@@ -127,6 +182,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final groupId = groupProvider.selectedGroupId;
     if (groupId != _metricsGroupId) {
       _cachedPaymentsGroupId = null;
+      _paymentsFromNetwork = false;
       _metricsGroupId = groupId;
       _paymentsMade = const [];
       _paymentsReceived = const [];
@@ -180,12 +236,14 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
-  Future<void> _ensurePayments({
+  Future<bool> _ensurePayments({
     required String groupId,
     required String currentUserId,
     required bool force,
   }) async {
-    if (!force && _cachedPaymentsGroupId == groupId) return;
+    if (!force && _cachedPaymentsGroupId == groupId) {
+      return _paymentsFromNetwork;
+    }
 
     final results = await Future.wait([
       _supabase
@@ -215,10 +273,12 @@ class _DashboardPageState extends State<DashboardPage> {
         },
     ];
     _cachedPaymentsGroupId = groupId;
+    _paymentsFromNetwork = true;
+    return true;
   }
 
   Future<void> _recomputeMetrics({bool forcePaymentsRefresh = false}) async {
-    if (!mounted) return;
+    if (!mounted || _isRestoringOfflineSnapshot) return;
 
     final currentUserId = CurrentUser.instance.id;
     final groupProvider = _groups ?? context.read<GroupProvider>();
@@ -248,8 +308,9 @@ class _DashboardPageState extends State<DashboardPage> {
 
     final requestId = ++_metricsRequestId;
 
+    var paymentsRefreshed = false;
     try {
-      await _ensurePayments(
+      paymentsRefreshed = await _ensurePayments(
         groupId: groupId,
         currentUserId: currentUserId,
         force: forcePaymentsRefresh,
@@ -322,7 +383,35 @@ class _DashboardPageState extends State<DashboardPage> {
           : expenses.sublist(0, 3);
       _balanceSummaries = summaries;
       _isLoadingMetrics = false;
+      if (paymentsRefreshed && expenseProvider.lastFetchSucceeded) {
+        _showingSavedData = false;
+        _savedDataAt = null;
+      }
     });
+    if (paymentsRefreshed && expenseProvider.lastFetchSucceeded) {
+      unawaited(
+        OfflineCache.write(
+          OfflineCache.dashboardKey(currentUserId, groupId),
+          {
+          'group_id': groupId,
+          'total_group_expense': _totalGroupExpense,
+          'total_own_expense': _totalOwnExpense,
+          'this_week_group': _thisWeekGroup,
+          'last_week_group': _lastWeekGroup,
+          'this_week_own': _thisWeekOwn,
+          'last_week_own': _lastWeekOwn,
+          'total_owed_to_you': _totalOwedToYou,
+          'total_you_owe': _totalYouOwe,
+          'top_expenses_this_week': _topExpensesThisWeek,
+          'recent_expenses': _recentExpenses,
+          'balance_summaries': _balanceSummaries,
+          'payments_made': _paymentsMade,
+          'payments_received': _paymentsReceived,
+          'saved_at': DateTime.now().toIso8601String(),
+          },
+        ),
+      );
+    }
   }
 
   String _greeting(String name) {
@@ -667,6 +756,30 @@ class _DashboardPageState extends State<DashboardPage> {
     required double? ownPct,
   }) {
     return [
+      if (_showingSavedData)
+        Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.amber.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.cloud_off_outlined, color: Colors.amber, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _savedDataAt == null
+                      ? 'Showing your last saved dashboard data'
+                      : 'Saved data from ${DateFormat('MMM d, h:mm a').format(_savedDataAt!.toLocal())}',
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
       DashHeroBalance(
         owedToYou: _totalOwedToYou,
         youOwe: _totalYouOwe,

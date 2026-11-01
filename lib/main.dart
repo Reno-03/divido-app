@@ -12,6 +12,7 @@ import 'package:divido_app/screens/profile_page.dart';
 import 'package:divido_app/screens/register_page.dart';
 import 'package:divido_app/screens/reset_password_page.dart';
 import 'package:divido_app/services/current_user.dart';
+import 'package:divido_app/services/offline_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -33,12 +34,17 @@ void main() async {
 
   final session = Supabase.instance.client.auth.currentSession;
   if (session != null) {
-    final profile = await Supabase.instance.client
-        .from('profiles')
-        .select()
-        .eq('id', session.user.id)
-        .single();
-    CurrentUser.instance.setFromMap(profile);
+    final userId = session.user.id;
+    final cachedProfile = await OfflineCache.readMap(
+      OfflineCache.profileKey(userId),
+    );
+    if (cachedProfile != null && cachedProfile['id'] == userId) {
+      CurrentUser.instance.setFromMap(cachedProfile);
+    } else {
+      CurrentUser.instance
+        ..id = userId
+        ..email = session.user.email;
+    }
   }
 
   runApp(const MyApp());

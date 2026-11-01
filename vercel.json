@@ -1,5 +1,11 @@
 {
-    "rewrites": [
-      { "source": "/(.*)", "destination": "/" }
-    ]
-  }
+  "headers": [
+    {
+      "source": "/offline_service_worker.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache" }
+      ]
+    }
+  ],
+  "rewrites": [{ "source": "/(.*)", "destination": "/" }]
+}

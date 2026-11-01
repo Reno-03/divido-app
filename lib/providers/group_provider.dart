@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/current_user.dart';
+import '../services/offline_cache.dart';
 
 class GroupProvider extends ChangeNotifier {
   final _supabase = Supabase.instance.client;
@@ -91,6 +92,7 @@ class GroupProvider extends ChangeNotifier {
 
   // ── fetch all groups the current user belongs to ──────────────
   Future<void> fetchGroups() async {
+    if (_groups.isEmpty) await _restoreCachedGroups();
     _isLoading = true;
     notifyListeners();
 
@@ -143,6 +145,7 @@ class GroupProvider extends ChangeNotifier {
           _selectedGroup = refreshed;
         }
       }
+      await _saveCachedGroups();
     } catch (e) {
       debugPrint('fetchGroups error: $e');
     } finally {
@@ -157,6 +160,7 @@ class GroupProvider extends ChangeNotifier {
     await _fetchMembers(groupId);
     notifyListeners();
     await _saveSelectedGroupId(groupId);
+    await _saveCachedGroups();
   }
 
   Future<void> _fetchMembers(String groupId) async {
@@ -170,6 +174,47 @@ class GroupProvider extends ChangeNotifier {
     _members = response
         .map((e) => e['profiles'] as Map<String, dynamic>)
         .toList();
+  }
+
+  Future<void> _restoreCachedGroups() async {
+    final userId = CurrentUser.instance.id;
+    if (userId == null) return;
+    final cached = await OfflineCache.readMap(OfflineCache.groupsKey(userId));
+    if (cached == null || cached['user_id'] != userId) return;
+
+    final groups = cached['groups'];
+    final selectedGroupId = cached['selected_group_id'] as String?;
+    final members = cached['members'];
+    if (groups is! List || members is! List) return;
+
+    _groups = groups
+        .whereType<Map>()
+        .map((group) => Map<String, dynamic>.from(group))
+        .toList();
+    _selectedGroup = selectedGroupId == null
+        ? null
+        : _groups.cast<Map<String, dynamic>?>().firstWhere(
+            (group) => group?['id'] == selectedGroupId,
+            orElse: () => null,
+          );
+    if (_groups.isNotEmpty && _selectedGroup == null) return;
+    _members = members
+        .whereType<Map>()
+        .map((member) => Map<String, dynamic>.from(member))
+        .toList();
+    _lastAvatarUrl = _selectedGroup?['avatar_url'] as String?;
+    notifyListeners();
+  }
+
+  Future<void> _saveCachedGroups() async {
+    final userId = CurrentUser.instance.id;
+    if (userId == null) return;
+    await OfflineCache.write(OfflineCache.groupsKey(userId), {
+      'user_id': userId,
+      'groups': _groups,
+      'selected_group_id': _selectedGroup?['id'],
+      'members': _members,
+    });
   }
 
   // ── create a new group ────────────────────────────────────────
