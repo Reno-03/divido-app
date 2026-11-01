@@ -3,6 +3,7 @@ import 'package:divido_app/providers/expense_provider.dart';
 import 'package:divido_app/providers/group_provider.dart';
 import 'package:divido_app/providers/status_provider.dart';
 import 'package:divido_app/screens/status_chip.dart';
+import 'package:divido_app/services/offline_cache.dart';
 import 'package:divido_app/widgets/avatar_image.dart';
 import 'package:divido_app/widgets/dashboard_ui.dart';
 import 'package:flutter/foundation.dart';
@@ -71,8 +72,12 @@ class _BalancePageState extends State<BalancePage>
 
   List<Map<String, dynamic>> _balances = [];
   bool _isFirstLoad = true;
+  bool _isRestoringSnapshot = true;
+  bool _showingSavedBalances = false;
+  DateTime? _savedBalancesAt;
   String? _error;
   int _requestId = 0;
+  int _snapshotRequestId = 0;
 
   ExpenseProvider? _expenseProvider;
   GroupProvider? _groupProvider;
@@ -109,7 +114,7 @@ class _BalancePageState extends State<BalancePage>
       _lastMembers = _groupProvider?.members;
       _lastExpenses = _expenseProvider?.expenses;
       _setupPaymentsChannel(_selectedGroupId);
-      _reload(forceSkeleton: true);
+      unawaited(_restoreCachedBalances(_selectedGroupId));
     });
   }
 
@@ -165,10 +170,15 @@ class _BalancePageState extends State<BalancePage>
       _lastMembers = newMembers;
       _setupPaymentsChannel(newGroupId);
       if (groupChanged) {
+        _isRestoringSnapshot = true;
         setState(() {
           _balances = [];
           _error = null;
+          _showingSavedBalances = false;
+          _savedBalancesAt = null;
         });
+        unawaited(_restoreCachedBalances(newGroupId));
+        return;
       }
       _reload(forceSkeleton: groupChanged);
     } else {
@@ -190,6 +200,7 @@ class _BalancePageState extends State<BalancePage>
   }
 
   Future<void> _executeReload({bool forceSkeleton = false}) async {
+    if (_isRestoringSnapshot) return;
     final currentRequestId = ++_requestId;
 
     try {
@@ -377,13 +388,73 @@ class _BalancePageState extends State<BalancePage>
         _balances = computedBalances;
         _isFirstLoad = false;
         _error = null;
+        _showingSavedBalances = false;
+        _savedBalancesAt = null;
       });
+      unawaited(
+        OfflineCache.write(
+          OfflineCache.balancesKey(myId, groupId),
+          {
+            'user_id': myId,
+            'group_id': groupId,
+            'balances': computedBalances,
+            'saved_at': DateTime.now().toIso8601String(),
+          },
+        ),
+      );
     } catch (e) {
       if (!mounted || currentRequestId != _requestId) return;
       setState(() {
-        _error = e.toString();
+        _error = _balances.isEmpty ? e.toString() : null;
         _isFirstLoad = false;
       });
+    }
+  }
+
+  Future<void> _restoreCachedBalances(String? groupId) async {
+    final requestId = ++_snapshotRequestId;
+    final myId = _currentUser.id;
+    try {
+      if (groupId == null || myId == null) return;
+      final cached = await OfflineCache.readMap(
+        OfflineCache.balancesKey(myId, groupId),
+      );
+      if (!mounted ||
+          requestId != _snapshotRequestId ||
+          cached == null ||
+          cached['user_id'] != myId ||
+          cached['group_id'] != groupId ||
+          _groupProvider?.selectedGroupId != groupId) {
+        return;
+      }
+
+      final balances = cached['balances'];
+      if (balances is! List) return;
+      final restoredBalances = balances
+          .whereType<Map>()
+          .map((balance) => Map<String, dynamic>.from(balance))
+          .toList();
+      setState(() {
+        _balances = restoredBalances;
+        _isFirstLoad = false;
+        _error = null;
+        _showingSavedBalances = true;
+        _savedBalancesAt = DateTime.tryParse(
+          cached['saved_at'] as String? ?? '',
+        );
+      });
+      _groupProvider?.setGroupUnsettledBalance(
+        groupId,
+        restoredBalances.any(
+          (balance) => ((balance['net'] as num?)?.toDouble() ?? 0).abs() >=
+              0.01,
+        ),
+      );
+    } finally {
+      if (requestId == _snapshotRequestId) {
+        _isRestoringSnapshot = false;
+        if (mounted) _reload(forceSkeleton: _balances.isEmpty);
+      }
     }
   }
 
@@ -1718,6 +1789,43 @@ class _BalancePageState extends State<BalancePage>
                             color: Colors.white60,
                           ),
                         ),
+                        if (_showingSavedBalances) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.amber.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.amber.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.cloud_off_outlined,
+                                  color: Colors.amber,
+                                  size: 17,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _savedBalancesAt == null
+                                        ? 'Showing your last saved balances'
+                                        : 'Saved data from ${DateFormat('MMM d, h:mm a').format(_savedBalancesAt!.toLocal())}',
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 16),
                         Row(
                           children: [

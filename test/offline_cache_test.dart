@@ -37,6 +37,10 @@ void main() {
       OfflineCache.dashboardKey('user-1', 'group-1'),
       '{}',
     );
+    await preferences.setString(
+      OfflineCache.balancesKey('user-1', 'group-1'),
+      '{}',
+    );
     await preferences.setString(OfflineCache.profileKey('user-2'), '{}');
     await preferences.setString('last_group_user-1', 'group-1');
 

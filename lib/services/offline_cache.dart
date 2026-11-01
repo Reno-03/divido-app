@@ -10,6 +10,8 @@ class OfflineCache {
       'divido_offline_expenses_${userId}_$groupId';
   static String dashboardKey(String userId, String groupId) =>
       'divido_offline_dashboard_${userId}_$groupId';
+  static String balancesKey(String userId, String groupId) =>
+      'divido_offline_balances_${userId}_$groupId';
 
   static Future<Map<String, dynamic>?> readMap(String key) async {
     try {
@@ -68,6 +70,7 @@ class OfflineCache {
         groupsKey(userId),
         'divido_offline_expenses_${userId}_',
         'divido_offline_dashboard_${userId}_',
+        'divido_offline_balances_${userId}_',
       ];
       for (final key in preferences.getKeys()) {
         if (prefixes.any(key.startsWith)) {
