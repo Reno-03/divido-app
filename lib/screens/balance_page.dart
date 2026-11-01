@@ -41,7 +41,8 @@ Map<String, double> _computeNetByUser({
     net[payerId] = (net[payerId] ?? 0.0) + amount;
   }
   for (final row in payerBreakdowns) {
-    final ownerId = (row['expenses'] as Map<String, dynamic>)['owner_id'] as String;
+    final ownerId =
+        (row['expenses'] as Map<String, dynamic>)['owner_id'] as String;
     final amount = (row['amount'] as num).toDouble();
     net[ownerId] = (net[ownerId] ?? 0.0) - amount;
   }
@@ -214,7 +215,8 @@ class _BalancePageState extends State<BalancePage>
         return;
       }
 
-      final groupProvider = _groupProvider ?? Provider.of<GroupProvider>(context, listen: false);
+      final groupProvider =
+          _groupProvider ?? Provider.of<GroupProvider>(context, listen: false);
       final groupId = groupProvider.selectedGroupId;
       if (groupId == null) {
         if (!mounted || currentRequestId != _requestId) return;
@@ -266,7 +268,9 @@ class _BalancePageState extends State<BalancePage>
             .eq('to_user_id', myId),
         supabase
             .from('profiles')
-            .select('id, firstname, lastname, color, contact_number, is_gcash_ready, status, avatar_url')
+            .select(
+              'id, firstname, lastname, color, contact_number, is_gcash_ready, status, avatar_url',
+            )
             .inFilter('id', memberIdsList),
       ]);
 
@@ -282,10 +286,14 @@ class _BalancePageState extends State<BalancePage>
 
       // A8c: Debug check for 1000 rows limit
       if (kDebugMode) {
-        if (ownerExpenses.length >= 1000) debugPrint('WARNING: ownerExpenses returned 1000 rows');
-        if (payerExpenses.length >= 1000) debugPrint('WARNING: payerExpenses returned 1000 rows');
-        if (paymentsMade.length >= 1000) debugPrint('WARNING: paymentsMade returned 1000 rows');
-        if (paymentsReceived.length >= 1000) debugPrint('WARNING: paymentsReceived returned 1000 rows');
+        if (ownerExpenses.length >= 1000)
+          debugPrint('WARNING: ownerExpenses returned 1000 rows');
+        if (payerExpenses.length >= 1000)
+          debugPrint('WARNING: payerExpenses returned 1000 rows');
+        if (paymentsMade.length >= 1000)
+          debugPrint('WARNING: paymentsMade returned 1000 rows');
+        if (paymentsReceived.length >= 1000)
+          debugPrint('WARNING: paymentsReceived returned 1000 rows');
       }
 
       final netByUser = _computeNetByUser(
@@ -318,8 +326,10 @@ class _BalancePageState extends State<BalancePage>
       }
 
       final userMap = {for (var u in users) u['id'] as String: u};
-      final nudgesSentMap = {for (var n in nudgesSent) n['to_user_id'] as String: n};
-      
+      final nudgesSentMap = {
+        for (var n in nudgesSent) n['to_user_id'] as String: n,
+      };
+
       // Build nudgesReceivedMap excluding stale ones
       final nudgesReceivedMap = <String, Map<String, dynamic>>{};
       for (final n in nudgesReceived) {
@@ -329,53 +339,54 @@ class _BalancePageState extends State<BalancePage>
         }
       }
 
-      final computedBalances = netByUser.entries.map((e) {
-        final user = userMap[e.key];
-        final nudgeSent = nudgesSentMap[e.key];
-        final nudgeReceived = nudgesReceivedMap[e.key];
+      final computedBalances =
+          netByUser.entries.map((e) {
+            final user = userMap[e.key];
+            final nudgeSent = nudgesSentMap[e.key];
+            final nudgeReceived = nudgesReceivedMap[e.key];
 
-        final fName = (user?['firstname'] ?? '').toString();
-        final lName = (user?['lastname'] ?? '').toString();
+            final fName = (user?['firstname'] ?? '').toString();
+            final lName = (user?['lastname'] ?? '').toString();
 
-        return {
-          'user_id': e.key,
-          'name': fName.isNotEmpty ? fName : 'Unknown',
-          'lastname': lName,
-          'net': e.value,
-          'color': user?['color'] as String? ?? '#6366F1',
-          'contact_number': user?['contact_number'] as String? ?? '',
-          'is_gcash_ready': user?['is_gcash_ready'] as bool? ?? false,
-          'status': user?['status'] as String? ?? '',
-          'nudge_count': nudgeSent?['nudge_count'] as int? ?? 0,
-          'last_nudged_at': nudgeSent?['last_nudged_at'] as String? ?? '',
-          'is_nudged': nudgeReceived != null,
-          'nudged_count_received': nudgeReceived?['nudge_count'] as int? ?? 0,
-          'avatar_url': user?['avatar_url'] as String? ?? '',
-        };
-      }).toList()
-        ..sort((a, b) {
-          final aNudged = a['nudged_count_received'] as int;
-          final bNudged = b['nudged_count_received'] as int;
-          final aNet = a['net'] as double;
-          final bNet = b['net'] as double;
+            return {
+              'user_id': e.key,
+              'name': fName.isNotEmpty ? fName : 'Unknown',
+              'lastname': lName,
+              'net': e.value,
+              'color': user?['color'] as String? ?? '#6366F1',
+              'contact_number': user?['contact_number'] as String? ?? '',
+              'is_gcash_ready': user?['is_gcash_ready'] as bool? ?? false,
+              'status': user?['status'] as String? ?? '',
+              'nudge_count': nudgeSent?['nudge_count'] as int? ?? 0,
+              'last_nudged_at': nudgeSent?['last_nudged_at'] as String? ?? '',
+              'is_nudged': nudgeReceived != null,
+              'nudged_count_received':
+                  nudgeReceived?['nudge_count'] as int? ?? 0,
+              'avatar_url': user?['avatar_url'] as String? ?? '',
+            };
+          }).toList()..sort((a, b) {
+            final aNudged = a['nudged_count_received'] as int;
+            final bNudged = b['nudged_count_received'] as int;
+            final aNet = a['net'] as double;
+            final bNet = b['net'] as double;
 
-          int category(double net, int nudged) {
-            if (nudged > 0) return 0;
-            if (net < -0.01) return 1;
-            if (net > 0.01) return 2;
-            return 3;
-          }
+            int category(double net, int nudged) {
+              if (nudged > 0) return 0;
+              if (net < -0.01) return 1;
+              if (net > 0.01) return 2;
+              return 3;
+            }
 
-          final aCat = category(aNet, aNudged);
-          final bCat = category(bNet, bNudged);
+            final aCat = category(aNet, aNudged);
+            final bCat = category(bNet, bNudged);
 
-          if (aCat != bCat) return aCat.compareTo(bCat);
+            if (aCat != bCat) return aCat.compareTo(bCat);
 
-          if (aCat == 0) return bNudged.compareTo(aNudged);
-          if (aCat == 1) return aNet.compareTo(bNet);
-          if (aCat == 2) return bNet.compareTo(aNet);
-          return 0;
-        });
+            if (aCat == 0) return bNudged.compareTo(aNudged);
+            if (aCat == 1) return aNet.compareTo(bNet);
+            if (aCat == 2) return bNet.compareTo(aNet);
+            return 0;
+          });
 
       if (!mounted || currentRequestId != _requestId) return;
       groupProvider.setGroupUnsettledBalance(
@@ -392,15 +403,12 @@ class _BalancePageState extends State<BalancePage>
         _savedBalancesAt = null;
       });
       unawaited(
-        OfflineCache.write(
-          OfflineCache.balancesKey(myId, groupId),
-          {
-            'user_id': myId,
-            'group_id': groupId,
-            'balances': computedBalances,
-            'saved_at': DateTime.now().toIso8601String(),
-          },
-        ),
+        OfflineCache.write(OfflineCache.balancesKey(myId, groupId), {
+          'user_id': myId,
+          'group_id': groupId,
+          'balances': computedBalances,
+          'saved_at': DateTime.now().toIso8601String(),
+        }),
       );
     } catch (e) {
       if (!mounted || currentRequestId != _requestId) return;
@@ -446,8 +454,8 @@ class _BalancePageState extends State<BalancePage>
       _groupProvider?.setGroupUnsettledBalance(
         groupId,
         restoredBalances.any(
-          (balance) => ((balance['net'] as num?)?.toDouble() ?? 0).abs() >=
-              0.01,
+          (balance) =>
+              ((balance['net'] as num?)?.toDouble() ?? 0).abs() >= 0.01,
         ),
       );
     } finally {
@@ -545,7 +553,9 @@ class _BalancePageState extends State<BalancePage>
     required bool isSettle,
     required double suggestedAmount,
   }) {
-    final activeGroupId = (_groupProvider ?? Provider.of<GroupProvider>(context, listen: false)).selectedGroupId;
+    final activeGroupId =
+        (_groupProvider ?? Provider.of<GroupProvider>(context, listen: false))
+            .selectedGroupId;
     final amountController = TextEditingController(
       text: suggestedAmount.abs().toStringAsFixed(2),
     );
@@ -557,16 +567,30 @@ class _BalancePageState extends State<BalancePage>
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) {
-          final parsedAmount = double.tryParse(amountController.text.replaceAll(',', '.')) ?? 0.0;
-          final isGreaterThanSuggested = parsedAmount > suggestedAmount.abs() + 0.001;
+          final parsedAmount =
+              double.tryParse(amountController.text.replaceAll(',', '.')) ??
+              0.0;
+          final isGreaterThanSuggested =
+              parsedAmount > suggestedAmount.abs() + 0.001;
+
+          final accentColor = isSettle
+              ? Colors.green.shade400
+              : Colors.red.shade400;
+          final hasValidAmount = parsedAmount > 0;
 
           return Dialog(
-            backgroundColor: const Color(0xFF171A3F),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+            backgroundColor: const Color(0xFF121532),
+            surfaceTintColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 24,
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(22),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -574,18 +598,21 @@ class _BalancePageState extends State<BalancePage>
                   Row(
                     children: [
                       Container(
-                        width: 40,
-                        height: 40,
+                        width: 46,
+                        height: 46,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isSettle
-                              ? Colors.green.withValues(alpha: 0.15)
-                              : Colors.red.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(15),
+                          color: accentColor.withValues(alpha: 0.12),
+                          border: Border.all(
+                            color: accentColor.withValues(alpha: 0.2),
+                          ),
                         ),
                         child: Icon(
-                          isSettle ? Icons.handshake_outlined : Icons.payments_outlined,
-                          size: 20,
-                          color: isSettle ? Colors.green.shade400 : Colors.red.shade400,
+                          isSettle
+                              ? Icons.handshake_outlined
+                              : Icons.payments_outlined,
+                          size: 23,
+                          color: accentColor,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -594,128 +621,152 @@ class _BalancePageState extends State<BalancePage>
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              isSettle ? 'Settle with $targetName' : 'Pay $targetName',
+                              isSettle
+                                  ? 'Settle with $targetName'
+                                  : 'Pay $targetName',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
                                 color: Colors.white,
                               ),
                             ),
                             Text(
-                              isSettle ? 'Record a received payment' : 'Record a payment you made',
-                              style: TextStyle(
+                              isSettle
+                                  ? 'Record a received payment'
+                                  : 'Record a payment you made',
+                              style: const TextStyle(
                                 fontSize: 12,
-                                color: Colors.white.withValues(alpha: 0.45),
+                                color: Colors.white60,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      GestureDetector(
-                        onTap: () {
+                      IconButton(
+                        onPressed: () {
                           amountController.dispose();
                           noteController.dispose();
                           Navigator.pop(ctx);
                         },
-                        child: Container(
-                          width: 28,
-                          height: 28,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.grey.withValues(alpha: 0.2),
-                          ),
-                          child: const Icon(Icons.close, size: 16, color: Colors.white),
-                        ),
+                        tooltip: 'Close',
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.close_rounded, size: 20),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 22),
                   TextField(
                     controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d*\.?\d{0,2}'),
+                      ),
                     ],
                     onChanged: (_) => setDialogState(() {}),
                     style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
                       color: Colors.white,
                     ),
                     decoration: InputDecoration(
-                      prefixText: '₱  ',
-                      prefixStyle: TextStyle(
+                      labelText: 'Amount',
+                      prefixText: '₱ ',
+                      prefixStyle: const TextStyle(
                         fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white.withValues(alpha: 0.5),
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFFB8B9FF),
                       ),
                       hintText: '0.00',
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.15),
+                          color: Colors.white.withValues(alpha: 0.12),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: isSettle ? Colors.green : Colors.red,
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(
+                          color: Color(0xFFB8B9FF),
                           width: 1.5,
                         ),
                       ),
+                      labelStyle: const TextStyle(color: Colors.white60),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.04),
                     ),
                   ),
                   if (isGreaterThanSuggested) ...[
                     const SizedBox(height: 6),
                     Text(
                       'This is more than the current balance of ₱${dashMoney(suggestedAmount.abs())}.',
-                      style: const TextStyle(fontSize: 12, color: Colors.amber),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.amberAccent,
+                      ),
                     ),
                   ],
                   const SizedBox(height: 12),
                   TextField(
                     controller: noteController,
+                    maxLines: 2,
+                    minLines: 1,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      hintText: 'Add a note... (optional)',
-                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+                      labelText: 'Note (optional)',
+                      hintStyle: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.4),
+                      ),
                       prefixIcon: Icon(
                         Icons.edit_note_outlined,
                         color: Colors.white.withValues(alpha: 0.4),
                       ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.15),
+                          color: Colors.white.withValues(alpha: 0.12),
                         ),
                       ),
                       focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(14),
                         borderSide: const BorderSide(
-                          color: Colors.blue,
+                          color: Color(0xFFB8B9FF),
                           width: 1.5,
                         ),
                       ),
+                      labelStyle: const TextStyle(color: Colors.white60),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.04),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 18),
                   SegmentedButton<String>(
                     expandedInsets: EdgeInsets.zero,
                     segments: [
                       const ButtonSegment(
                         value: 'cash',
-                        label: Text('Cash'),
-                        icon: Icon(Icons.money, size: 16),
+                        label: Text(
+                          'Cash',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        icon: Icon(Icons.money, size: 18),
                       ),
                       ButtonSegment(
                         value: 'gcash',
-                        label: const Text('GCash'),
+                        label: const Text(
+                          'GCash',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
                         icon: Container(
                           width: 22,
                           height: 22,
@@ -735,19 +786,34 @@ class _BalancePageState extends State<BalancePage>
                     onSelectionChanged: (val) =>
                         setDialogState(() => paymentMethod = val.first),
                     style: ButtonStyle(
-                      backgroundColor: WidgetStateProperty.resolveWith<Color>((states) {
+                      padding: const WidgetStatePropertyAll(
+                        EdgeInsets.symmetric(horizontal: 28, vertical: 20),
+                      ),
+                      textStyle: const WidgetStatePropertyAll(
+                        TextStyle(fontSize: 14),
+                      ),
+                      backgroundColor: WidgetStateProperty.resolveWith<Color>((
+                        states,
+                      ) {
                         if (states.contains(WidgetState.selected)) {
-                          return Colors.white.withValues(alpha: 0.3);
+                          return const Color(
+                            0xFFB8B9FF,
+                          ).withValues(alpha: 0.18);
                         }
                         return Colors.transparent;
                       }),
+                      foregroundColor: WidgetStateProperty.resolveWith<Color>(
+                        (states) => states.contains(WidgetState.selected)
+                            ? const Color(0xFFCECEFF)
+                            : Colors.white60,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 22),
                   SizedBox(
                     width: double.infinity,
-                    child: FilledButton(
-                      onPressed: isSubmitting
+                    child: FilledButton.icon(
+                      onPressed: isSubmitting || !hasValidAmount
                           ? null
                           : () async {
                               final amount = double.tryParse(
@@ -765,7 +831,9 @@ class _BalancePageState extends State<BalancePage>
                                   'payer_id': payerId,
                                   'payee_id': payeeId,
                                   'amount': amount,
-                                  'note': noteController.text.isEmpty ? null : noteController.text,
+                                  'note': noteController.text.isEmpty
+                                      ? null
+                                      : noteController.text,
                                   'method': paymentMethod,
                                   'group_id': activeGroupId,
                                 });
@@ -779,22 +847,33 @@ class _BalancePageState extends State<BalancePage>
                                 if (ctx.mounted) {
                                   ScaffoldMessenger.of(ctx).showSnackBar(
                                     const SnackBar(
-                                      content: Text('Failed to record payment. Please try again.'),
+                                      content: Text(
+                                        'Failed to record payment. Please try again.',
+                                      ),
                                       behavior: SnackBarBehavior.floating,
-                                      margin: EdgeInsets.only(bottom: 0, left: 16, right: 16),
+                                      margin: EdgeInsets.only(
+                                        bottom: 0,
+                                        left: 16,
+                                        right: 16,
+                                      ),
                                     ),
                                   );
                                 }
                               }
                             },
                       style: FilledButton.styleFrom(
-                        backgroundColor: isSettle ? Colors.green : Colors.red,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        backgroundColor: accentColor,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.white.withValues(
+                          alpha: 0.12,
+                        ),
+                        disabledForegroundColor: Colors.white38,
+                        padding: const EdgeInsets.symmetric(vertical: 18),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(15),
                         ),
                       ),
-                      child: isSubmitting
+                      icon: isSubmitting
                           ? const SizedBox(
                               width: 18,
                               height: 18,
@@ -803,14 +882,23 @@ class _BalancePageState extends State<BalancePage>
                                 color: Colors.white,
                               ),
                             )
-                          : Text(
-                              isSettle ? 'Confirm Settle' : 'Confirm Payment',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
+                          : Icon(
+                              isSettle
+                                  ? Icons.check_rounded
+                                  : Icons.arrow_upward_rounded,
+                              size: 20,
                             ),
+                      label: Text(
+                        isSubmitting
+                            ? 'Recording payment…'
+                            : isSettle
+                            ? 'Confirm payment received'
+                            : 'Confirm payment',
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -884,7 +972,11 @@ class _BalancePageState extends State<BalancePage>
                       shape: BoxShape.circle,
                       color: Colors.grey.withValues(alpha: 0.2),
                     ),
-                    child: const Icon(Icons.close, size: 16, color: Colors.white),
+                    child: const Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
@@ -925,20 +1017,49 @@ class _BalancePageState extends State<BalancePage>
                       Navigator.pop(ctx);
 
                       try {
-                        await supabase.from('payments').delete().eq('id', paymentId);
+                        await supabase
+                            .from('payments')
+                            .delete()
+                            .eq('id', paymentId);
                         _reload();
 
                         // Re-fetch balances first to get updated net, then reopen sheet
                         final myId = _currentUser.id;
-                        final groupProvider = _groupProvider ?? Provider.of<GroupProvider>(context, listen: false);
+                        final groupProvider =
+                            _groupProvider ??
+                            Provider.of<GroupProvider>(context, listen: false);
                         final groupId = groupProvider.selectedGroupId;
                         if (myId != null && groupId != null) {
-                          final members = groupProvider.members.map((m) => m['id'] as String).toSet();
+                          final members = groupProvider.members
+                              .map((m) => m['id'] as String)
+                              .toSet();
                           // Run quick queries to compute updated net for target user
-                          final ownerExp = await supabase.from('expense_breakdowns').select('amount, expense_id, payer_id, expenses!inner(owner_id)').eq('expenses.owner_id', myId).eq('expenses.group_id', groupId).neq('payer_id', myId);
-                          final payerExp = await supabase.from('expense_breakdowns').select('amount, payer_id, expense_id, expenses!inner(owner_id)').eq('payer_id', myId).eq('expenses.group_id', groupId).neq('expenses.owner_id', myId);
-                          final pMade = await supabase.from('payments').select('amount, payee_id').eq('payer_id', myId).eq('group_id', groupId);
-                          final pRec = await supabase.from('payments').select('amount, payer_id').eq('payee_id', myId).eq('group_id', groupId);
+                          final ownerExp = await supabase
+                              .from('expense_breakdowns')
+                              .select(
+                                'amount, expense_id, payer_id, expenses!inner(owner_id)',
+                              )
+                              .eq('expenses.owner_id', myId)
+                              .eq('expenses.group_id', groupId)
+                              .neq('payer_id', myId);
+                          final payerExp = await supabase
+                              .from('expense_breakdowns')
+                              .select(
+                                'amount, payer_id, expense_id, expenses!inner(owner_id)',
+                              )
+                              .eq('payer_id', myId)
+                              .eq('expenses.group_id', groupId)
+                              .neq('expenses.owner_id', myId);
+                          final pMade = await supabase
+                              .from('payments')
+                              .select('amount, payee_id')
+                              .eq('payer_id', myId)
+                              .eq('group_id', groupId);
+                          final pRec = await supabase
+                              .from('payments')
+                              .select('amount, payer_id')
+                              .eq('payee_id', myId)
+                              .eq('group_id', groupId);
 
                           final netMap = _computeNetByUser(
                             ownerBreakdowns: ownerExp,
@@ -964,9 +1085,15 @@ class _BalancePageState extends State<BalancePage>
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Failed to remove payment. Please try again.'),
+                              content: Text(
+                                'Failed to remove payment. Please try again.',
+                              ),
                               behavior: SnackBarBehavior.floating,
-                              margin: EdgeInsets.only(bottom: 0, left: 16, right: 16),
+                              margin: EdgeInsets.only(
+                                bottom: 0,
+                                left: 16,
+                                right: 16,
+                              ),
                             ),
                           );
                         }
@@ -1006,14 +1133,17 @@ class _BalancePageState extends State<BalancePage>
     String? targetAvatarUrl,
   }) async {
     final myId = _currentUser.id!;
-    final groupProvider = _groupProvider ?? Provider.of<GroupProvider>(context, listen: false);
+    final groupProvider =
+        _groupProvider ?? Provider.of<GroupProvider>(context, listen: false);
     final groupId = groupProvider.selectedGroupId;
     if (groupId == null) return;
 
     final payments = await supabase
         .from('payments')
         .select('id, amount, note, created_at, payer_id, payee_id, method')
-        .or('and(payer_id.eq.$myId,payee_id.eq.$targetUserId),and(payer_id.eq.$targetUserId,payee_id.eq.$myId)')
+        .or(
+          'and(payer_id.eq.$myId,payee_id.eq.$targetUserId),and(payer_id.eq.$targetUserId,payee_id.eq.$myId)',
+        )
         .eq('group_id', groupId)
         .order('created_at', ascending: false);
 
@@ -1098,7 +1228,11 @@ class _BalancePageState extends State<BalancePage>
                         shape: BoxShape.circle,
                         color: Colors.grey.withValues(alpha: 0.2),
                       ),
-                      child: const Icon(Icons.close, size: 16, color: Colors.white),
+                      child: const Icon(
+                        Icons.close,
+                        size: 16,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ],
@@ -1114,17 +1248,27 @@ class _BalancePageState extends State<BalancePage>
                       )
                     : Builder(
                         builder: (context) {
-                          final Map<String, List<Map<String, dynamic>>> grouped = {};
+                          final Map<String, List<Map<String, dynamic>>>
+                          grouped = {};
                           for (var p in payments) {
-                            final date = DateTime.parse(p['created_at']).toLocal();
-                            final dateKey = DateFormat('yyyy-MM-dd').format(date);
+                            final date = DateTime.parse(
+                              p['created_at'],
+                            ).toLocal();
+                            final dateKey = DateFormat(
+                              'yyyy-MM-dd',
+                            ).format(date);
                             grouped.putIfAbsent(dateKey, () => []);
                             grouped[dateKey]!.add(p);
                           }
 
-                          final sortedDates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
-                          final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-                          final yesterdayStr = DateFormat('yyyy-MM-dd').format(DateTime.now().subtract(const Duration(days: 1)));
+                          final sortedDates = grouped.keys.toList()
+                            ..sort((a, b) => b.compareTo(a));
+                          final todayStr = DateFormat(
+                            'yyyy-MM-dd',
+                          ).format(DateTime.now());
+                          final yesterdayStr = DateFormat('yyyy-MM-dd').format(
+                            DateTime.now().subtract(const Duration(days: 1)),
+                          );
                           final fullDateFormatter = DateFormat('MMMM d, yyyy');
 
                           return ListView.builder(
@@ -1141,7 +1285,9 @@ class _BalancePageState extends State<BalancePage>
                                 dateLabel = 'Yesterday';
                               } else {
                                 try {
-                                  dateLabel = fullDateFormatter.format(DateTime.parse(dateKey));
+                                  dateLabel = fullDateFormatter.format(
+                                    DateTime.parse(dateKey),
+                                  );
                                 } catch (_) {
                                   dateLabel = dateKey;
                                 }
@@ -1151,19 +1297,24 @@ class _BalancePageState extends State<BalancePage>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
                                     child: Text(
                                       dateLabel,
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w700,
-                                        color: Colors.white.withValues(alpha: 0.65),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.65,
+                                        ),
                                       ),
                                     ),
                                   ),
                                   ...entries.map((p) {
                                     final isPayer = p['payer_id'] == myId;
-                                    final amount = (p['amount'] as num).toDouble();
+                                    final amount = (p['amount'] as num)
+                                        .toDouble();
                                     final note = p['note'] as String?;
                                     final paymentId = p['id'] as String;
 
@@ -1178,13 +1329,21 @@ class _BalancePageState extends State<BalancePage>
                                             decoration: BoxDecoration(
                                               shape: BoxShape.circle,
                                               color: isPayer
-                                                  ? Colors.red.withValues(alpha: 0.15)
-                                                  : Colors.green.withValues(alpha: 0.15),
+                                                  ? Colors.red.withValues(
+                                                      alpha: 0.15,
+                                                    )
+                                                  : Colors.green.withValues(
+                                                      alpha: 0.15,
+                                                    ),
                                             ),
                                             child: Icon(
-                                              isPayer ? Icons.arrow_upward : Icons.arrow_downward,
+                                              isPayer
+                                                  ? Icons.arrow_upward
+                                                  : Icons.arrow_downward,
                                               size: 18,
-                                              color: isPayer ? Colors.red.shade400 : Colors.green.shade400,
+                                              color: isPayer
+                                                  ? Colors.red.shade400
+                                                  : Colors.green.shade400,
                                             ),
                                           ),
                                           Positioned(
@@ -1213,7 +1372,9 @@ class _BalancePageState extends State<BalancePage>
                                         ],
                                       ),
                                       title: Text(
-                                        isPayer ? 'You paid $targetName' : '$targetName paid you',
+                                        isPayer
+                                            ? 'You paid $targetName'
+                                            : '$targetName paid you',
                                         style: const TextStyle(
                                           fontWeight: FontWeight.w600,
                                           color: Colors.white,
@@ -1222,7 +1383,11 @@ class _BalancePageState extends State<BalancePage>
                                       subtitle: note != null && note.isNotEmpty
                                           ? Text(
                                               note,
-                                              style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+                                              style: TextStyle(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.6,
+                                                ),
+                                              ),
                                             )
                                           : null,
                                       trailing: Row(
@@ -1233,28 +1398,37 @@ class _BalancePageState extends State<BalancePage>
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 15,
-                                              color: isPayer ? Colors.red.shade400 : Colors.green.shade400,
+                                              color: isPayer
+                                                  ? Colors.red.shade400
+                                                  : Colors.green.shade400,
                                             ),
                                           ),
                                           if (isPayer) ...[
                                             const SizedBox(width: 8),
                                             GestureDetector(
-                                              onTap: () => _confirmDeletePayment(
-                                                paymentId: paymentId,
-                                                ctx: ctx,
-                                                targetUserId: targetUserId,
-                                                targetName: targetName,
-                                                targetLastname: targetLastname,
-                                                targetColor: targetColor,
-                                                targetAvatarUrl: targetAvatarUrl,
-                                                paymentAmount: amount,
-                                                paymentDateStr: dateLabel,
-                                              ),
+                                              onTap: () =>
+                                                  _confirmDeletePayment(
+                                                    paymentId: paymentId,
+                                                    ctx: ctx,
+                                                    targetUserId: targetUserId,
+                                                    targetName: targetName,
+                                                    targetLastname:
+                                                        targetLastname,
+                                                    targetColor: targetColor,
+                                                    targetAvatarUrl:
+                                                        targetAvatarUrl,
+                                                    paymentAmount: amount,
+                                                    paymentDateStr: dateLabel,
+                                                  ),
                                               child: Container(
-                                                padding: const EdgeInsets.all(6),
+                                                padding: const EdgeInsets.all(
+                                                  6,
+                                                ),
                                                 decoration: BoxDecoration(
                                                   shape: BoxShape.circle,
-                                                  color: Colors.red.withValues(alpha: 0.12),
+                                                  color: Colors.red.withValues(
+                                                    alpha: 0.12,
+                                                  ),
                                                 ),
                                                 child: Icon(
                                                   Icons.delete_outline,
@@ -1464,7 +1638,11 @@ class _BalancePageState extends State<BalancePage>
                               shape: BoxShape.circle,
                               color: Colors.grey.withValues(alpha: 0.2),
                             ),
-                            child: const Icon(Icons.close, size: 16, color: Colors.white),
+                            child: const Icon(
+                              Icons.close,
+                              size: 16,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ],
@@ -1504,11 +1682,23 @@ class _BalancePageState extends State<BalancePage>
                     Wrap(
                       spacing: 8,
                       children: [
-                        StatusChip(text: "💸 Pay me via GCash", controller: controller),
-                        StatusChip(text: "💵 Pay me via Cash only", controller: controller),
-                        StatusChip(text: "🍻 I’ll treat next round", controller: controller),
+                        StatusChip(
+                          text: "💸 Pay me via GCash",
+                          controller: controller,
+                        ),
+                        StatusChip(
+                          text: "💵 Pay me via Cash only",
+                          controller: controller,
+                        ),
+                        StatusChip(
+                          text: "🍻 I’ll treat next round",
+                          controller: controller,
+                        ),
                         StatusChip(text: "💤 Offline", controller: controller),
-                        StatusChip(text: "🚫 Not enough money!", controller: controller),
+                        StatusChip(
+                          text: "🚫 Not enough money!",
+                          controller: controller,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -1631,9 +1821,13 @@ class _BalancePageState extends State<BalancePage>
                           const SizedBox(height: 16),
                           Row(
                             children: const [
-                              Expanded(child: DashSkeleton(height: 110, radius: 20)),
+                              Expanded(
+                                child: DashSkeleton(height: 110, radius: 20),
+                              ),
                               SizedBox(width: 14),
-                              Expanded(child: DashSkeleton(height: 110, radius: 20)),
+                              Expanded(
+                                child: DashSkeleton(height: 110, radius: 20),
+                              ),
                             ],
                           ),
                         ],
@@ -1678,7 +1872,11 @@ class _BalancePageState extends State<BalancePage>
                 const SizedBox(height: 16),
                 const Text(
                   'Could not load balances',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 FilledButton(
@@ -1692,7 +1890,10 @@ class _BalancePageState extends State<BalancePage>
       );
     }
 
-    final selectedGroup = Provider.of<GroupProvider>(context, listen: false).selectedGroup;
+    final selectedGroup = Provider.of<GroupProvider>(
+      context,
+      listen: false,
+    ).selectedGroup;
     final inviteCode = selectedGroup?['invite_code'] as String?;
 
     double totalOwedToYou = 0;
@@ -1715,7 +1916,8 @@ class _BalancePageState extends State<BalancePage>
     if (totalYouOwe >= 0.01) {
       subtitleText = 'You owe ₱${dashMoney(totalYouOwe, trimZeros: true)}';
     } else if (totalOwedToYou >= 0.01) {
-      subtitleText = 'People owe you ₱${dashMoney(totalOwedToYou, trimZeros: true)}';
+      subtitleText =
+          'People owe you ₱${dashMoney(totalOwedToYou, trimZeros: true)}';
     }
 
     // Build categories for C5 & C6
@@ -1846,18 +2048,27 @@ class _BalancePageState extends State<BalancePage>
                                 onTap: _showStatusEditor,
                                 behavior: HitTestBehavior.opaque,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 8,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withValues(alpha: 0.07),
                                     borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                    ),
                                   ),
                                   child: Row(
                                     children: [
                                       Icon(
                                         Icons.edit_note_outlined,
                                         size: 16,
-                                        color: Colors.white.withValues(alpha: 0.4),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.4,
+                                        ),
                                       ),
                                       const SizedBox(width: 6),
                                       Expanded(
@@ -1870,10 +2081,16 @@ class _BalancePageState extends State<BalancePage>
                                                   : 'Wanna share something? Add a note!',
                                               style: TextStyle(
                                                 fontSize: 13,
-                                                color: st != null && st.isNotEmpty
-                                                    ? Colors.white.withValues(alpha: 0.85)
-                                                    : Colors.white.withValues(alpha: 0.35),
-                                                fontStyle: st == null || st.isEmpty
+                                                color:
+                                                    st != null && st.isNotEmpty
+                                                    ? Colors.white.withValues(
+                                                        alpha: 0.85,
+                                                      )
+                                                    : Colors.white.withValues(
+                                                        alpha: 0.35,
+                                                      ),
+                                                fontStyle:
+                                                    st == null || st.isEmpty
                                                     ? FontStyle.italic
                                                     : FontStyle.normal,
                                               ),
@@ -1899,7 +2116,9 @@ class _BalancePageState extends State<BalancePage>
                                 label: 'Owed to you',
                                 amount: totalOwedToYou,
                                 caption: '$owedCount people',
-                                amountColor: totalOwedToYou > 0 ? kDashPositive : Colors.white,
+                                amountColor: totalOwedToYou > 0
+                                    ? kDashPositive
+                                    : Colors.white,
                                 trimZeros: false,
                               ),
                             ),
@@ -1910,7 +2129,9 @@ class _BalancePageState extends State<BalancePage>
                                 label: 'You owe',
                                 amount: totalYouOwe,
                                 caption: '$oweCount people',
-                                amountColor: totalYouOwe > 0 ? kDashNegative : Colors.white,
+                                amountColor: totalYouOwe > 0
+                                    ? kDashNegative
+                                    : Colors.white,
                                 trimZeros: false,
                               ),
                             ),
@@ -1922,9 +2143,7 @@ class _BalancePageState extends State<BalancePage>
                   ),
                 ),
                 if (_balances.isEmpty)
-                  SliverToBoxAdapter(
-                    child: _buildNoBalancesState(inviteCode),
-                  )
+                  SliverToBoxAdapter(child: _buildNoBalancesState(inviteCode))
                 else
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -2015,7 +2234,11 @@ class _BalancePageState extends State<BalancePage>
                         const SnackBar(
                           content: Text('Invite code copied!'),
                           behavior: SnackBarBehavior.floating,
-                          margin: EdgeInsets.only(bottom: 0, left: 16, right: 16),
+                          margin: EdgeInsets.only(
+                            bottom: 0,
+                            left: 16,
+                            right: 16,
+                          ),
                         ),
                       );
                     },
@@ -2067,10 +2290,16 @@ class _BalanceRowItem {
   final String? headerLabel;
   final Map<String, dynamic>? entry;
 
-  const _BalanceRowItem._({required this.isHeader, this.headerLabel, this.entry});
+  const _BalanceRowItem._({
+    required this.isHeader,
+    this.headerLabel,
+    this.entry,
+  });
 
-  factory _BalanceRowItem.header(String label) => _BalanceRowItem._(isHeader: true, headerLabel: label);
-  factory _BalanceRowItem.card(Map<String, dynamic> entry) => _BalanceRowItem._(isHeader: false, entry: entry);
+  factory _BalanceRowItem.header(String label) =>
+      _BalanceRowItem._(isHeader: true, headerLabel: label);
+  factory _BalanceRowItem.card(Map<String, dynamic> entry) =>
+      _BalanceRowItem._(isHeader: false, entry: entry);
 }
 
 class _BalanceCard extends StatelessWidget {
@@ -2088,13 +2317,15 @@ class _BalanceCard extends StatelessWidget {
     required String targetName,
     required int currentCount,
     required String lastNudgedAt,
-  }) onNudge;
+  })
+  onNudge;
   final void Function({
     required String targetUserId,
     required String targetName,
     required bool isSettle,
     required double suggestedAmount,
-  }) onPayment;
+  })
+  onPayment;
   final void Function({
     required String targetUserId,
     required String targetName,
@@ -2102,7 +2333,8 @@ class _BalanceCard extends StatelessWidget {
     required double net,
     required Color targetColor,
     String? targetAvatarUrl,
-  }) onHistory;
+  })
+  onHistory;
   final Animation<double> nudgeAnimation;
 
   @override
@@ -2234,7 +2466,10 @@ class _BalanceCard extends StatelessWidget {
                             const SizedBox(height: 8),
                             Row(
                               children: [
-                                _gcashIndicator(isReady: isGcashReady, contactNumber: contactNumber),
+                                _gcashIndicator(
+                                  isReady: isGcashReady,
+                                  contactNumber: contactNumber,
+                                ),
                                 if (contactNumber.isNotEmpty) ...[
                                   const SizedBox(width: 8),
                                   Flexible(
@@ -2244,13 +2479,17 @@ class _BalanceCard extends StatelessWidget {
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 13,
-                                        color: Colors.white.withValues(alpha: 0.7),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.7,
+                                        ),
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),
                                   ),
                                   const SizedBox(width: 4),
-                                  _CopyContactButton(contactNumber: contactNumber),
+                                  _CopyContactButton(
+                                    contactNumber: contactNumber,
+                                  ),
                                 ] else ...[
                                   const SizedBox(width: 8),
                                   const Text(
@@ -2411,17 +2650,19 @@ class _BalanceCard extends StatelessWidget {
                     onTap: isNudgeDisabled
                         ? null
                         : () => onNudge(
-                              targetUserId: userId,
-                              targetName: name,
-                              currentCount: nudgeCount,
-                              lastNudgedAt: lastNudgedAt,
-                            ),
+                            targetUserId: userId,
+                            targetName: name,
+                            currentCount: nudgeCount,
+                            lastNudgedAt: lastNudgedAt,
+                          ),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       decoration: BoxDecoration(
                         color: isNudgeDisabled
                             ? Colors.white.withValues(alpha: 0.04)
-                            : _getNudgeColor(nudgeCount).withValues(alpha: 0.15),
+                            : _getNudgeColor(
+                                nudgeCount,
+                              ).withValues(alpha: 0.15),
                         borderRadius: const BorderRadius.only(
                           bottomLeft: Radius.circular(20),
                         ),
@@ -2429,7 +2670,9 @@ class _BalanceCard extends StatelessWidget {
                           top: BorderSide(
                             color: isNudgeDisabled
                                 ? Colors.white.withValues(alpha: 0.08)
-                                : _getNudgeColor(nudgeCount).withValues(alpha: 0.25),
+                                : _getNudgeColor(
+                                    nudgeCount,
+                                  ).withValues(alpha: 0.25),
                           ),
                         ),
                       ),
@@ -2541,19 +2784,13 @@ class _BalanceCard extends StatelessWidget {
                     bottomRight: Radius.circular(20),
                   ),
                   border: Border(
-                    top: BorderSide(
-                      color: Colors.blue.withValues(alpha: 0.25),
-                    ),
+                    top: BorderSide(color: Colors.blue.withValues(alpha: 0.25)),
                   ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.history,
-                      size: 22,
-                      color: Colors.blue.shade400,
-                    ),
+                    Icon(Icons.history, size: 22, color: Colors.blue.shade400),
                     const SizedBox(width: 6),
                     Text(
                       'Activity',
@@ -2578,16 +2815,16 @@ class _BalanceCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(22),
             border: Border.all(
-              color: _getNudgeGlowColor(nudgedCountReceived).withValues(
-                alpha: nudgeAnimation.value,
-              ),
+              color: _getNudgeGlowColor(
+                nudgedCountReceived,
+              ).withValues(alpha: nudgeAnimation.value),
               width: 2,
             ),
             boxShadow: [
               BoxShadow(
-                color: _getNudgeGlowColor(nudgedCountReceived).withValues(
-                  alpha: nudgeAnimation.value * 0.3,
-                ),
+                color: _getNudgeGlowColor(
+                  nudgedCountReceived,
+                ).withValues(alpha: nudgeAnimation.value * 0.3),
                 blurRadius: 12,
                 spreadRadius: 2,
               ),
@@ -2614,9 +2851,9 @@ class _BalanceCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(50),
                   boxShadow: [
                     BoxShadow(
-                      color: _getNudgeGlowColor(nudgedCountReceived).withValues(
-                        alpha: nudgeAnimation.value * 0.6,
-                      ),
+                      color: _getNudgeGlowColor(
+                        nudgedCountReceived,
+                      ).withValues(alpha: nudgeAnimation.value * 0.6),
                       blurRadius: 8,
                       spreadRadius: 1,
                     ),
@@ -2643,7 +2880,10 @@ class _BalanceCard extends StatelessWidget {
     );
   }
 
-  Widget _gcashIndicator({required bool isReady, required String contactNumber}) {
+  Widget _gcashIndicator({
+    required bool isReady,
+    required String contactNumber,
+  }) {
     if (contactNumber.isEmpty) {
       return Tooltip(
         message: 'No contact number',
@@ -2831,7 +3071,9 @@ class _CopyContactButtonState extends State<_CopyContactButton> {
             _copied ? Icons.check : Icons.copy,
             key: ValueKey(_copied),
             size: 16,
-            color: _copied ? Colors.green.shade400 : Colors.white.withValues(alpha: 0.4),
+            color: _copied
+                ? Colors.green.shade400
+                : Colors.white.withValues(alpha: 0.4),
           ),
         ),
       ),
