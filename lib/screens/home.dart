@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:divido_app/providers/status_provider.dart';
 import 'package:divido_app/screens/create_expense_modal.dart';
 import 'package:divido_app/screens/dashboard_page.dart';
@@ -408,14 +407,11 @@ class _GroupAvatar extends StatelessWidget {
       ),
       child: ClipOval(
         child: avatarUrl != null && avatarUrl!.isNotEmpty
-            ? CachedNetworkImage(
-                imageUrl: '$avatarUrl?v=$avatarVersion',
-                fit: BoxFit.cover,
+            ? AvatarImage(
+                url: '$avatarUrl?v=$avatarVersion',
+                size: 32,
                 memCacheWidth: 96,
-                fadeInDuration: Duration.zero,
-                fadeOutDuration: Duration.zero,
-                placeholder: (_, _) => fallback,
-                errorWidget: (_, _, _) => fallback,
+                fallback: fallback,
               )
             : fallback,
       ),

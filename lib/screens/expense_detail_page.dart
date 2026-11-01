@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:divido_app/widgets/avatar_image.dart';
 
 class ExpenseDetailPage extends StatelessWidget {
   final Map<String, dynamic> expense;
@@ -267,16 +267,11 @@ class UserAvatar extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: avatarUrl != null && avatarUrl!.isNotEmpty
           ? ClipOval(
-              child: CachedNetworkImage(
-                imageUrl: avatarUrl!,
-                fit: BoxFit.cover,
-                width: size,
-                height: size,
+              child: AvatarImage(
+                url: avatarUrl,
+                size: size,
                 memCacheWidth: 96,
-                fadeInDuration: Duration.zero,
-                fadeOutDuration: Duration.zero,
-                placeholder: (_, _) => _initialsWidget(),
-                errorWidget: (_, _, _) => _initialsWidget(),
+                fallback: _initialsWidget(),
               ),
             )
           : _initialsWidget(),

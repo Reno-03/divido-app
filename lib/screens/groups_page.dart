@@ -1,5 +1,5 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:divido_app/screens/group_info_page.dart';
+import 'package:divido_app/widgets/avatar_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
@@ -767,17 +767,12 @@ class _GroupTile extends StatelessWidget {
               ),
               child: ClipOval(
                 child: fullAvatarUrl != null
-                    ? CachedNetworkImage(
-                        imageUrl: fullAvatarUrl,
-                        width: 48,
-                        height: 48,
-                        fit: BoxFit.cover,
+                    ? AvatarImage(
+                        url: fullAvatarUrl,
+                        size: 48,
                         memCacheWidth: 144,
                         memCacheHeight: 144,
-                        maxWidthDiskCache: 144,
-                        fadeInDuration: Duration.zero,
-                        errorWidget: (_, _, _) => fallbackIcon,
-                        placeholder: (_, _) => fallbackIcon,
+                        fallback: fallbackIcon,
                       )
                     : fallbackIcon,
               ),
