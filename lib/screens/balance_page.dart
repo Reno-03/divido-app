@@ -1,9 +1,9 @@
 import 'dart:async';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:divido_app/providers/expense_provider.dart';
 import 'package:divido_app/providers/group_provider.dart';
 import 'package:divido_app/providers/status_provider.dart';
 import 'package:divido_app/screens/status_chip.dart';
+import 'package:divido_app/widgets/avatar_image.dart';
 import 'package:divido_app/widgets/dashboard_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -1729,46 +1729,21 @@ class _BalancePageState extends State<BalancePage>
                                 color: myBgColor,
                               ),
                               clipBehavior: Clip.antiAlias,
-                              child: myAvatarUrl != null && myAvatarUrl.isNotEmpty
-                                  ? CachedNetworkImage(
-                                      imageUrl: myAvatarUrl,
-                                      fit: BoxFit.cover,
-                                      width: 36,
-                                      height: 36,
-                                      memCacheWidth: 96,
-                                      fadeInDuration: Duration.zero,
-                                      fadeOutDuration: Duration.zero,
-                                      errorWidget: (_, __, ___) => Center(
-                                        child: Text(
-                                          myInitials,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      placeholder: (_, __) => Center(
-                                        child: Text(
-                                          myInitials,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  : Center(
-                                      child: Text(
-                                        myInitials,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
+                              child: AvatarImage(
+                                url: myAvatarUrl,
+                                size: 36,
+                                memCacheWidth: 96,
+                                fallback: Center(
+                                  child: Text(
+                                    myInitials,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
                                     ),
+                                  ),
+                                ),
+                              ),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -2751,16 +2726,11 @@ class _BalanceAvatar extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: url != null && url!.isNotEmpty
             ? ClipOval(
-                child: CachedNetworkImage(
-                  imageUrl: url!,
-                  fit: BoxFit.cover,
-                  width: size,
-                  height: size,
+                child: AvatarImage(
+                  url: url,
+                  size: size,
                   memCacheWidth: 96,
-                  fadeInDuration: Duration.zero,
-                  fadeOutDuration: Duration.zero,
-                  placeholder: (_, __) => initialsWidget(),
-                  errorWidget: (_, __, ___) => initialsWidget(),
+                  fallback: initialsWidget(),
                 ),
               )
             : initialsWidget(),

@@ -3,7 +3,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:divido_app/providers/expense_provider.dart';
 import 'package:divido_app/providers/group_provider.dart';
 import 'package:divido_app/providers/status_provider.dart';
@@ -13,6 +12,7 @@ import 'package:divido_app/screens/status_chip.dart';
 import 'package:divido_app/services/current_user.dart';
 import 'package:divido_app/utils/dashboard_metrics.dart';
 import 'package:divido_app/widgets/breathing_logo.dart';
+import 'package:divido_app/widgets/avatar_image.dart';
 import 'package:divido_app/widgets/dashboard_ui.dart';
 import 'package:divido_app/widgets/gcash_nudge_card.dart';
 import 'package:divido_app/widgets/install_nudge_card.dart';
@@ -945,17 +945,12 @@ class _DashboardPageState extends State<DashboardPage> {
     if (url == null || url.isEmpty) return fallback;
     final dpr = MediaQuery.maybeOf(context)?.devicePixelRatio ?? 2;
     final px = (size * dpr).round();
-    return CachedNetworkImage(
-      imageUrl: url,
-      fit: BoxFit.cover,
-      width: size,
-      height: size,
+    return AvatarImage(
+      url: url,
+      size: size,
       memCacheWidth: px,
       memCacheHeight: px,
-      fadeInDuration: Duration.zero,
-      fadeOutDuration: Duration.zero,
-      errorWidget: (_, _, _) => fallback,
-      placeholder: (_, _) => fallback,
+      fallback: fallback,
     );
   }
 

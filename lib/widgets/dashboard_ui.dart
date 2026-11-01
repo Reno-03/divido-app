@@ -3,10 +3,10 @@
 // Presentation-only widgets for DashboardPage. No business logic here.
 // Palette is unchanged from the app: navy 0xFF171A3F, surface 0xFF3C3C63.
 
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:divido_app/widgets/avatar_image.dart';
 
 const Color kDashNavy = Color(0xFF171A3F);
 const Color kDashSurface = Color(0xFF3C3C63);
@@ -104,7 +104,6 @@ class DashAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fallback = Icon(Icons.person, size: size * 0.55, color: kDashSurface);
-    final hasUrl = url != null && url!.isNotEmpty;
     final dpr = MediaQuery.maybeOf(context)?.devicePixelRatio ?? 2;
     final px = (size * dpr).round();
 
@@ -117,20 +116,13 @@ class DashAvatar extends StatelessWidget {
         shape: BoxShape.circle,
         color: Colors.white,
       ),
-      child: hasUrl
-          ? CachedNetworkImage(
-              imageUrl: url!,
-              fit: BoxFit.cover,
-              width: size,
-              height: size,
-              memCacheWidth: px,
-              memCacheHeight: px,
-              fadeInDuration: Duration.zero,
-              fadeOutDuration: Duration.zero,
-              errorWidget: (_, _, _) => fallback,
-              placeholder: (_, _) => fallback,
-            )
-          : fallback,
+      child: AvatarImage(
+        url: url,
+        size: size,
+        memCacheWidth: px,
+        memCacheHeight: px,
+        fallback: fallback,
+      ),
     );
   }
 }

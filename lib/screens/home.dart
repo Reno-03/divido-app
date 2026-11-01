@@ -4,6 +4,7 @@ import 'package:divido_app/screens/create_expense_modal.dart';
 import 'package:divido_app/screens/dashboard_page.dart';
 import 'package:divido_app/services/changelog_service.dart';
 import 'package:divido_app/widgets/changelog_dialog.dart';
+import 'package:divido_app/widgets/avatar_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -433,18 +434,11 @@ class _HomeDrawer extends StatelessWidget {
                   ),
                   child: ClipOval(
                     child: avatarUrl != null && avatarUrl.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: avatarUrl,
-                            fit: BoxFit.cover,
+                        ? AvatarImage(
+                            url: avatarUrl,
+                            size: 96,
                             memCacheWidth: 96,
-                            fadeInDuration: Duration.zero,
-                            fadeOutDuration: Duration.zero,
-                            placeholder: (_, _) => _InitialsAvatar(
-                              initials: initials,
-                            ),
-                            errorWidget: (_, _, _) => _InitialsAvatar(
-                              initials: initials,
-                            ),
+                            fallback: _InitialsAvatar(initials: initials),
                           )
                         : _InitialsAvatar(initials: initials),
                   ),

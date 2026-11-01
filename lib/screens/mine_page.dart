@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:divido_app/providers/expense_provider.dart';
 import 'package:divido_app/providers/group_provider.dart';
 import 'package:divido_app/screens/edit_expense_modal.dart';
 import 'package:divido_app/services/current_user.dart';
+import 'package:divido_app/widgets/avatar_image.dart';
 import 'package:divido_app/widgets/dashboard_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1564,16 +1564,11 @@ class _PayerAvatar extends StatelessWidget {
         clipBehavior: Clip.antiAlias,
         child: avatarUrl != null && avatarUrl.isNotEmpty
             ? ClipOval(
-                child: CachedNetworkImage(
-                  imageUrl: avatarUrl,
-                  fit: BoxFit.cover,
-                  width: size,
-                  height: size,
+                child: AvatarImage(
+                  url: avatarUrl,
+                  size: size,
                   memCacheWidth: 96,
-                  fadeInDuration: Duration.zero,
-                  fadeOutDuration: Duration.zero,
-                  placeholder: (_, _) => initialsWidget(),
-                  errorWidget: (_, _, _) => initialsWidget(),
+                  fallback: initialsWidget(),
                 ),
               )
             : initialsWidget(),
