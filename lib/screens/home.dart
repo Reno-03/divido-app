@@ -297,6 +297,8 @@ class HomePageState extends State<HomePage> {
         ),
         drawer: _HomeDrawer(
           userColor: userColor,
+          currentIndex: _currentIndex,
+          onNavigate: switchTab,
           onProfileReturned: () {
             if (mounted) setState(() {});
           },
@@ -420,9 +422,16 @@ class _GroupAvatar extends StatelessWidget {
 }
 
 class _HomeDrawer extends StatelessWidget {
-  const _HomeDrawer({required this.userColor, required this.onProfileReturned});
+  const _HomeDrawer({
+    required this.userColor,
+    required this.currentIndex,
+    required this.onNavigate,
+    required this.onProfileReturned,
+  });
 
   final Color userColor;
+  final int currentIndex;
+  final ValueChanged<int> onNavigate;
   final VoidCallback onProfileReturned;
 
   @override
@@ -431,6 +440,10 @@ class _HomeDrawer extends StatelessWidget {
     final lastName = CurrentUser.instance.lastname ?? '';
     final initials = _safeInitials(firstName, lastName);
     final avatarUrl = CurrentUser.instance.avatarUrl;
+    final fullName = '$firstName $lastName'.trim();
+    final displayName = fullName.isNotEmpty
+        ? fullName
+        : CurrentUser.instance.username ?? 'Your account';
 
     return Drawer(
       backgroundColor: const Color(0xFF0F1128),
@@ -438,93 +451,330 @@ class _HomeDrawer extends StatelessWidget {
         child: Consumer<GroupProvider>(
           builder: (context, groupProvider, _) => Column(
             children: [
-              UserAccountsDrawerHeader(
-                decoration: const BoxDecoration(color: Color(0xFF171A3F)),
-                accountName: Text(
-                  '$firstName $lastName'.trim(),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                accountEmail: Text(CurrentUser.instance.email ?? ''),
-                currentAccountPicture: Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: userColor,
-                  ),
-                  child: ClipOval(
-                    child: avatarUrl != null && avatarUrl.isNotEmpty
-                        ? AvatarImage(
-                            url: avatarUrl,
-                            size: 96,
-                            memCacheWidth: 96,
-                            fallback: _InitialsAvatar(initials: initials),
-                          )
-                        : _InitialsAvatar(initials: initials),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF252A61), Color(0xFF171A3F)],
                   ),
                 ),
-              ),
-              if (groupProvider.selectedGroup != null)
-                Container(
-                  margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.blue.withValues(alpha: 0.2),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.group_outlined,
-                        size: 16,
-                        color: Colors.blue.shade300,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          groupProvider.selectedGroup!['name'] as String,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.blue.shade300,
-                            fontWeight: FontWeight.w600,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.asset(
+                            'assets/divido_logo_only.png',
+                            width: 42,
+                            height: 32,
+                            fit: BoxFit.contain,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'DIVIDO',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+                    Row(
+                      children: [
+                        Container(
+                          width: 54,
+                          height: 54,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: userColor,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              width: 2,
+                            ),
+                          ),
+                          child: ClipOval(
+                            child: avatarUrl != null && avatarUrl.isNotEmpty
+                                ? AvatarImage(
+                                    url: avatarUrl,
+                                    size: 54,
+                                    memCacheWidth: 96,
+                                    fallback: _InitialsAvatar(
+                                      initials: initials,
+                                    ),
+                                  )
+                                : _InitialsAvatar(initials: initials),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              if (CurrentUser.instance.email case final email?
+                                  when email.isNotEmpty) ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  email,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ListTile(
-                leading: const Icon(Icons.group_outlined),
-                title: const Text('Groups'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/groups');
-                },
               ),
-              ListTile(
-                leading: const Icon(Icons.person_outline),
-                title: const Text('Profile'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/profile').then((_) {
-                    onProfileReturned();
-                  });
-                },
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+                  children: [
+                    _CurrentGroupCard(
+                      groupName:
+                          groupProvider.selectedGroup?['name'] as String?,
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/groups');
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    const _DrawerSectionLabel(label: 'YOUR SPACE'),
+                    const SizedBox(height: 6),
+                    _HomeDrawerItem(
+                      icon: Icons.space_dashboard_outlined,
+                      label: 'Dashboard',
+                      selected: currentIndex == 0,
+                      onTap: () => _selectPage(context, 0),
+                    ),
+                    _HomeDrawerItem(
+                      icon: Icons.receipt_long_outlined,
+                      label: 'All expenses',
+                      selected: currentIndex == 1,
+                      onTap: () => _selectPage(context, 1),
+                    ),
+                    _HomeDrawerItem(
+                      icon: Icons.person_outline,
+                      label: 'My expenses',
+                      selected: currentIndex == 2,
+                      onTap: () => _selectPage(context, 2),
+                    ),
+                    _HomeDrawerItem(
+                      icon: Icons.account_balance_wallet_outlined,
+                      label: 'Balances',
+                      selected: currentIndex == 3,
+                      onTap: () => _selectPage(context, 3),
+                    ),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Divider(color: Color(0xFF292C4A), height: 1),
+                    ),
+                    const _DrawerSectionLabel(label: 'MORE'),
+                    const SizedBox(height: 6),
+                    _HomeDrawerItem(
+                      icon: Icons.manage_accounts_outlined,
+                      label: 'Profile',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/profile').then((_) {
+                          onProfileReturned();
+                        });
+                      },
+                    ),
+                    _HomeDrawerItem(
+                      icon: Icons.install_mobile_outlined,
+                      label: 'Install App',
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(context, '/install-guide');
+                      },
+                    ),
+                  ],
+                ),
               ),
-              ListTile(
-                leading: const Icon(Icons.download_outlined),
-                title: const Text('Install App'),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.pushNamed(context, '/install-guide');
-                },
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.people_alt_outlined,
+                      size: 16,
+                      color: Colors.white.withValues(alpha: 0.45),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Shared spending, made simple',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.45),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _selectPage(BuildContext context, int index) {
+    Navigator.pop(context);
+    onNavigate(index);
+  }
+}
+
+class _CurrentGroupCard extends StatelessWidget {
+  const _CurrentGroupCard({required this.groupName, required this.onTap});
+
+  final String? groupName;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final hasGroup = groupName != null && groupName!.isNotEmpty;
+    final accent = const Color(0xFFB8B9FF);
+
+    return Material(
+      color: const Color(0xFF191C3B),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: Icon(Icons.groups_outlined, color: accent, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      hasGroup ? 'CURRENT GROUP' : 'GET STARTED',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      hasGroup ? groupName! : 'Create or join a group',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DrawerSectionLabel extends StatelessWidget {
+  const _DrawerSectionLabel({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.45),
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeDrawerItem extends StatelessWidget {
+  const _HomeDrawerItem({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFFB8B9FF);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: ListTile(
+        onTap: onTap,
+        selected: selected,
+        selectedTileColor: accent.withValues(alpha: 0.12),
+        selectedColor: accent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+        minLeadingWidth: 24,
+        horizontalTitleGap: 14,
+        leading: Icon(icon, size: 21),
+        title: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
           ),
         ),
       ),
