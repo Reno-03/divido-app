@@ -1141,242 +1141,248 @@ class _ExpenseCardState extends State<_ExpenseCard> {
 
     return Hero(
       tag: 'expense_${expense['id']}',
-      child: GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            PageRouteBuilder(
-              transitionDuration: const Duration(milliseconds: 300),
-              reverseTransitionDuration: const Duration(milliseconds: 250),
-              pageBuilder: (_, _, _) => ExpenseDetailPage(
-                expense: expense,
-                ownerColor: ownerColor,
-              ),
-              transitionsBuilder: (_, animation, _, child) {
-                final curved = animation.drive(
-                  CurveTween(curve: Curves.easeOut),
-                );
-                return FadeTransition(
-                  opacity: curved,
-                  child: ColoredBox(
-                    color: kDashNavy,
-                    child: child,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 300),
+        opacity: isPaid ? 0.45 : 1.0,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              splashColor: ownerColor.withValues(alpha: 0.18),
+              highlightColor: ownerColor.withValues(alpha: 0.08),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  PageRouteBuilder(
+                    transitionDuration: const Duration(milliseconds: 300),
+                    reverseTransitionDuration: const Duration(
+                      milliseconds: 250,
+                    ),
+                    pageBuilder: (_, _, _) => ExpenseDetailPage(
+                      expense: expense,
+                      ownerColor: ownerColor,
+                    ),
+                    transitionsBuilder: (_, animation, _, child) {
+                      final curved = animation.drive(
+                        CurveTween(curve: Curves.easeOut),
+                      );
+                      return FadeTransition(
+                        opacity: curved,
+                        child: ColoredBox(color: kDashNavy, child: child),
+                      );
+                    },
                   ),
                 );
               },
-            ),
-          );
-        },
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 300),
-          opacity: isPaid ? 0.45 : 1.0,
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: ownerColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-              border: Border(left: BorderSide(color: ownerColor, width: 5)),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top row
-                  Row(
+              child: Ink(
+                decoration: BoxDecoration(
+                  color: ownerColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border(left: BorderSide(color: ownerColor, width: 5)),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _PayerAvatar(
-                        user: owner,
-                        size: 38,
-                        fontSize: 12,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              expense['title'] ?? '',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                                color: Colors.white,
-                                decoration: isPaid
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                                decorationColor: Colors.white54,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              ownerName,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.white60,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      DashAmount(
-                        _toDouble(expense['total']),
-                        size: 22,
-                        weight: FontWeight.w800,
-                        trimZeros: true,
-                        animate: false,
-                        color: Colors.white,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Divider(
-                    color: Colors.white.withValues(alpha: 0.07),
-                    height: 1,
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Footer row
-                  Row(
-                    children: [
-                      _buildAvatarStack(filteredBreakdowns),
-                      if (filteredBreakdowns.isNotEmpty) const SizedBox(width: 10),
-                      Text(
-                        filteredBreakdowns.length == 1
-                            ? '1 payer'
-                            : '${filteredBreakdowns.length} payers',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.white.withValues(alpha: 0.65),
-                        ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: isPaid
-                              ? kDashPositive.withValues(alpha: 0.15)
-                              : Colors.amber.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          isPaid ? 'Paid' : 'Unpaid',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: isPaid
-                                ? kDashPositive
-                                : Colors.amber.shade300,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () {
-                          setState(() {
-                            _expanded = !_expanded;
-                          });
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(6),
-                          child: AnimatedRotation(
-                            turns: _expanded ? 0.5 : 0.0,
-                            duration: const Duration(milliseconds: 200),
-                            child: Icon(
-                              Icons.expand_more,
-                              color: Colors.white.withValues(alpha: 0.65),
-                              size: 20,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  if (myShare != null) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      'Your share: ₱${dashMoney(myShare, trimZeros: true)}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white.withValues(alpha: 0.85),
-                      ),
-                    ),
-                  ],
-
-                  // Expandable payer details
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 200),
-                    child: _expanded
-                        ? Padding(
-                            padding: const EdgeInsets.only(top: 12),
+                      // Top row
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _PayerAvatar(user: owner, size: 38, fontSize: 12),
+                          const SizedBox(width: 12),
+                          Expanded(
                             child: Column(
-                              children: filteredBreakdowns.map((b) {
-                                final user = b['profiles'];
-                                final fName = user?['firstname'] ?? '';
-                                final lName = user?['lastname'] ?? '';
-                                final pName = user != null
-                                    ? '$fName $lName'
-                                    : 'Unknown';
-                                final amount = _toDouble(b['amount']);
-
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 8,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  expense['title'] ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                    color: Colors.white,
+                                    decoration: isPaid
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                    decorationColor: Colors.white54,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(
-                                      alpha: 0.04,
-                                    ),
-                                    borderRadius: BorderRadius.circular(10),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  ownerName,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.white60,
                                   ),
-                                  child: Row(
-                                    children: [
-                                      _PayerAvatar(
-                                        user: user,
-                                        size: 32,
-                                        fontSize: 12,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          pName,
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                      Text(
-                                        '₱${dashMoney(amount, trimZeros: true)}',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.white.withValues(
-                                            alpha: 0.65,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
+                                ),
+                              ],
                             ),
-                          )
-                        : const SizedBox.shrink(),
+                          ),
+                          const SizedBox(width: 12),
+                          DashAmount(
+                            _toDouble(expense['total']),
+                            size: 22,
+                            weight: FontWeight.w800,
+                            trimZeros: true,
+                            animate: false,
+                            color: Colors.white,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Divider(
+                        color: Colors.white.withValues(alpha: 0.07),
+                        height: 1,
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Footer row
+                      Row(
+                        children: [
+                          _buildAvatarStack(filteredBreakdowns),
+                          if (filteredBreakdowns.isNotEmpty)
+                            const SizedBox(width: 10),
+                          Text(
+                            filteredBreakdowns.length == 1
+                                ? '1 payer'
+                                : '${filteredBreakdowns.length} payers',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.65),
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isPaid
+                                  ? kDashPositive.withValues(alpha: 0.15)
+                                  : Colors.amber.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              isPaid ? 'Paid' : 'Unpaid',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: isPaid
+                                    ? kDashPositive
+                                    : Colors.amber.shade300,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              setState(() {
+                                _expanded = !_expanded;
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(6),
+                              child: AnimatedRotation(
+                                turns: _expanded ? 0.5 : 0.0,
+                                duration: const Duration(milliseconds: 200),
+                                child: Icon(
+                                  Icons.expand_more,
+                                  color: Colors.white.withValues(alpha: 0.65),
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      if (myShare != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'Your share: ₱${dashMoney(myShare, trimZeros: true)}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white.withValues(alpha: 0.85),
+                          ),
+                        ),
+                      ],
+
+                      // Expandable payer details
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 200),
+                        child: _expanded
+                            ? Padding(
+                                padding: const EdgeInsets.only(top: 12),
+                                child: Column(
+                                  children: filteredBreakdowns.map((b) {
+                                    final user = b['profiles'];
+                                    final fName = user?['firstname'] ?? '';
+                                    final lName = user?['lastname'] ?? '';
+                                    final pName = user != null
+                                        ? '$fName $lName'
+                                        : 'Unknown';
+                                    final amount = _toDouble(b['amount']);
+
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 8),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.04,
+                                        ),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          _PayerAvatar(
+                                            user: user,
+                                            size: 32,
+                                            fontSize: 12,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              pName,
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                          Text(
+                                            '₱${dashMoney(amount, trimZeros: true)}',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white.withValues(
+                                                alpha: 0.65,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              )
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
