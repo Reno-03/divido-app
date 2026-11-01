@@ -797,6 +797,7 @@ class _DashboardPageState extends State<DashboardPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  SizedBox(height: 3),
                   Text(
                     'Spending snapshot',
                     style: TextStyle(

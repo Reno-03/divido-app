@@ -109,7 +109,10 @@ class _MinePageState extends State<MinePage> {
     try {
       final responses = await Future.wait([
         supabase.from('payments').select().eq('group_id', groupId),
-        supabase.from('expenses').select('id, total, owner_id, expense_breakdowns(payer_id, amount)').eq('group_id', groupId),
+        supabase
+            .from('expenses')
+            .select('id, total, owner_id, expense_breakdowns(payer_id, amount)')
+            .eq('group_id', groupId),
       ]);
 
       if (currentRequestId != _requestId || !mounted) return;
@@ -126,7 +129,8 @@ class _MinePageState extends State<MinePage> {
 
       for (var expense in expensesData) {
         final ownerId = expense['owner_id'] as String?;
-        final breakdowns = expense['expense_breakdowns'] as List<dynamic>? ?? [];
+        final breakdowns =
+            expense['expense_breakdowns'] as List<dynamic>? ?? [];
 
         if (ownerId == currentUserId) {
           for (var b in breakdowns) {
@@ -302,7 +306,11 @@ class _MinePageState extends State<MinePage> {
                       shape: BoxShape.circle,
                       color: Colors.white.withValues(alpha: 0.1),
                     ),
-                    child: const Icon(Icons.close, size: 16, color: Colors.white),
+                    child: const Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
@@ -423,7 +431,11 @@ class _MinePageState extends State<MinePage> {
                       shape: BoxShape.circle,
                       color: Colors.white.withValues(alpha: 0.1),
                     ),
-                    child: const Icon(Icons.close, size: 16, color: Colors.white),
+                    child: const Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
@@ -434,7 +446,9 @@ class _MinePageState extends State<MinePage> {
               text: TextSpan(
                 style: const TextStyle(fontSize: 14, color: Colors.white70),
                 children: [
-                  const TextSpan(text: 'Are you sure you want to delete the expense '),
+                  const TextSpan(
+                    text: 'Are you sure you want to delete the expense ',
+                  ),
                   TextSpan(
                     text: expenseTitle,
                     style: const TextStyle(
@@ -476,7 +490,10 @@ class _MinePageState extends State<MinePage> {
                       final messenger = ScaffoldMessenger.of(context);
                       Navigator.pop(context);
                       try {
-                        await supabase.from('expenses').delete().eq('id', expenseId);
+                        await supabase
+                            .from('expenses')
+                            .delete()
+                            .eq('id', expenseId);
                         await provider.refresh(null);
                         _fetchDashboardMetrics();
                       } catch (e) {
@@ -485,7 +502,11 @@ class _MinePageState extends State<MinePage> {
                             const SnackBar(
                               content: Text('Failed to delete expense.'),
                               behavior: SnackBarBehavior.floating,
-                              margin: EdgeInsets.only(bottom: 0, left: 16, right: 16),
+                              margin: EdgeInsets.only(
+                                bottom: 0,
+                                left: 16,
+                                right: 16,
+                              ),
                             ),
                           );
                         }
@@ -561,9 +582,9 @@ class _MinePageState extends State<MinePage> {
 
     final sortedDates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
     final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final yesterdayStr = DateFormat('yyyy-MM-dd').format(
-      DateTime.now().subtract(const Duration(days: 1)),
-    );
+    final yesterdayStr = DateFormat(
+      'yyyy-MM-dd',
+    ).format(DateTime.now().subtract(const Duration(days: 1)));
     final dateFormat = DateFormat('MMMM d, yyyy');
 
     final List<_FeedRow> rows = [];
@@ -662,7 +683,11 @@ class _MinePageState extends State<MinePage> {
     }
 
     final feedRows = _buildRows(myExpenses);
-    final everyoneHasPaid = !_metricsLoading && groupId != null && currentUserId != null && _totalOwedToYou < 0.01;
+    final everyoneHasPaid =
+        !_metricsLoading &&
+        groupId != null &&
+        currentUserId != null &&
+        _totalOwedToYou < 0.01;
     final showAllCollectedPill = everyoneHasPaid && unpaidCount > 0;
     final showMarkAllButton = !showAllCollectedPill && unpaidCount > 0;
 
@@ -714,7 +739,9 @@ class _MinePageState extends State<MinePage> {
                                 label: 'Left to collect',
                                 amount: leftToCollect,
                                 caption: '$unpaidCount unpaid',
-                                amountColor: leftToCollect > 0 ? kDashPositive : Colors.white,
+                                amountColor: leftToCollect > 0
+                                    ? kDashPositive
+                                    : Colors.white,
                               ),
                             ),
                           ],
@@ -732,54 +759,61 @@ class _MinePageState extends State<MinePage> {
                                     padding: const EdgeInsets.only(bottom: 16),
                                     child: _AllCollectedPill(
                                       unpaidCount: unpaidCount,
-                                      onTap: () => _showMarkAllPaidConfirmation(unpaidMyExpenses),
+                                      onTap: () => _showMarkAllPaidConfirmation(
+                                        unpaidMyExpenses,
+                                      ),
                                     ),
                                   )
                                 : showMarkAllButton
-                                    ? Padding(
-                                        key: const ValueKey('mark_all_button'),
-                                        padding: const EdgeInsets.only(bottom: 16),
-                                        child: SizedBox(
-                                          width: double.infinity,
-                                          height: 48,
-                                          child: FilledButton.icon(
-                                            onPressed: () => _showMarkAllPaidConfirmation(unpaidMyExpenses),
-                                            style: FilledButton.styleFrom(
-                                              backgroundColor: kDashPositive.withValues(alpha: 0.15),
-                                              foregroundColor: kDashPositive,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(14),
-                                                side: BorderSide(
-                                                  color: kDashPositive.withValues(alpha: 0.25),
-                                                ),
-                                              ),
+                                ? Padding(
+                                    key: const ValueKey('mark_all_button'),
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: SizedBox(
+                                      width: double.infinity,
+                                      height: 48,
+                                      child: FilledButton.icon(
+                                        onPressed: () =>
+                                            _showMarkAllPaidConfirmation(
+                                              unpaidMyExpenses,
                                             ),
-                                            icon: const Icon(Icons.done_all_rounded, size: 20),
-                                            label: Text(
-                                              'Mark all as paid ($unpaidCount)',
-                                              style: const TextStyle(
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 14,
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: kDashPositive
+                                              .withValues(alpha: 0.15),
+                                          foregroundColor: kDashPositive,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                            side: BorderSide(
+                                              color: kDashPositive.withValues(
+                                                alpha: 0.25,
                                               ),
                                             ),
                                           ),
                                         ),
-                                      )
-                                    : const SizedBox.shrink(key: ValueKey('empty')),
+                                        icon: const Icon(
+                                          Icons.done_all_rounded,
+                                          size: 20,
+                                        ),
+                                        label: Text(
+                                          'Mark all as paid ($unpaidCount)',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                : const SizedBox.shrink(key: ValueKey('empty')),
                           ),
-                        ),
-                        DashListHeading(
-                          title: 'EXPENSES YOU CREATED',
-                          count: myExpenses.length,
                         ),
                       ],
                     ),
                   ),
                 ),
                 if (myExpenses.isEmpty)
-                  SliverToBoxAdapter(
-                    child: _buildNoExpensesState(inviteCode),
-                  )
+                  SliverToBoxAdapter(child: _buildNoExpensesState(inviteCode))
                 else
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -805,16 +839,22 @@ class _MinePageState extends State<MinePage> {
                             child: _MineExpenseCard(
                               expense: expense,
                               currentUserId: currentUserId,
-                              onTogglePaid: (id, current) => _toggleExpensePaid(id, current, expenseProvider),
-                              onDelete: (id, title) => _confirmDelete(id, title, expenseProvider),
-                              onEdit: (id, title, total, breakdowns, desc) => _showEditExpenseModal(
-                                expenseId: id,
-                                currentTitle: title,
-                                currentTotal: total,
-                                breakdowns: breakdowns,
-                                provider: expenseProvider,
-                                currentDescription: desc,
+                              onTogglePaid: (id, current) => _toggleExpensePaid(
+                                id,
+                                current,
+                                expenseProvider,
                               ),
+                              onDelete: (id, title) =>
+                                  _confirmDelete(id, title, expenseProvider),
+                              onEdit: (id, title, total, breakdowns, desc) =>
+                                  _showEditExpenseModal(
+                                    expenseId: id,
+                                    currentTitle: title,
+                                    currentTotal: total,
+                                    breakdowns: breakdowns,
+                                    provider: expenseProvider,
+                                    currentDescription: desc,
+                                  ),
                             ),
                           );
                         }
@@ -877,7 +917,10 @@ class _MinePageState extends State<MinePage> {
                   );
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.07),
                     borderRadius: BorderRadius.circular(20),
@@ -919,24 +962,14 @@ class _FeedRow {
   final String? headerLabel;
   final Map<String, dynamic>? expenseMap;
 
-  const _FeedRow._({
-    required this.isHeader,
-    this.headerLabel,
-    this.expenseMap,
-  });
+  const _FeedRow._({required this.isHeader, this.headerLabel, this.expenseMap});
 
   factory _FeedRow.header({required String label}) {
-    return _FeedRow._(
-      isHeader: true,
-      headerLabel: label,
-    );
+    return _FeedRow._(isHeader: true, headerLabel: label);
   }
 
   factory _FeedRow.expense({required Map<String, dynamic> expenseMap}) {
-    return _FeedRow._(
-      isHeader: false,
-      expenseMap: expenseMap,
-    );
+    return _FeedRow._(isHeader: false, expenseMap: expenseMap);
   }
 }
 
@@ -944,10 +977,7 @@ class _AllCollectedPill extends StatelessWidget {
   final int unpaidCount;
   final VoidCallback onTap;
 
-  const _AllCollectedPill({
-    required this.unpaidCount,
-    required this.onTap,
-  });
+  const _AllCollectedPill({required this.unpaidCount, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -970,7 +1000,11 @@ class _AllCollectedPill extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: kDashPositive.withValues(alpha: 0.2),
               ),
-              child: const Icon(Icons.check_rounded, color: kDashPositive, size: 18),
+              child: const Icon(
+                Icons.check_rounded,
+                color: kDashPositive,
+                size: 18,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1024,7 +1058,14 @@ class _MineExpenseCard extends StatefulWidget {
   final String? currentUserId;
   final Function(String id, bool current) onTogglePaid;
   final Function(String id, String title) onDelete;
-  final Function(String id, String title, double total, List<Map<String, dynamic>> breakdowns, String desc) onEdit;
+  final Function(
+    String id,
+    String title,
+    double total,
+    List<Map<String, dynamic>> breakdowns,
+    String desc,
+  )
+  onEdit;
 
   const _MineExpenseCard({
     required this.expense,
@@ -1094,7 +1135,9 @@ class _MineExpenseCardState extends State<_MineExpenseCard> {
                                   fontWeight: FontWeight.w700,
                                   fontSize: 16,
                                   color: Colors.white,
-                                  decoration: isPaid ? TextDecoration.lineThrough : null,
+                                  decoration: isPaid
+                                      ? TextDecoration.lineThrough
+                                      : null,
                                   decorationColor: Colors.white54,
                                 ),
                               ),
@@ -1106,7 +1149,10 @@ class _MineExpenseCardState extends State<_MineExpenseCard> {
                                 title,
                                 total,
                                 breakdowns
-                                    .map((e) => Map<String, dynamic>.from(e as Map))
+                                    .map(
+                                      (e) =>
+                                          Map<String, dynamic>.from(e as Map),
+                                    )
                                     .toList(),
                                 description,
                               ),
@@ -1143,7 +1189,10 @@ class _MineExpenseCardState extends State<_MineExpenseCard> {
                     const SizedBox(height: 8),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.04),
                         borderRadius: BorderRadius.circular(10),
@@ -1159,14 +1208,18 @@ class _MineExpenseCardState extends State<_MineExpenseCard> {
                   ],
 
                   const SizedBox(height: 12),
-                  Divider(color: Colors.white.withValues(alpha: 0.07), height: 1),
+                  Divider(
+                    color: Colors.white.withValues(alpha: 0.07),
+                    height: 1,
+                  ),
                   const SizedBox(height: 12),
 
                   // Footer row
                   Row(
                     children: [
                       _buildAvatarStack(filteredBreakdowns),
-                      if (filteredBreakdowns.isNotEmpty) const SizedBox(width: 10),
+                      if (filteredBreakdowns.isNotEmpty)
+                        const SizedBox(width: 10),
                       Text(
                         filteredBreakdowns.length == 1
                             ? '1 payer'
@@ -1178,7 +1231,10 @@ class _MineExpenseCardState extends State<_MineExpenseCard> {
                       ),
                       const Spacer(),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: isPaid
                               ? kDashPositive.withValues(alpha: 0.15)
@@ -1190,7 +1246,9 @@ class _MineExpenseCardState extends State<_MineExpenseCard> {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: isPaid ? kDashPositive : Colors.amber.shade300,
+                            color: isPaid
+                                ? kDashPositive
+                                : Colors.amber.shade300,
                           ),
                         ),
                       ),
@@ -1229,7 +1287,9 @@ class _MineExpenseCardState extends State<_MineExpenseCard> {
                                 final user = b['profiles'];
                                 final fName = user?['firstname'] ?? '';
                                 final lName = user?['lastname'] ?? '';
-                                final pName = user != null ? '$fName $lName' : 'Unknown';
+                                final pName = user != null
+                                    ? '$fName $lName'
+                                    : 'Unknown';
                                 final amount = _toDouble(b['amount']);
 
                                 return Container(
@@ -1265,7 +1325,9 @@ class _MineExpenseCardState extends State<_MineExpenseCard> {
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
-                                          color: Colors.white.withValues(alpha: 0.65),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.65,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -1309,9 +1371,13 @@ class _MineExpenseCardState extends State<_MineExpenseCard> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          isPaid ? Icons.undo_rounded : Icons.check_circle_outline_rounded,
+                          isPaid
+                              ? Icons.undo_rounded
+                              : Icons.check_circle_outline_rounded,
                           size: 22,
-                          color: isPaid ? Colors.white.withValues(alpha: 0.3) : Colors.green.shade400,
+                          color: isPaid
+                              ? Colors.white.withValues(alpha: 0.3)
+                              : Colors.green.shade400,
                         ),
                         const SizedBox(width: 6),
                         Text(
@@ -1319,7 +1385,9 @@ class _MineExpenseCardState extends State<_MineExpenseCard> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: isPaid ? Colors.white.withValues(alpha: 0.3) : Colors.green.shade400,
+                            color: isPaid
+                                ? Colors.white.withValues(alpha: 0.3)
+                                : Colors.green.shade400,
                           ),
                         ),
                       ],
@@ -1335,7 +1403,10 @@ class _MineExpenseCardState extends State<_MineExpenseCard> {
               Expanded(
                 flex: 1,
                 child: GestureDetector(
-                  onTap: () => widget.onDelete(expenseId, title.isNotEmpty ? title : 'Untitled'),
+                  onTap: () => widget.onDelete(
+                    expenseId,
+                    title.isNotEmpty ? title : 'Untitled',
+                  ),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 13),
                     decoration: BoxDecoration(
@@ -1442,8 +1513,8 @@ class _PayerAvatar extends StatelessWidget {
     final avatarUrl = user?['avatar_url'] as String?;
     final f = (user?['firstname'] ?? '').toString();
     final l = (user?['lastname'] ?? '').toString();
-    final initials =
-        '${f.isNotEmpty ? f[0] : ''}${l.isNotEmpty ? l[0] : ''}'.toUpperCase();
+    final initials = '${f.isNotEmpty ? f[0] : ''}${l.isNotEmpty ? l[0] : ''}'
+        .toUpperCase();
 
     Widget initialsWidget() {
       return Center(

@@ -617,6 +617,38 @@ class _HomeDrawer extends StatelessWidget {
                 ),
               ),
               Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+                child: Column(
+                  children: [
+                    const Divider(color: Color(0xFF292C4A), height: 1),
+                    ListTile(
+                      onTap: () => _logOut(context, groupProvider),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                      ),
+                      minLeadingWidth: 24,
+                      horizontalTitleGap: 14,
+                      leading: const Icon(
+                        Icons.logout_rounded,
+                        size: 21,
+                        color: Color(0xFFFF8585),
+                      ),
+                      title: const Text(
+                        'Log out',
+                        style: TextStyle(
+                          color: Color(0xFFFF8585),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
                 child: Row(
                   children: [
@@ -646,6 +678,34 @@ class _HomeDrawer extends StatelessWidget {
   void _selectPage(BuildContext context, int index) {
     Navigator.pop(context);
     onNavigate(index);
+  }
+
+  Future<void> _logOut(
+    BuildContext context,
+    GroupProvider groupProvider,
+  ) async {
+    Navigator.pop(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final userId = CurrentUser.instance.id;
+
+    try {
+      await Supabase.instance.client.auth.signOut();
+      if (userId != null) await OfflineCache.clearUser(userId);
+      CurrentUser.instance.clear();
+      groupProvider.clear();
+
+      if (!context.mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+    } catch (error) {
+      debugPrint('Logout failed: $error');
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Unable to log out. Please try again.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }
 

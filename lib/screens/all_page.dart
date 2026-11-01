@@ -104,12 +104,15 @@ class _AllPageState extends State<AllPage> {
                 );
                 if (!isPayer) return false;
               }
-              final searchTitle =
-                  (expense['search_title'] ?? '').toString().toLowerCase();
-              final searchDateStr =
-                  (expense['search_date_str'] ?? '').toString().toLowerCase();
-              final searchDateKey =
-                  (expense['search_date_key'] ?? '').toString().toLowerCase();
+              final searchTitle = (expense['search_title'] ?? '')
+                  .toString()
+                  .toLowerCase();
+              final searchDateStr = (expense['search_date_str'] ?? '')
+                  .toString()
+                  .toLowerCase();
+              final searchDateKey = (expense['search_date_key'] ?? '')
+                  .toString()
+                  .toLowerCase();
               return searchTitle.contains(_searchQuery) ||
                   searchDateStr.contains(_searchQuery) ||
                   searchDateKey.contains(_searchQuery);
@@ -454,7 +457,10 @@ class _AllPageState extends State<AllPage> {
       listen: false,
     ).selectedGroup;
     final inviteCode = selectedGroup?['invite_code'] as String?;
-    final groupId = Provider.of<GroupProvider>(context, listen: false).selectedGroupId;
+    final groupId = Provider.of<GroupProvider>(
+      context,
+      listen: false,
+    ).selectedGroupId;
 
     return Scaffold(
       body: Center(
@@ -685,18 +691,12 @@ class _AllPageState extends State<AllPage> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        DashListHeading(
-                          title: 'EXPENSE ACTIVITY',
-                          count: expenses.length,
-                        ),
                       ],
                     ),
                   ),
                 ),
                 if (allExpenses.isEmpty)
-                  SliverToBoxAdapter(
-                    child: _buildNoExpensesState(inviteCode),
-                  )
+                  SliverToBoxAdapter(child: _buildNoExpensesState(inviteCode))
                 else if (expenses.isEmpty &&
                     (_searchQuery.isNotEmpty || _isFiltered))
                   SliverToBoxAdapter(child: _buildNoResultsState())
@@ -815,7 +815,9 @@ class _AllPageState extends State<AllPage> {
             style: TextStyle(
               fontSize: 13,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected ? kDashNavy : Colors.white.withValues(alpha: 0.65),
+              color: selected
+                  ? kDashNavy
+                  : Colors.white.withValues(alpha: 0.65),
             ),
           ),
         ),
@@ -959,24 +961,14 @@ class _FeedRow {
   final String? headerLabel;
   final Map<String, dynamic>? expenseMap;
 
-  const _FeedRow._({
-    required this.isHeader,
-    this.headerLabel,
-    this.expenseMap,
-  });
+  const _FeedRow._({required this.isHeader, this.headerLabel, this.expenseMap});
 
   factory _FeedRow.header({required String label}) {
-    return _FeedRow._(
-      isHeader: true,
-      headerLabel: label,
-    );
+    return _FeedRow._(isHeader: true, headerLabel: label);
   }
 
   factory _FeedRow.expense({required Map<String, dynamic> expenseMap}) {
-    return _FeedRow._(
-      isHeader: false,
-      expenseMap: expenseMap,
-    );
+    return _FeedRow._(isHeader: false, expenseMap: expenseMap);
   }
 }
 
@@ -1394,8 +1386,8 @@ class _PayerAvatar extends StatelessWidget {
     final avatarUrl = user?['avatar_url'] as String?;
     final f = (user?['firstname'] ?? '').toString();
     final l = (user?['lastname'] ?? '').toString();
-    final initials =
-        '${f.isNotEmpty ? f[0] : ''}${l.isNotEmpty ? l[0] : ''}'.toUpperCase();
+    final initials = '${f.isNotEmpty ? f[0] : ''}${l.isNotEmpty ? l[0] : ''}'
+        .toUpperCase();
 
     Widget initialsWidget() {
       return Center(
