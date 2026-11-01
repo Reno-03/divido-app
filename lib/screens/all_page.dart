@@ -29,10 +29,18 @@ class _AllPageState extends State<AllPage> {
   bool _showPaid = true;
   bool _showUnpaid = true;
   bool _onlyMine = false;
+  late final ExpenseProvider _expenseProvider;
+  int _expenseVersion = 0;
+  int _preparationRequestId = 0;
+  _AllPagePreparationKey? _preparingKey;
+  _AllPagePreparationKey? _preparedKey;
+  _PreparedAllPageData? _preparedData;
 
   @override
   void initState() {
     super.initState();
+    _expenseProvider = context.read<ExpenseProvider>();
+    _expenseProvider.addListener(_onExpensesChanged);
     _searchController.addListener(() {
       if (_debounce?.isActive ?? false) {
         _debounce!.cancel();
@@ -51,41 +59,13 @@ class _AllPageState extends State<AllPage> {
   @override
   void dispose() {
     _debounce?.cancel();
+    _expenseProvider.removeListener(_onExpensesChanged);
     _searchController.dispose();
     super.dispose();
   }
 
-  List<Map<String, dynamic>> _applyFilters(
-    List<Map<String, dynamic>> allExpenses,
-    String currentUserId,
-  ) {
-    return allExpenses.where((expense) {
-      final isPaid = expense['is_paid'] == true;
-
-      // Filter by paid/unpaid
-      if ((!_showPaid && isPaid) || (!_showUnpaid && !isPaid)) return false;
-
-      // Filter by user involvement
-      // TODO: _onlyMine currently excludes expenses the user owns, which contradicts its label.
-      if (_onlyMine) {
-        final ownerId = expense['owner_id'] as String?;
-        if (ownerId == currentUserId) return false;
-
-        final breakdowns =
-            (expense['expense_breakdowns'] as List<dynamic>? ?? []);
-        final isPayer = breakdowns.any((b) => b['payer_id'] == currentUserId);
-        if (!isPayer) return false;
-      }
-
-      // Filter by search
-      final searchTitle = (expense['search_title'] ?? '').toString().toLowerCase();
-      final searchDateStr = (expense['search_date_str'] ?? '').toString().toLowerCase();
-      final searchDateKey = (expense['search_date_key'] ?? '').toString().toLowerCase();
-
-      return searchTitle.contains(_searchQuery) ||
-          searchDateStr.contains(_searchQuery) ||
-          searchDateKey.contains(_searchQuery);
-    }).toList();
+  void _onExpensesChanged() {
+    _expenseVersion++;
   }
 
   void _openFilterDialog(
@@ -333,124 +313,147 @@ class _AllPageState extends State<AllPage> {
 
   bool get _isFiltered => !(_showPaid && _showUnpaid && !_onlyMine);
 
-  List<_FeedRow> _buildRows(
-    List<Map<String, dynamic>> expenses,
-    String currentUserId,
+  bool _matchesFilters(
+    Map<String, dynamic> expense,
+    _AllPagePreparationKey key,
   ) {
-    final Map<String, List<Map<String, dynamic>>> grouped = {};
-    for (var expense in expenses) {
-      final dynamic rawDate = expense['created_at_local'];
-      final DateTime createdAt = rawDate is DateTime
-          ? rawDate
-          : (DateTime.tryParse('$rawDate') ?? DateTime.now());
-      final dateKey = DateFormat('yyyy-MM-dd').format(createdAt);
-      grouped.putIfAbsent(dateKey, () => []);
-      grouped[dateKey]!.add(expense);
+    final isPaid = expense['is_paid'] == true;
+    if ((!key.showPaid && isPaid) || (!key.showUnpaid && !isPaid)) {
+      return false;
     }
 
-    final sortedDates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
-    final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    final yesterdayStr = DateFormat('yyyy-MM-dd').format(
-      DateTime.now().subtract(const Duration(days: 1)),
-    );
-    final dateFormat = DateFormat('MMMM d, yyyy');
+    if (key.onlyMine) {
+      final ownerId = expense['owner_id'] as String?;
+      if (ownerId == key.currentUserId) return false;
 
-    final List<_FeedRow> rows = [];
-    for (var dateKey in sortedDates) {
-      final expensesForDate = grouped[dateKey]!;
-
-      String dateLabel;
-      if (dateKey == todayStr) {
-        dateLabel = 'Today';
-      } else if (dateKey == yesterdayStr) {
-        dateLabel = 'Yesterday';
-      } else {
-        try {
-          dateLabel = dateFormat.format(DateTime.parse(dateKey));
-        } catch (_) {
-          dateLabel = dateKey;
-        }
+      final breakdowns = expense['expense_breakdowns'] as List<dynamic>? ?? [];
+      if (!breakdowns.any((b) => b['payer_id'] == key.currentUserId)) {
+        return false;
       }
+    }
 
-      rows.add(_FeedRow.header(label: dateLabel));
+    final searchTitle = (expense['search_title'] ?? '').toString();
+    final searchDateStr = (expense['search_date_str'] ?? '').toString();
+    final searchDateKey = (expense['search_date_key'] ?? '').toString();
+    return searchTitle.contains(key.searchQuery) ||
+        searchDateStr.contains(key.searchQuery) ||
+        searchDateKey.contains(key.searchQuery);
+  }
 
-      for (var expense in expensesForDate) {
+  Future<void> _preparePageData(
+    _AllPagePreparationKey key,
+    int requestId,
+  ) async {
+    final expenses = <Map<String, dynamic>>[];
+    final rows = <_FeedRow>[];
+    final now = DateTime.now();
+    final todayKey = DateFormat('yyyy-MM-dd').format(now);
+    final yesterdayKey = DateFormat(
+      'yyyy-MM-dd',
+    ).format(now.subtract(const Duration(days: 1)));
+    final dateFormat = DateFormat('MMMM d, yyyy');
+    String? lastDateKey;
+    var totalSum = 0.0;
+    var myShareSum = 0.0;
+
+    for (var index = 0; index < key.source.length; index++) {
+      if (requestId != _preparationRequestId) return;
+
+      final expense = key.source[index];
+      if (_matchesFilters(expense, key)) {
+        expenses.add(expense);
+        totalSum += _toDouble(expense['total']);
+
+        final breakdowns =
+            expense['expense_breakdowns'] as List<dynamic>? ?? [];
+        for (final breakdown in breakdowns) {
+          if (breakdown['payer_id'] == key.currentUserId) {
+            myShareSum += _toDouble(breakdown['amount']);
+            break;
+          }
+        }
+
+        final rawDate = expense['created_at_local'];
+        final createdAt = rawDate is DateTime
+            ? rawDate
+            : (DateTime.tryParse('$rawDate') ?? now);
+        final dateKey = (expense['search_date_key'] ?? '').toString();
+        final resolvedDateKey = dateKey.isNotEmpty
+            ? dateKey
+            : DateFormat('yyyy-MM-dd').format(createdAt);
+
+        if (resolvedDateKey != lastDateKey) {
+          final dateLabel = switch (resolvedDateKey) {
+            _ when resolvedDateKey == todayKey => 'Today',
+            _ when resolvedDateKey == yesterdayKey => 'Yesterday',
+            _ => dateFormat.format(createdAt),
+          };
+          rows.add(_FeedRow.header(label: dateLabel));
+          lastDateKey = resolvedDateKey;
+        }
         rows.add(_FeedRow.expense(expenseMap: expense));
       }
+
+      if (index % 64 == 63) {
+        await Future<void>.delayed(Duration.zero);
+      }
     }
 
-    return rows;
+    if (!mounted || requestId != _preparationRequestId) return;
+    _preparedData = _PreparedAllPageData(
+      expenses: expenses,
+      rows: rows,
+      totalSum: totalSum,
+      myShareSum: myShareSum,
+    );
+    _preparedKey = key;
+    _preparingKey = null;
+    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final expenseProvider = Provider.of<ExpenseProvider>(context);
+    if (expenseProvider.isLoading) {
+      _cancelPagePreparation();
+      return _buildLoadingShimmer();
+    }
+
     final allExpenses = expenseProvider.expenses;
     final currentUserId = supabase.auth.currentUser?.id ?? '';
-
-    final expenses = _applyFilters(allExpenses, currentUserId);
-
-    double totalSum = 0;
-    double myShareSum = 0;
-    for (var exp in expenses) {
-      final t = _toDouble(exp['total']);
-      totalSum += t;
-      final breakdowns = exp['expense_breakdowns'] as List<dynamic>? ?? [];
-      for (var b in breakdowns) {
-        if (b['payer_id'] == currentUserId) {
-          myShareSum += _toDouble(b['amount']);
-          break;
-        }
+    final key = _AllPagePreparationKey(
+      source: allExpenses,
+      expenseVersion: _expenseVersion,
+      currentUserId: currentUserId,
+      searchQuery: _searchQuery,
+      showPaid: _showPaid,
+      showUnpaid: _showUnpaid,
+      onlyMine: _onlyMine,
+    );
+    if (_preparedData == null || !_preparedKey!.matches(key)) {
+      if (_preparingKey == null || !_preparingKey!.matches(key)) {
+        _cancelPagePreparation();
+        final requestId = ++_preparationRequestId;
+        _preparingKey = key;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && requestId == _preparationRequestId) {
+            unawaited(_preparePageData(key, requestId));
+          }
+        });
       }
+      return _buildLoadingShimmer();
     }
 
-    if (expenseProvider.isLoading) {
-      return Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: Shimmer.fromColors(
-            baseColor: Colors.white.withValues(alpha: 0.06),
-            highlightColor: Colors.white.withValues(alpha: 0.15),
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    DashSkeleton(height: 28, radius: 6),
-                    SizedBox(height: 6),
-                    DashSkeleton(height: 16, radius: 4),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: const [
-                    Expanded(child: DashSkeleton(height: 110, radius: 20)),
-                    SizedBox(width: 14),
-                    Expanded(child: DashSkeleton(height: 110, radius: 20)),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                const DashSkeleton(height: 48, radius: 12),
-                const SizedBox(height: 16),
-                const DashSkeleton(height: 130, radius: 16),
-                const SizedBox(height: 12),
-                const DashSkeleton(height: 130, radius: 16),
-                const SizedBox(height: 12),
-                const DashSkeleton(height: 130, radius: 16),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
+    final preparedData = _preparedData!;
+    final expenses = preparedData.expenses;
+    final feedRows = preparedData.rows;
+    final totalSum = preparedData.totalSum;
+    final myShareSum = preparedData.myShareSum;
     final selectedGroup = Provider.of<GroupProvider>(
       context,
       listen: false,
     ).selectedGroup;
     final inviteCode = selectedGroup?['invite_code'] as String?;
-    final feedRows = _buildRows(expenses, currentUserId);
     final groupId = Provider.of<GroupProvider>(context, listen: false).selectedGroupId;
 
     return Scaffold(
@@ -742,6 +745,53 @@ class _AllPageState extends State<AllPage> {
     );
   }
 
+  void _cancelPagePreparation() {
+    if (_preparingKey == null) return;
+    _preparationRequestId++;
+    _preparingKey = null;
+  }
+
+  Widget _buildLoadingShimmer() {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 720),
+        child: Shimmer.fromColors(
+          baseColor: Colors.white.withValues(alpha: 0.06),
+          highlightColor: Colors.white.withValues(alpha: 0.15),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  DashSkeleton(height: 28, radius: 6),
+                  SizedBox(height: 6),
+                  DashSkeleton(height: 16, radius: 4),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: const [
+                  Expanded(child: DashSkeleton(height: 110, radius: 20)),
+                  SizedBox(width: 14),
+                  Expanded(child: DashSkeleton(height: 110, radius: 20)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const DashSkeleton(height: 48, radius: 12),
+              const SizedBox(height: 16),
+              const DashSkeleton(height: 130, radius: 16),
+              const SizedBox(height: 12),
+              const DashSkeleton(height: 130, radius: 16),
+              const SizedBox(height: 12),
+              const DashSkeleton(height: 130, radius: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildChip({
     required String label,
     required bool selected,
@@ -929,6 +979,49 @@ class _FeedRow {
       expenseMap: expenseMap,
     );
   }
+}
+
+class _PreparedAllPageData {
+  const _PreparedAllPageData({
+    required this.expenses,
+    required this.rows,
+    required this.totalSum,
+    required this.myShareSum,
+  });
+
+  final List<Map<String, dynamic>> expenses;
+  final List<_FeedRow> rows;
+  final double totalSum;
+  final double myShareSum;
+}
+
+class _AllPagePreparationKey {
+  const _AllPagePreparationKey({
+    required this.source,
+    required this.expenseVersion,
+    required this.currentUserId,
+    required this.searchQuery,
+    required this.showPaid,
+    required this.showUnpaid,
+    required this.onlyMine,
+  });
+
+  final List<Map<String, dynamic>> source;
+  final int expenseVersion;
+  final String currentUserId;
+  final String searchQuery;
+  final bool showPaid;
+  final bool showUnpaid;
+  final bool onlyMine;
+
+  bool matches(_AllPagePreparationKey other) =>
+      identical(source, other.source) &&
+      expenseVersion == other.expenseVersion &&
+      currentUserId == other.currentUserId &&
+      searchQuery == other.searchQuery &&
+      showPaid == other.showPaid &&
+      showUnpaid == other.showUnpaid &&
+      onlyMine == other.onlyMine;
 }
 
 class _SummaryTile extends StatelessWidget {

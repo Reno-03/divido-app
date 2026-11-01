@@ -602,7 +602,7 @@ class _MinePageState extends State<MinePage> {
     final inviteCode = selectedGroup?['invite_code'] as String?;
     final groupId = groupProvider.selectedGroupId;
 
-    if (expenseProvider.isLoading) {
+    if (expenseProvider.isLoading || _metricsLoading) {
       return Shimmer.fromColors(
         baseColor: Colors.white.withValues(alpha: 0.06),
         highlightColor: Colors.white.withValues(alpha: 0.15),

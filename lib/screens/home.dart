@@ -25,6 +25,7 @@ class HomePage extends StatefulWidget {
 
 class HomePageState extends State<HomePage> {
   int _currentIndex = 0;
+  final Set<int> _visitedPages = {0};
   late GroupProvider _groupProvider;
   late ExpenseProvider _expenseProvider;
   VoidCallback? _groupListener;
@@ -41,7 +42,10 @@ class HomePageState extends State<HomePage> {
   void switchTab(int index) {
     if (!mounted || _currentIndex == index) return;
     HapticFeedback.selectionClick();
-    setState(() => _currentIndex = index);
+    setState(() {
+      _currentIndex = index;
+      _visitedPages.add(index);
+    });
   }
 
   @override
@@ -283,7 +287,15 @@ class HomePageState extends State<HomePage> {
             if (groupProvider.groups.isEmpty) {
               return const _NoGroupSelected();
             }
-            return IndexedStack(index: _currentIndex, children: _pages);
+            return IndexedStack(
+              index: _currentIndex,
+              children: [
+                for (var index = 0; index < _pages.length; index++)
+                  _visitedPages.contains(index)
+                      ? _pages[index]
+                      : const SizedBox.shrink(),
+              ],
+            );
           },
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,

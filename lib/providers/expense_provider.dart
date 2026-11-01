@@ -44,26 +44,30 @@ class ExpenseProvider extends ChangeNotifier {
       // Ignore stale responses from older requests/group selections.
       if (requestId != _fetchRequestId || _currentGroupId != groupId) return;
 
-      _expenses = List<Map<String, dynamic>>.from(response).map((expense) {
-        final e = Map<String, dynamic>.from(expense);
+      final normalizedExpenses = <Map<String, dynamic>>[];
+      final searchDateFormatter = DateFormat('MMMM d, yyyy');
+      final searchDateKeyFormatter = DateFormat('yyyy-MM-dd');
+      for (var index = 0; index < response.length; index++) {
+        if (requestId != _fetchRequestId || _currentGroupId != groupId) return;
 
-        // Parse date ONCE
+        final e = Map<String, dynamic>.from(response[index]);
         final createdAt = DateTime.parse(e['created_at'] + 'Z').toLocal();
 
-        // Precompute searchable fields
         e['search_title'] = (e['title'] as String? ?? '').toLowerCase();
-
-        e['search_date_str'] = DateFormat(
-          'MMMM d, yyyy',
-        ).format(createdAt).toLowerCase();
-
-        e['search_date_key'] = DateFormat('yyyy-MM-dd').format(createdAt);
-
-        // Store parsed DateTime
+        e['search_date_str'] = searchDateFormatter
+            .format(createdAt)
+            .toLowerCase();
+        e['search_date_key'] = searchDateKeyFormatter.format(createdAt);
         e['created_at_local'] = createdAt;
+        normalizedExpenses.add(e);
 
-        return e;
-      }).toList();
+        if (index % 64 == 63) {
+          await Future<void>.delayed(Duration.zero);
+        }
+      }
+
+      if (requestId != _fetchRequestId || _currentGroupId != groupId) return;
+      _expenses = normalizedExpenses;
     } finally {
       if (requestId == _fetchRequestId) {
         _isLoading = false;
