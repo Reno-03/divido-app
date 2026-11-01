@@ -57,7 +57,7 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
-                    'VERSION 1.3.0',
+                    'VERSION 1.4.0',
                     style: TextStyle(
                       fontSize: 11,
                       color: Colors.white70,
@@ -67,7 +67,7 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'A clearer view of shared expenses, with a smoother way to keep everything moving.',
+                  'A fresh look across Divido, with more reliable access to your expenses wherever you are.',
                   style: TextStyle(
                     fontSize: 13,
                     height: 1.4,
@@ -76,51 +76,33 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
                 ),
                 const SizedBox(height: 12),
                 _highlight(
-                  Icons.account_balance_wallet_outlined,
-                  'See who owes whom',
-                  'Balances are clearer, with an indicator when anything is still unsettled.',
-                ),
-                _divider(),
-                _highlight(
-                  Icons.done_all_rounded,
-                  'Collect with fewer taps',
-                  'Mark your expenses as paid together from My Expenses.',
+                  Icons.wifi_off_rounded,
+                  'Use Divido offline',
+                  'View your pages in read-only mode when you lose your connection.',
                 ),
                 _divider(),
                 _highlight(
                   Icons.dashboard_outlined,
-                  'A more helpful dashboard',
-                  'Get a greeting and quick action based on your current balances.',
+                  'A refreshed Divido',
+                  'Groups, navigation, and your Home, All, Mine, and Balance screens have a more consistent design.',
                 ),
                 _divider(),
                 _highlight(
-                  Icons.bar_chart_rounded,
-                  'Track spending over time',
-                  'Compare your share with group spending by day, week, or month.',
+                  Icons.receipt_long_outlined,
+                  'Smoother expense and payment flows',
+                  'The create expense, edit expense, and payment dialogs have a clearer, more polished design.',
                 ),
                 _divider(),
                 _highlight(
                   Icons.bolt_outlined,
-                  'Smoother everyday use',
-                  'Expense lists, avatars, group details, and navigation feel more polished.',
+                  'Faster everyday use',
+                  'Tab loading is smoother, and expense cards have a clearer visual indicator.',
                 ),
-                const SizedBox(height: 10),
-                CheckboxListTile(
-                  value: _dontShowAgain,
-                  onChanged: (value) =>
-                      setState(() => _dontShowAgain = value ?? false),
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  title: Text(
-                    "Don't show again",
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  activeColor: const Color(0xFF8FE3B0),
-                  checkColor: const Color(0xFF171A3F),
+                _divider(),
+                _highlight(
+                  Icons.image_outlined,
+                  'More reliable images',
+                  'Images are optimized before upload, and avatars load more consistently.',
                 ),
               ],
             ),
@@ -130,23 +112,49 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
       actions: [
         SizedBox(
           width: double.infinity,
-          child: FilledButton(
-            onPressed: () async {
-              if (_dontShowAgain) await ChangelogService.markSeen();
-              if (context.mounted) Navigator.pop(context);
-            },
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CheckboxListTile(
+                value: _dontShowAgain,
+                onChanged: (value) =>
+                    setState(() => _dontShowAgain = value ?? false),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: Text(
+                  "Don't show again",
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
+                ),
+                activeColor: const Color(0xFF8FE3B0),
+                checkColor: const Color(0xFF171A3F),
               ),
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF171A3F),
-            ),
-            child: const Text(
-              'Got it',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () async {
+                    if (_dontShowAgain) await ChangelogService.markSeen();
+                    if (context.mounted) Navigator.pop(context);
+                  },
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF171A3F),
+                  ),
+                  child: const Text(
+                    'Got it',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -198,8 +206,6 @@ class _ChangelogDialogState extends State<ChangelogDialog> {
     );
   }
 
-  Widget _divider() => Divider(
-    height: 1,
-    color: Colors.white.withValues(alpha: 0.1),
-  );
+  Widget _divider() =>
+      Divider(height: 1, color: Colors.white.withValues(alpha: 0.1));
 }

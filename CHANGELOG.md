@@ -6,6 +6,22 @@ Divido is a Flutter-based Progressive Web App (PWA) for splitting and tracking s
 
 This project follows [Semantic Versioning](https://semver.org/).
 
+## [1.4.0] — 2026-11-02
+### Offline Access & Refined UI/UX
+
+### ✨ Added
+- Read-only offline access across the app, with improved PWA offline accessibility.
+- A subtle light indicator in the center of expense cards.
+
+### ⚡ Improved
+- Redesigned Groups, side navigation, Home, All, Mine, and Balance for a more consistent experience.
+- Refined the create expense, edit expense, and payment modals.
+- Smoothed tab loading with shimmer effects and batched expense processing.
+- Compressed images before upload and improved avatar caching and loading.
+
+### 🐛 Fixed
+- Fixed dashboard scrolling glitches and disappearing user avatars on web.
+
 ## [1.3.0] — 2026-10-12
 
 ### ✨ Added
