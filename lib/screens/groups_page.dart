@@ -271,74 +271,9 @@ class _GroupsPageState extends State<GroupsPage> {
           body: showSkeleton
               ? _buildShimmerList()
               : rawGroups.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.group_outlined,
-                        size: 64,
-                        color: Colors.white.withValues(alpha: 0.2),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No groups yet',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white.withValues(alpha: 0.4),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Create or join a group to get started',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.white.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          FilledButton.icon(
-                            onPressed: _showCreateGroupSheet,
-                            icon: const Icon(Icons.add, size: 18),
-                            label: const Text('Create'),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF171A3F),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 20,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          OutlinedButton.icon(
-                            onPressed: _showJoinGroupSheet,
-                            icon: const Icon(Icons.key_outlined, size: 18),
-                            label: const Text('Join'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 20,
-                              ),
-                              side: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.3),
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+              ? _EmptyGroupsState(
+                  onCreate: _showCreateGroupSheet,
+                  onJoin: _showJoinGroupSheet,
                 )
               : RefreshIndicator(
                   onRefresh: () async {
@@ -350,18 +285,25 @@ class _GroupsPageState extends State<GroupsPage> {
                     await _fetchAllGroupBalances(force: true);
                   },
                   child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _order.length,
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                    itemCount: _order.length + 2,
                     addAutomaticKeepAlives: false,
                     findChildIndexCallback: (Key key) {
                       if (key is ValueKey<String>) {
                         final index = _order.indexOf(key.value);
-                        return index == -1 ? null : index;
+                        return index == -1 ? null : index + 2;
                       }
                       return null;
                     },
                     itemBuilder: (context, index) {
-                      final groupId = _order[index];
+                      if (index == 0) {
+                        return const _GroupsOverview();
+                      }
+                      if (index == 1) {
+                        return _GroupListHeading(count: _order.length);
+                      }
+
+                      final groupId = _order[index - 2];
                       final group = groupMap[groupId];
                       if (group == null) return const SizedBox.shrink();
 
@@ -519,6 +461,216 @@ class _GroupsPageState extends State<GroupsPage> {
   }
 }
 
+class _GroupsOverview extends StatelessWidget {
+  const _GroupsOverview();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 22),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF292E68), Color(0xFF1D214C)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Shared plans,',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 21,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Text(
+                  'simpler spending.',
+                  style: TextStyle(
+                    color: Color(0xFFB8B9FF),
+                    fontSize: 21,
+                    height: 1.2,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Keep the people and expenses you share, all in one place.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.65),
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: const Icon(
+              Icons.groups_rounded,
+              color: Color(0xFFB8B9FF),
+              size: 31,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GroupListHeading extends StatelessWidget {
+  const _GroupListHeading({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(2, 0, 2, 12),
+      child: Row(
+        children: [
+          const Text(
+            'YOUR GROUPS',
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Text(
+              '$count',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyGroupsState extends StatelessWidget {
+  const _EmptyGroupsState({required this.onCreate, required this.onJoin});
+
+  final VoidCallback onCreate;
+  final VoidCallback onJoin;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 92,
+                height: 92,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB8B9FF).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(
+                    color: const Color(0xFFB8B9FF).withValues(alpha: 0.18),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.groups_rounded,
+                  size: 42,
+                  color: Color(0xFFB8B9FF),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Shared expenses start here',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Create a group for your household, trip, or friends—or join one with an invite code.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.58),
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 26),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: onCreate,
+                  icon: const Icon(Icons.add, size: 19),
+                  label: const Text(
+                    'Create a group',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF171A3F),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: onJoin,
+                  icon: const Icon(Icons.key_outlined, size: 18),
+                  label: const Text('Join with an invite code'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    side: BorderSide(
+                      color: Colors.white.withValues(alpha: 0.2),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 void _showAppSheet(BuildContext context, WidgetBuilder builder) {
   showModalBottomSheet(
     context: context,
@@ -617,7 +769,6 @@ class _BalancePill extends StatelessWidget {
   Widget build(BuildContext context) {
     if (net == null) {
       return Container(
-        margin: const EdgeInsets.only(top: 6),
         width: 80,
         height: 18,
         decoration: BoxDecoration(
@@ -630,7 +781,6 @@ class _BalancePill extends StatelessWidget {
     final val = net!;
     if (val.abs() < 0.01) {
       return Container(
-        margin: const EdgeInsets.only(top: 6),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.05),
@@ -672,7 +822,6 @@ class _BalancePill extends StatelessWidget {
         : '₱${val.toStringAsFixed(2)} owed to you';
 
     return Container(
-      margin: const EdgeInsets.only(top: 6),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: bgColor,
@@ -738,87 +887,134 @@ class _GroupTile extends StatelessWidget {
           : Colors.white.withValues(alpha: 0.4),
     );
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Colors.blue.withValues(alpha: 0.1)
-              : Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? Colors.blue.withValues(alpha: 0.4)
-                : Colors.white.withValues(alpha: 0.1),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: isSelected
+            ? const Color(0xFF252A5A)
+            : Colors.white.withValues(alpha: 0.045),
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            padding: const EdgeInsets.all(15),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
                 color: isSelected
-                    ? Colors.blue.withValues(alpha: 0.2)
-                    : Colors.white.withValues(alpha: 0.08),
-              ),
-              child: ClipOval(
-                child: fullAvatarUrl != null
-                    ? AvatarImage(
-                        url: fullAvatarUrl,
-                        size: 48,
-                        memCacheWidth: 144,
-                        memCacheHeight: 144,
-                        fallback: fallbackIcon,
-                      )
-                    : fallbackIcon,
+                    ? const Color(0xFF8587FF).withValues(alpha: 0.65)
+                    : Colors.white.withValues(alpha: 0.09),
               ),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    hasDescription ? description : 'No description',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withValues(
-                        alpha: hasDescription ? 0.4 : 0.2,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        color: isSelected
+                            ? const Color(0xFFB8B9FF).withValues(alpha: 0.14)
+                            : Colors.white.withValues(alpha: 0.07),
                       ),
-                      fontStyle:
-                          hasDescription ? FontStyle.normal : FontStyle.italic,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: fullAvatarUrl != null
+                            ? AvatarImage(
+                                url: fullAvatarUrl,
+                                size: 52,
+                                memCacheWidth: 144,
+                                memCacheHeight: 144,
+                                fallback: fallbackIcon,
+                              )
+                            : fallbackIcon,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  _BalancePill(net: net),
-                ],
-              ),
-            ),
-            GestureDetector(
-              onTap: onInfoTap,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                child: Icon(
-                  Icons.arrow_forward_ios,
-                  size: 16,
-                  color: Colors.white.withValues(alpha: 0.4),
+                    const SizedBox(width: 13),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            hasDescription ? description : 'No description',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.white.withValues(
+                                alpha: hasDescription ? 0.55 : 0.3,
+                              ),
+                              fontStyle: hasDescription
+                                  ? FontStyle.normal
+                                  : FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (isSelected)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4),
+                        child: Icon(
+                          Icons.check_circle_rounded,
+                          color: Color(0xFFB8B9FF),
+                          size: 20,
+                        ),
+                      ),
+                    IconButton(
+                      tooltip: 'Group details',
+                      onPressed: onInfoTap,
+                      visualDensity: VisualDensity.compact,
+                      icon: Icon(
+                        Icons.more_horiz,
+                        color: Colors.white.withValues(alpha: 0.65),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  child: Divider(
+                    height: 1,
+                    color: Colors.white.withValues(alpha: 0.08),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.account_balance_wallet_outlined,
+                      size: 15,
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      'Your balance',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.58),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Spacer(),
+                    _BalancePill(net: net),
+                  ],
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
