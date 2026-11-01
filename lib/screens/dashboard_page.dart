@@ -33,6 +33,7 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   final _supabase = Supabase.instance.client;
+  final _scrollController = ScrollController();
 
   ExpenseProvider? _expenses;
   GroupProvider? _groups;
@@ -90,6 +91,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     _metricsDebounce?.cancel();
+    _scrollController.dispose();
     _expenses?.removeListener(_onExpensesChanged);
     _groups?.removeListener(_onGroupChanged);
     if (_paymentsChannel != null) {
@@ -906,6 +908,8 @@ class _DashboardPageState extends State<DashboardPage> {
           }
         },
         child: ListView(
+          controller: _scrollController,
+          primary: false,
           physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.fromLTRB(
             20,
