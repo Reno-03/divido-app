@@ -684,8 +684,9 @@ class _HomeDrawer extends StatelessWidget {
     BuildContext context,
     GroupProvider groupProvider,
   ) async {
-    Navigator.pop(context);
+    final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
+    Navigator.pop(context);
     final userId = CurrentUser.instance.id;
 
     try {
@@ -694,11 +695,11 @@ class _HomeDrawer extends StatelessWidget {
       CurrentUser.instance.clear();
       groupProvider.clear();
 
-      if (!context.mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil('/login', (_) => false);
+      if (!navigator.mounted) return;
+      navigator.pushNamedAndRemoveUntil('/login', (_) => false);
     } catch (error) {
       debugPrint('Logout failed: $error');
-      if (!context.mounted) return;
+      if (!messenger.mounted) return;
       messenger.showSnackBar(
         const SnackBar(
           content: Text('Unable to log out. Please try again.'),
