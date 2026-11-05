@@ -130,7 +130,6 @@ class GroupProvider extends ChangeNotifier {
             (g) => g['id'] == savedId,
             orElse: () => _groups.first,
           );
-          await _fetchMembers(_selectedGroup!['id'] as String);
         } else {
           final refreshed = _groups.firstWhere(
             (g) => g['id'] == currentSelectedId,
@@ -144,6 +143,7 @@ class GroupProvider extends ChangeNotifier {
 
           _selectedGroup = refreshed;
         }
+        await _fetchMembers(_selectedGroup!['id'] as String);
       }
       await _saveCachedGroups();
     } catch (e) {

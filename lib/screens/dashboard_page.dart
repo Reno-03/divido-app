@@ -937,8 +937,11 @@ class _DashboardPageState extends State<DashboardPage> {
         onRefresh: () async {
           _cachedPaymentsGroupId = null;
           if (mounted) {
-            await (_expenses ?? context.read<ExpenseProvider>()).refresh(null);
-            _scheduleMetrics(forcePaymentsRefresh: true);
+            final groups = _groups ?? context.read<GroupProvider>();
+            final expenses = _expenses ?? context.read<ExpenseProvider>();
+            await groups.fetchGroups();
+            await expenses.refresh(null);
+            if (mounted) _scheduleMetrics(forcePaymentsRefresh: true);
           }
         },
         child: SingleChildScrollView(
